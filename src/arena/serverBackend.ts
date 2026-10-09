@@ -77,10 +77,20 @@ export class ServerBackend implements ArenaBackend {
   }
 }
 
-export async function fetchSources(): Promise<SourceInfo[] | null> {
+export interface ServerSetup {
+  sources: SourceInfo[];
+  /** Source ids of the live line-up, one per board. */
+  lineup: string[];
+}
+
+export async function fetchServerSetup(): Promise<ServerSetup | null> {
   try {
-    const res = await fetch("/api/sources");
-    return res.ok ? ((await res.json()) as SourceInfo[]) : null;
+    const [sources, lineup] = await Promise.all([fetch("/api/sources"), fetch("/api/lineup")]);
+    if (!sources.ok || !lineup.ok) return null;
+    return {
+      sources: (await sources.json()) as SourceInfo[],
+      lineup: ((await lineup.json()) as { sources: string[] }).sources,
+    };
   } catch {
     return null;
   }

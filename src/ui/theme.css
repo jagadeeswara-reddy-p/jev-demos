@@ -344,9 +344,7 @@ input.field {
 
 .figure-head {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 2px 12px;
-  align-items: baseline;
+  gap: 2px;
   margin-bottom: 10px;
 }
 
@@ -365,20 +363,6 @@ input.field {
   font-style: italic;
   color: var(--muted);
   font-size: var(--step-0);
-}
-
-.figure-tools {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  grid-row: span 2;
-}
-
-.figure-tools .field {
-  max-width: 11rem;
-  min-height: 30px;
-  padding: 3px 6px;
-  font-size: var(--step--1);
 }
 
 .icon-btn {
@@ -487,42 +471,6 @@ input.field {
 
 .stats dd[data-hot="true"] {
   color: var(--ink);
-}
-
-/* "Add a board" reads as an empty figure waiting to be drawn. */
-.add-board {
-  flex: 0 1 180px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 12px;
-  min-height: 320px;
-  border: 1px dashed var(--ink-soft);
-  background: transparent;
-  color: var(--ink);
-  cursor: pointer;
-  padding: 24px;
-}
-
-.add-board:hover:not(:disabled) {
-  background: var(--ink-faint);
-}
-
-.add-board:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.add-board .plus {
-  font-family: var(--font-pixel);
-  font-size: var(--step-4);
-  line-height: 1;
-}
-
-.add-board span:last-child {
-  font-family: var(--font-serif);
-  font-style: italic;
-  color: var(--muted);
 }
 
 /* ---------- lower figures ---------- */

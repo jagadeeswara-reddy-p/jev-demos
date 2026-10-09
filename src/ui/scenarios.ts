@@ -8,22 +8,26 @@ export interface Scenario {
   note: string;
   mode: ClockMode;
   sources: string[];
+  /** Live line-ups take their boards from the server's LINEUP setting instead of `sources`. */
+  live?: boolean;
 }
 
 export const SCENARIOS: Scenario[] = [
   {
     id: "live",
-    label: "Live: Jev vs LLM",
-    note: "The real thing: Jev and your language model through their APIs, on the same pieces.",
+    label: "Live models",
+    note: "The real models through their APIs, on the same pieces.",
     mode: "realtime",
     sources: ["live-jev", "live-llm"],
+    live: true,
   },
   {
     id: "live-frozen",
-    label: "Live, frozen clock",
-    note: "Jev and your language model with the clock frozen, to compare placement skill without speed.",
+    label: "Live models, frozen clock",
+    note: "The real models with the clock frozen, to compare placement skill without speed.",
     mode: "frozen",
     sources: ["live-jev", "live-llm"],
+    live: true,
   },
   {
     id: "jev-vs-llm",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ReplayBackend, fromJsonl, toJsonl } from "../arena/replayBackend";
-import { ServerBackend, fetchSources } from "../arena/serverBackend";
+import { ServerBackend, fetchServerSetup } from "../arena/serverBackend";
 import { DEFAULT_CONFIG, type AgentSpec, type ArenaBackend, type ClockMode, type SourceInfo } from "../arena/types";
 import { MockBackend } from "../mock/mockBackend";
 import { MOCK_SOURCES } from "../mock/mockSource";
@@ -11,7 +11,6 @@ import { SCENARIOS } from "./scenarios";
 import { ArenaStore, fmtClock, fmtMs } from "./store";
 import { SurvivalFigure } from "./SurvivalFigure";
 
-const MAX_BOARDS = 6;
 const MOCK_DEFAULT = SCENARIOS.find((s) => s.id === "jev-vs-llm")!;
 const SPEEDS = [1, 2, 4, 8];
 
@@ -40,11 +39,6 @@ function specsFor(sources: SourceInfo[], ids: string[]): AgentSpec[] {
     seen.set(s.label, n);
     return { id: `b${nextAgent++}`, name: n > 1 ? `${s.label} ${n}` : s.label, kind: s.kind, sourceId };
   });
-}
-
-function renamed(sources: SourceInfo[], agents: AgentSpec[]): AgentSpec[] {
-  const fresh = specsFor(sources, agents.map((a) => a.sourceId));
-  return agents.map((a, i) => ({ ...a, name: fresh[i].name, kind: fresh[i].kind }));
 }
 
 export function App() {
@@ -86,6 +80,8 @@ function Page({
 }) {
   const state = useArenaState();
   const [sources, setSources] = useState<SourceInfo[]>(MOCK_SOURCES);
+  // The live line-up is set on the server (LINEUP in .env), not edited in the page.
+  const [lineup, setLineup] = useState<string[] | null>(null);
   const [scenarioId, setScenarioId] = useState(MOCK_DEFAULT.id);
   const [agents, setAgents] = useState<AgentSpec[]>(() => specsFor(MOCK_SOURCES, MOCK_DEFAULT.sources));
   const [mode, setMode] = useState<ClockMode>(MOCK_DEFAULT.mode);
@@ -96,18 +92,17 @@ function Page({
   const fileRef = useRef<HTMLInputElement>(null);
 
   // The server adds the live models (and says whether their keys are set).
-  // Start on the live line-up when both keys are set, otherwise on the mock one.
+  // Start on the live line-up when it's usable, otherwise stay on the mock one.
   useEffect(() => {
-    void fetchSources().then((list) => {
-      if (!list) return;
-      setSources(list);
-      const live = SCENARIOS.find((s) => s.id === "live")!;
-      if (live.sources.every((id) => list.find((s) => s.id === id)?.available)) {
+    void fetchServerSetup().then((setup) => {
+      if (!setup) return;
+      setSources(setup.sources);
+      setLineup(setup.lineup);
+      if (setup.lineup.every((id) => setup.sources.find((s) => s.id === id)?.available)) {
+        const live = SCENARIOS.find((s) => s.id === "live")!;
         setScenarioId(live.id);
         setMode(live.mode);
-        setAgents(specsFor(list, live.sources));
-      } else {
-        setAgents((current) => renamed(list, current));
+        setAgents(specsFor(setup.sources, setup.lineup));
       }
     });
   }, []);
@@ -122,16 +117,12 @@ function Page({
   const liveRunning = active && backendRef.current instanceof ServerBackend;
   const blocked = agents.map((a) => sourceOf(sources, a.sourceId)).find((s) => !s.available);
 
-  const edit = (next: AgentSpec[]) => {
-    setAgents(renamed(sources, next));
-    setEditing(true);
-  };
-
   const pickScenario = (id: string) => {
     const s = SCENARIOS.find((x) => x.id === id)!;
     setScenarioId(id);
     setMode(s.mode);
-    edit(specsFor(sources, s.sources));
+    setAgents(specsFor(sources, s.live && lineup ? lineup : s.sources));
+    setEditing(true);
   };
 
   const startRun = () => {
@@ -344,7 +335,7 @@ function Page({
               : liveRunning
                 ? "Live run: real response times at 1×. When it ends, use Replay to watch it faster."
                 : isLive(agents) && editable
-                  ? `${scenario.note} Live boards call the real APIs and play at 1×.`
+                  ? `${scenario.note} Live runs play at 1×.`
                   : scenario.note)}
         </p>
       </section>
@@ -376,20 +367,8 @@ function Page({
             spec={spec}
             sources={sources}
             board={state.boards.find((b) => b.spec.id === spec.id)}
-            editable={editable}
-            canRemove={shown.length > 1}
-            onChangeSource={(sourceId) => edit(shown.map((a) => (a.id === spec.id ? { ...a, sourceId } : a)))}
-            onRemove={() => edit(shown.filter((a) => a.id !== spec.id))}
           />
         ))}
-        {editable && shown.length < MAX_BOARDS && (
-          <button type="button" className="add-board" onClick={() => edit([...shown, ...specsFor(sources, ["llm-fast"])])}>
-            <span className="plus" aria-hidden="true">
-              +
-            </span>
-            <span>Add a board</span>
-          </button>
-        )}
       </div>
 
       <div className="lower">

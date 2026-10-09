@@ -12,13 +12,9 @@ interface Props {
   spec: AgentSpec;
   sources: SourceInfo[];
   board: BoardState | undefined;
-  editable: boolean;
-  canRemove: boolean;
-  onChangeSource: (sourceId: string) => void;
-  onRemove: () => void;
 }
 
-export function BoardFigure({ index, spec, sources, board, editable, canRemove, onChangeSource, onRemove }: Props) {
+export function BoardFigure({ index, spec, sources, board }: Props) {
   const source = sources.find((s) => s.id === spec.sourceId);
   const tag = `FIG_${String(index + 1).padStart(3, "0")}`;
   return (
@@ -28,47 +24,6 @@ export function BoardFigure({ index, spec, sources, board, editable, canRemove, 
       </span>
       <div className="figure-head">
         <h2 id={`${spec.id}-name`}>{spec.name}</h2>
-        <div className="figure-tools">
-          <label className="sr-only" htmlFor={`${spec.id}-source`}>
-            Decision source for {spec.name}
-          </label>
-          <select
-            id={`${spec.id}-source`}
-            className="field"
-            value={spec.sourceId}
-            disabled={!editable}
-            onChange={(e) => onChangeSource(e.target.value)}
-          >
-            <optgroup label="Live">
-              {sources
-                .filter((s) => s.live)
-                .map((s) => (
-                  <option key={s.id} value={s.id} disabled={!s.available}>
-                    {s.label} (live){s.available ? "" : ", needs a key"}
-                  </option>
-                ))}
-            </optgroup>
-            <optgroup label="Mock">
-              {sources
-                .filter((s) => !s.live)
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label} (mock)
-                  </option>
-                ))}
-            </optgroup>
-          </select>
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={onRemove}
-            disabled={!editable || !canRemove}
-            aria-label={`Remove ${spec.name}`}
-            title="Remove board"
-          >
-            ×
-          </button>
-        </div>
         <span className="kind">
           {source ? (source.available ? source.description : `${source.description}. ${source.reason}.`) : KIND_LABEL[spec.kind]}
         </span>

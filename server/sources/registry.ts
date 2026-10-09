@@ -19,7 +19,7 @@ export function listSources(): SourceInfo[] {
       id: LIVE_JEV,
       label: jev.label,
       kind: "system-one",
-      description: "System One model, live through the TypeSafe API",
+      description: `System One model ${jev.model}, through the TypeSafe API`,
       live: true,
       available: Boolean(jev.apiKey),
       reason: jev.apiKey ? undefined : "Set TYPESAFE_API_KEY in .env",
@@ -28,13 +28,21 @@ export function listSources(): SourceInfo[] {
       id: LIVE_LLM,
       label: llm.label,
       kind: "llm",
-      description: "Language model, live through its provider's API",
+      description: `Language model, through ${llm.provider === "anthropic" ? "the Anthropic" : "an OpenAI-compatible"} API`,
       live: true,
       available: !llmMissing,
       reason: llmMissing,
     },
     ...MOCK_SOURCES,
   ];
+}
+
+/** The live line-up's source ids, checked against what this server offers. */
+export function lineup(): string[] {
+  const known = new Set(listSources().map((s) => s.id));
+  const unknown = config.lineup.filter((id) => !known.has(id));
+  if (unknown.length) throw new Error(`LINEUP has unknown sources: ${unknown.join(", ")}`);
+  return config.lineup;
 }
 
 export function createSource(run: RunConfig, spec: AgentSpec): DecisionSource {
