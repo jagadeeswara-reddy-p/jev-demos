@@ -25,6 +25,11 @@ interface Theme {
 let cachedTheme: Theme | null = null;
 let cachedAt = 0;
 
+/** Re-read the colour tokens on the next frame, e.g. after the theme changes. */
+export function refreshCanvasTheme() {
+  cachedTheme = null;
+}
+
 function theme(): Theme {
   const now = performance.now();
   if (cachedTheme && now - cachedAt < 500) return cachedTheme;
@@ -141,10 +146,21 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
   // Gutter: callouts, kept apart vertically, each with an arrow to its piece.
   callouts.sort((a, c) => a.y - c.y);
   const lineH = cell * 1.25;
+  // Push labels down so none overlap, then back up from the bottom edge so the
+  // last ones still fit; near the floor several pieces can share one row.
+  const ys: number[] = [];
   let floor = calloutTop;
   for (const c of callouts) {
-    const ly = Math.min(Math.max(c.y, floor), H - lineH);
-    floor = ly + lineH;
+    ys.push(Math.max(c.y, floor));
+    floor = ys[ys.length - 1] + lineH;
+  }
+  let ceiling = H - lineH;
+  for (let i = ys.length - 1; i >= 0; i--) {
+    ys[i] = Math.min(ys[i], ceiling);
+    ceiling = ys[i] - lineH;
+  }
+  for (const [i, c] of callouts.entries()) {
+    const ly = ys[i];
     const lx = gx + cell * 0.9;
     ctx.strokeStyle = c.strong ? th.ink : th.inkSoft;
     ctx.lineWidth = 1;

@@ -129,6 +129,23 @@ input {
   padding: 40px var(--gutter) 64px;
 }
 
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -16px 0 20px;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-toggle .segmented button {
+  padding: 4px 10px;
+  font-size: var(--step--1);
+}
+
 .masthead {
   display: flex;
   flex-wrap: wrap;

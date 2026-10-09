@@ -10,6 +10,7 @@ import { ArenaContext, useArenaState } from "./hooks";
 import { SCENARIOS } from "./scenarios";
 import { ArenaStore, fmtClock, fmtMs } from "./store";
 import { SurvivalFigure } from "./SurvivalFigure";
+import { ThemeToggle } from "./ThemeToggle";
 
 const MOCK_DEFAULT = SCENARIOS.find((s) => s.id === "jev-vs-llm")!;
 const SPEEDS = [1, 2, 4, 8];
@@ -202,6 +203,9 @@ function Page({
 
   return (
     <main className="page">
+      <div className="topbar">
+        <ThemeToggle />
+      </div>
       <header className="masthead">
         <h1>Deadline Tetris</h1>
         <p>
