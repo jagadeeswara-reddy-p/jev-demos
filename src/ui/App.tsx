@@ -363,11 +363,15 @@ function Page({
         )}
       </div>
 
-      <div className="boards" >
+      <div className="lower">
+        <SurvivalFigure figIndex={1} />
+        <EventLog />
+      </div>
+      <div className="boards">
         {shown.map((spec, i) => (
           <BoardFigure
             key={spec.id}
-            index={i}
+            index={i + 1}
             spec={spec}
             sources={sources}
             board={state.boards.find((b) => b.spec.id === spec.id)}
@@ -375,10 +379,6 @@ function Page({
         ))}
       </div>
 
-      <div className="lower">
-        <SurvivalFigure figIndex={shown.length + 1} />
-        <EventLog />
-      </div>
     </main>
   );
 }

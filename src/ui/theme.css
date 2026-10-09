@@ -496,7 +496,7 @@ input.field {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 40px 48px;
-  margin-top: 56px;
+  margin: 8px 0 48px;
   padding-left: 22px;
 }
 
