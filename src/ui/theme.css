@@ -490,19 +490,48 @@ input.field {
   color: var(--ink);
 }
 
-/* ---------- lower figures ---------- */
+/* ---------- arena: figures on the left, the log down the right ---------- */
 
-.lower {
+.arena {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
   gap: 40px 48px;
-  margin: 8px 0 48px;
+  align-items: start;
+}
+
+.arena-main {
+  display: grid;
+  gap: 48px;
+  min-width: 0;
   padding-left: 22px;
 }
 
-@media (max-width: 900px) {
-  .lower {
+.arena-main .boards {
+  padding-left: 0;
+}
+
+/* The log stays in view while the page scrolls, newest line on top. */
+.arena-log {
+  position: sticky;
+  top: 24px;
+  min-width: 0;
+}
+
+.arena-log .log {
+  max-height: calc(100vh - 150px);
+  font-size: var(--step-0);
+}
+
+@media (max-width: 1100px) {
+  .arena {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .arena-log {
+    position: static;
+    padding-left: 22px;
+  }
+  .arena-log .log {
+    max-height: 480px;
   }
 }
 
@@ -542,8 +571,9 @@ input.field {
 .log li {
   display: grid;
   grid-template-columns: 6ch 1fr;
-  gap: 10px;
-  padding: 6px 0;
+  gap: 12px;
+  padding: 8px 0;
+  line-height: 1.45;
   border-bottom: 1px dashed var(--ink-faint);
 }
 
@@ -584,7 +614,8 @@ input.field {
     font-size: var(--step-1);
   }
   .boards,
-  .lower {
+  .arena-main,
+  .arena-log {
     padding-left: 0;
   }
   .fig-tag {

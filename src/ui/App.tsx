@@ -363,22 +363,25 @@ function Page({
         )}
       </div>
 
-      <div className="lower">
-        <SurvivalFigure figIndex={1} />
-        <EventLog />
+      <div className="arena">
+        <div className="arena-main">
+          <SurvivalFigure figIndex={1} />
+          <div className="boards">
+            {shown.map((spec, i) => (
+              <BoardFigure
+                key={spec.id}
+                index={i + 1}
+                spec={spec}
+                sources={sources}
+                board={state.boards.find((b) => b.spec.id === spec.id)}
+              />
+            ))}
+          </div>
+        </div>
+        <aside className="arena-log" aria-label="Run log">
+          <EventLog />
+        </aside>
       </div>
-      <div className="boards">
-        {shown.map((spec, i) => (
-          <BoardFigure
-            key={spec.id}
-            index={i + 1}
-            spec={spec}
-            sources={sources}
-            board={state.boards.find((b) => b.spec.id === spec.id)}
-          />
-        ))}
-      </div>
-
     </main>
   );
 }
