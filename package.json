@@ -8,7 +8,8 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "screenshots": "bun scripts/screenshots.mjs",
-    "fake-providers": "bun scripts/fake-providers.ts"
+    "fake-providers": "bun scripts/fake-providers.ts",
+    "smoke": "bun scripts/smoke.ts"
   },
   "dependencies": {
     "react": "^19.3.0",
