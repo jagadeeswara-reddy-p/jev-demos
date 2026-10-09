@@ -51,7 +51,7 @@ export function ThemeToggle() {
   }, []);
 
   return (
-    <div className="theme-toggle">
+    <div className="control">
       <span className="label" id="theme-label">
         Theme
       </span>

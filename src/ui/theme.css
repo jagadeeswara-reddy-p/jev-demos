@@ -129,23 +129,6 @@ input {
   padding: 40px var(--gutter) 64px;
 }
 
-.topbar {
-  display: flex;
-  justify-content: flex-end;
-  margin: -16px 0 20px;
-}
-
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.theme-toggle .segmented button {
-  padding: 4px 10px;
-  font-size: var(--step--1);
-}
-
 .masthead {
   display: flex;
   flex-wrap: wrap;
@@ -490,35 +473,81 @@ input.field {
   color: var(--ink);
 }
 
-/* ---------- arena: figures on the left, the log down the right ---------- */
+/* ---------- arena: figures on the left; settings and log down the right ---------- */
 
 .arena {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
   gap: 40px 48px;
   align-items: start;
 }
 
 .arena-main {
   display: grid;
-  gap: 48px;
+  gap: 40px;
   min-width: 0;
   padding-left: 22px;
+}
+
+.arena-side .readout {
+  padding: 0 0 28px;
+  border-top: 0;
+  border-bottom: 1px dashed var(--ink-faint);
+  gap: 6px 20px;
 }
 
 .arena-main .boards {
   padding-left: 0;
 }
 
-/* The log stays in view while the page scrolls, newest line on top. */
-.arena-log {
+/* Settings on top, the log filling the rest; the whole column stays in view. */
+.arena-side {
   position: sticky;
   top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-height: calc(100vh - 48px);
   min-width: 0;
 }
 
-.arena-log .log {
-  max-height: calc(100vh - 150px);
+.arena-side .controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed var(--ink-faint);
+}
+
+.arena-side .controls > .control:first-child,
+.arena-side .controls > .btn-row,
+.arena-side .controls > .scenario-note {
+  grid-column: 1 / -1;
+}
+
+.arena-side .controls .field {
+  width: 100%;
+}
+
+.arena-side .controls input.field {
+  width: 8ch;
+}
+
+.arena-side .scenario-note {
+  margin: 0;
+}
+
+.arena-side > section:last-child {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.arena-side .log {
+  flex: 1;
+  min-height: 160px;
+  max-height: none;
   font-size: var(--step-0);
 }
 
@@ -526,11 +555,15 @@ input.field {
   .arena {
     grid-template-columns: minmax(0, 1fr);
   }
-  .arena-log {
+  .arena-side {
     position: static;
+    max-height: none;
     padding-left: 22px;
   }
-  .arena-log .log {
+  .arena-side .controls {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  .arena-side .log {
     max-height: 480px;
   }
 }
@@ -615,7 +648,7 @@ input.field {
   }
   .boards,
   .arena-main,
-  .arena-log {
+  .arena-side {
     padding-left: 0;
   }
   .fig-tag {

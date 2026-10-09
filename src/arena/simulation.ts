@@ -123,7 +123,7 @@ export class ArenaSimulation {
       this.deliver(p, out);
       if (p.done || !p.game.active) continue;
 
-      if (cfg.mode === "frozen") {
+      if (cfg.mode === "frozen" && !p.game.isDropping) {
         // The game waits for this piece's answer, up to the per-turn limit.
         if (this.t - p.requestedAt >= cfg.frozenTimeoutMs) {
           p.pending = p.pending.filter((d) => d.pieceId !== p.game.pieceId);
@@ -135,12 +135,12 @@ export class ArenaSimulation {
             status: "timeout",
             latencyMs: this.t - p.requestedAt,
           });
-          this.afterLock(p, p.game.hardDrop()!, out);
+          p.game.release();
         }
         continue;
       }
 
-      const { moved, lock } = p.game.advance(dt, this.gravityMs, cfg.lockDelayMs);
+      const { moved, lock } = p.game.advance(dt, this.gravityMs, cfg.lockDelayMs, cfg.dropMsPerRow);
       if (lock) this.afterLock(p, lock, out);
       else if (moved) {
         out.push({ t: "move", at: this.t, agentId: p.spec.id, pieceId: p.game.pieceId, cells: p.game.activeCells() });
@@ -191,21 +191,20 @@ export class ArenaSimulation {
           detail: d.detail ?? (d.status === "invalid" ? "Answer was not one of the offered options" : "Request failed"),
         });
         // With the clock frozen there is nothing to wait for; drop the piece where it is.
-        if (current && this.config.mode === "frozen") this.afterLock(p, p.game.hardDrop()!, out);
+        if (current && this.config.mode === "frozen") p.game.release();
         continue;
       }
       if (!current) {
         out.push({ ...base, status: "late" });
         continue;
       }
-      const lock = this.config.movement === "path" ? p.game.applyPlacement(target!) : p.game.placeAt(target!);
-      if (!lock) {
+      // The piece lines up over the chosen spot and falls there; it locks when it lands.
+      if (!p.game.steer(target!, this.config.movement)) {
         out.push({ ...base, status: "blocked", detail: "The piece had fallen past the chosen spot" });
         continue;
       }
       out.push({ ...base, status: "ok" });
-      this.afterLock(p, lock, out);
-      if (p.done) return;
+      out.push({ t: "move", at: this.t, agentId: p.spec.id, pieceId: p.game.pieceId, cells: p.game.activeCells() });
     }
   }
 

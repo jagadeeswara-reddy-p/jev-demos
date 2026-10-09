@@ -203,9 +203,6 @@ function Page({
 
   return (
     <main className="page">
-      <div className="topbar">
-        <ThemeToggle />
-      </div>
       <header className="masthead">
         <h1>Deadline Tetris</h1>
         <p>
@@ -215,157 +212,10 @@ function Page({
       </header>
       <div className="rule" aria-hidden="true" />
 
-      <section className="controls" aria-label="Run settings">
-        <div className="control">
-          <label className="label" htmlFor="scenario">
-            Line-up
-          </label>
-          <select id="scenario" className="field" value={scenarioId} disabled={!editable} onChange={(e) => pickScenario(e.target.value)}>
-            {SCENARIOS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="control">
-          <span className="label" id="clock-label">
-            Clock
-          </span>
-          <div className="segmented" role="group" aria-labelledby="clock-label">
-            {(["realtime", "frozen"] as const).map((m) => (
-              <button key={m} type="button" aria-pressed={mode === m} disabled={!editable} onClick={() => (setMode(m), setEditing(true))}>
-                {m === "realtime" ? "Real time" : "Frozen"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="control">
-          <span className="label" id="speed-label">
-            Speed
-          </span>
-          <div className="segmented" role="group" aria-labelledby="speed-label">
-            {SPEEDS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                aria-pressed={liveRunning ? s === 1 : speed === s}
-                disabled={liveRunning}
-                title={liveRunning ? "Live runs play at 1×. Replay the run afterwards to fast-forward." : undefined}
-                onClick={() => changeSpeed(s)}
-              >
-                {s}×
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="control">
-          <label className="label" htmlFor="seed">
-            Seed
-          </label>
-          <div className="btn-row">
-            <input
-              id="seed"
-              className="field"
-              type="number"
-              min={0}
-              value={seed}
-              disabled={!editable}
-              onChange={(e) => (setSeed(Math.max(0, Number(e.target.value) || 0)), setEditing(true))}
-            />
-            <button
-              type="button"
-              className="icon-btn"
-              style={{ height: 34, width: 34 }}
-              disabled={!editable}
-              onClick={() => (setSeed(Math.floor(Math.random() * 100_000)), setEditing(true))}
-              aria-label="Pick a random seed"
-              title="Random seed"
-            >
-              ↻
-            </button>
-          </div>
-        </div>
-
-        <div className="btn-row" style={{ marginLeft: "auto" }}>
-          {!active && (
-            <button type="button" className="btn primary" onClick={startRun} disabled={agents.length === 0 || Boolean(blocked)}>
-              {isLive(agents) ? "Start live run" : "Start run"}
-            </button>
-          )}
-          {state.status === "running" && !liveRunning && (
-            <button type="button" className="btn" onClick={pause}>
-              Pause
-            </button>
-          )}
-          {state.status === "paused" && (
-            <button type="button" className="btn primary" onClick={resume}>
-              Resume
-            </button>
-          )}
-          {active && (
-            <button type="button" className="btn" onClick={stop}>
-              Stop
-            </button>
-          )}
-          <button type="button" className="btn" onClick={() => replay()} disabled={!hasRecording}>
-            Replay
-          </button>
-          <button type="button" className="btn" onClick={exportLog} disabled={!hasRecording}>
-            Export log
-          </button>
-          <button type="button" className="btn" onClick={() => fileRef.current?.click()} disabled={active}>
-            Load log
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".jsonl,.ndjson,application/x-ndjson"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void loadLog(f);
-              e.target.value = "";
-            }}
-          />
-        </div>
-        <p className="scenario-note">
-          {error ??
-            (blocked && editable
-              ? `${blocked.label} can't run yet: ${blocked.reason}.`
-              : liveRunning
-                ? "Live run: real response times at 1×. When it ends, use Replay to watch it faster."
-                : isLive(agents) && editable
-                  ? `${scenario.note} Live runs play at 1×.`
-                  : scenario.note)}
-        </p>
-      </section>
-
-      <div className="readout" aria-live="polite">
-        <span className="level">LEVEL {String(state.level).padStart(2, "0")}</span>
-        <span className="stat">
-          a row every <b>{fmtMs(state.gravityMs)}</b>
-        </span>
-        <ClockStat />
-        <span className="stat">
-          clock <b>{(state.config?.mode ?? mode) === "realtime" ? "real time" : "frozen"}</b>
-        </span>
-        <span className="stat">
-          seed <b>{state.config?.seed ?? seed}</b>
-        </span>
-        {state.status === "paused" && (
-          <span className="stat">
-            <b>paused</b>, press space to resume
-          </span>
-        )}
-      </div>
 
       <div className="arena">
         <div className="arena-main">
-          <SurvivalFigure figIndex={1} />
+          <SurvivalFigure figIndex={1} agents={shown} />
           <div className="boards">
             {shown.map((spec, i) => (
               <BoardFigure
@@ -378,7 +228,155 @@ function Page({
             ))}
           </div>
         </div>
-        <aside className="arena-log" aria-label="Run log">
+        <aside className="arena-side">
+          <div className="readout" aria-live="polite">
+            <span className="level">LEVEL {String(state.level).padStart(2, "0")}</span>
+            <span className="stat">
+              a row every <b>{fmtMs(state.gravityMs)}</b>
+            </span>
+            <ClockStat />
+            <span className="stat">
+              clock <b>{(state.config?.mode ?? mode) === "realtime" ? "real time" : "frozen"}</b>
+            </span>
+            <span className="stat">
+              seed <b>{state.config?.seed ?? seed}</b>
+            </span>
+            {state.status === "paused" && (
+              <span className="stat">
+                <b>paused</b>, press space to resume
+              </span>
+            )}
+          </div>
+          <section className="controls" aria-label="Run settings">
+            <div className="control">
+              <label className="label" htmlFor="scenario">
+                Line-up
+              </label>
+              <select id="scenario" className="field" value={scenarioId} disabled={!editable} onChange={(e) => pickScenario(e.target.value)}>
+                {SCENARIOS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="control">
+              <span className="label" id="clock-label">
+                Clock
+              </span>
+              <div className="segmented" role="group" aria-labelledby="clock-label">
+                {(["realtime", "frozen"] as const).map((m) => (
+                  <button key={m} type="button" aria-pressed={mode === m} disabled={!editable} onClick={() => (setMode(m), setEditing(true))}>
+                    {m === "realtime" ? "Real time" : "Frozen"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="control">
+              <span className="label" id="speed-label">
+                Speed
+              </span>
+              <div className="segmented" role="group" aria-labelledby="speed-label">
+                {SPEEDS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    aria-pressed={liveRunning ? s === 1 : speed === s}
+                    disabled={liveRunning}
+                    title={liveRunning ? "Live runs play at 1×. Replay the run afterwards to fast-forward." : undefined}
+                    onClick={() => changeSpeed(s)}
+                  >
+                    {s}×
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="control">
+              <label className="label" htmlFor="seed">
+                Seed
+              </label>
+              <div className="btn-row">
+                <input
+                  id="seed"
+                  className="field"
+                  type="number"
+                  min={0}
+                  value={seed}
+                  disabled={!editable}
+                  onChange={(e) => (setSeed(Math.max(0, Number(e.target.value) || 0)), setEditing(true))}
+                />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  style={{ height: 34, width: 34 }}
+                  disabled={!editable}
+                  onClick={() => (setSeed(Math.floor(Math.random() * 100_000)), setEditing(true))}
+                  aria-label="Pick a random seed"
+                  title="Random seed"
+                >
+                  ↻
+                </button>
+              </div>
+            </div>
+
+            <ThemeToggle />
+
+            <div className="btn-row">
+              {!active && (
+                <button type="button" className="btn primary" onClick={startRun} disabled={agents.length === 0 || Boolean(blocked)}>
+                  {isLive(agents) ? "Start live run" : "Start run"}
+                </button>
+              )}
+              {state.status === "running" && !liveRunning && (
+                <button type="button" className="btn" onClick={pause}>
+                  Pause
+                </button>
+              )}
+              {state.status === "paused" && (
+                <button type="button" className="btn primary" onClick={resume}>
+                  Resume
+                </button>
+              )}
+              {active && (
+                <button type="button" className="btn" onClick={stop}>
+                  Stop
+                </button>
+              )}
+              <button type="button" className="btn" onClick={() => replay()} disabled={!hasRecording}>
+                Replay
+              </button>
+              <button type="button" className="btn" onClick={exportLog} disabled={!hasRecording}>
+                Export log
+              </button>
+              <button type="button" className="btn" onClick={() => fileRef.current?.click()} disabled={active}>
+                Load log
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".jsonl,.ndjson,application/x-ndjson"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void loadLog(f);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            <p className="scenario-note">
+              {error ??
+                (blocked && editable
+                  ? `${blocked.label} can't run yet: ${blocked.reason}.`
+                  : liveRunning
+                    ? "Live run: real response times at 1×. When it ends, use Replay to watch it faster."
+                    : isLive(agents) && editable
+                      ? `${scenario.note} Live runs play at 1×.`
+                      : scenario.note)}
+            </p>
+          </section>
           <EventLog />
         </aside>
       </div>

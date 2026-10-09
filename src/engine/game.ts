@@ -56,6 +56,8 @@ export class TetrisGame {
   private bag: BagRandomizer;
   private fallAccum = 0;
   private lockAccum = 0;
+  /** Set while the piece falls to a spot it was steered to; it locks the moment it lands. */
+  private dropping: { byDecision: boolean } | null = null;
 
   constructor(seed: number, private previewCount = 3) {
     this.bag = new BagRandomizer(seed);
@@ -76,6 +78,7 @@ export class TetrisGame {
     this.pieceId += 1;
     this.fallAccum = 0;
     this.lockAccum = 0;
+    this.dropping = null;
     if (!fits(this.board, pieceCells(type, 0, piece.x, piece.y))) {
       this.active = null;
       this.toppedOut = true;
@@ -90,10 +93,25 @@ export class TetrisGame {
     return a ? pieceCells(a.type, a.rot, a.x, a.y) : [];
   }
 
-  /** Applies gravity for `dtMs`. Locks the piece once it has rested for `lockDelayMs`. */
-  advance(dtMs: number, gravityMs: number, lockDelayMs: number): { moved: boolean; lock: LockResult | null } {
+  get isDropping(): boolean {
+    return this.dropping !== null;
+  }
+
+  /**
+   * Moves the piece for `dtMs`. Normally that is gravity, locking once the piece
+   * has rested for `lockDelayMs`. A piece that was steered or released instead
+   * falls at `dropMsPerRow` (never slower than gravity) and locks as it lands;
+   * 0 drops it instantly.
+   */
+  advance(
+    dtMs: number,
+    gravityMs: number,
+    lockDelayMs: number,
+    dropMsPerRow = 0,
+  ): { moved: boolean; lock: LockResult | null } {
     const a = this.active;
     if (!a) return { moved: false, lock: null };
+    if (this.dropping) return this.advanceDrop(dtMs, dropMsPerRow > 0 ? Math.min(dropMsPerRow, gravityMs) : 0);
     let moved = false;
     this.fallAccum += dtMs;
     while (this.fallAccum >= gravityMs) {
@@ -111,6 +129,25 @@ export class TetrisGame {
       this.lockAccum += dtMs;
       if (this.lockAccum >= lockDelayMs) return { moved, lock: this.lock(false) };
     }
+    return { moved, lock: null };
+  }
+
+  private advanceDrop(dtMs: number, msPerRow: number): { moved: boolean; lock: LockResult | null } {
+    const a = this.active!;
+    const byDecision = this.dropping!.byDecision;
+    if (msPerRow === 0) {
+      a.y = this.dropY(a.type, a.rot, a.x, a.y);
+      return { moved: true, lock: this.lock(byDecision) };
+    }
+    let moved = false;
+    this.fallAccum += dtMs;
+    while (this.fallAccum >= msPerRow) {
+      if (!fits(this.board, pieceCells(a.type, a.rot, a.x, a.y + 1))) break;
+      a.y += 1;
+      moved = true;
+      this.fallAccum -= msPerRow;
+    }
+    if (!fits(this.board, pieceCells(a.type, a.rot, a.x, a.y + 1))) return { moved, lock: this.lock(byDecision) };
     return { moved, lock: null };
   }
 
@@ -152,42 +189,51 @@ export class TetrisGame {
   }
 
   /**
-   * Moves the active piece to a chosen landing spot and locks it there.
-   * Returns null when the spot can no longer be reached from the current position.
+   * Turns and shifts the active piece over a chosen landing spot; `advance` then
+   * drops it there. "place" lines it up directly above the spot, as if the inputs
+   * had been held while the model was thinking. "path" requires the turn and the
+   * sideways moves to be possible from where the piece is now. Returns false
+   * (leaving the piece alone) when the spot can't be reached.
    */
-  applyPlacement(target: { rot: number; x: number }): LockResult | null {
+  steer(target: { rot: number; x: number; y: number }, movement: "place" | "path" = "place"): boolean {
     const a = this.active;
-    if (!a) return null;
-    if (!fits(this.board, pieceCells(a.type, target.rot, a.x, a.y))) return null;
-    const step = Math.sign(target.x - a.x);
-    for (let x = a.x; x !== target.x; x += step) {
-      if (!fits(this.board, pieceCells(a.type, target.rot, x + step, a.y))) return null;
+    if (!a) return false;
+    if (movement === "path") {
+      if (!fits(this.board, pieceCells(a.type, target.rot, a.x, a.y))) return false;
+      const step = Math.sign(target.x - a.x);
+      for (let x = a.x; x !== target.x; x += step) {
+        if (!fits(this.board, pieceCells(a.type, target.rot, x + step, a.y))) return false;
+      }
+    } else if (!fits(this.board, pieceCells(a.type, target.rot, target.x, target.y))) {
+      return false;
     }
+    // Fall from the current height when the column is open there, else from the spot itself.
+    const fromHere = a.y <= target.y && fits(this.board, pieceCells(a.type, target.rot, target.x, a.y));
     a.rot = target.rot;
     a.x = target.x;
-    a.y = this.dropY(a.type, a.rot, a.x, a.y);
-    return this.lock(true);
+    if (!fromHere) a.y = target.y;
+    this.fallAccum = 0;
+    this.dropping = { byDecision: true };
+    return true;
   }
 
-  /**
-   * Puts the active piece straight onto a landing spot and locks it, as if the
-   * inputs had been held while the model was thinking. Only checks the spot itself.
-   */
-  placeAt(target: { rot: number; x: number; y: number }): LockResult | null {
-    const a = this.active;
-    if (!a || !fits(this.board, pieceCells(a.type, target.rot, target.x, target.y))) return null;
-    a.rot = target.rot;
-    a.x = target.x;
-    a.y = this.dropY(a.type, target.rot, target.x, target.y);
-    return this.lock(true);
+  /** Lets the piece fall straight down from where it is, with no decision behind it. */
+  release() {
+    if (!this.active) return;
+    this.fallAccum = 0;
+    this.dropping = { byDecision: false };
+  }
+
+  /** Steers to a spot and drops it there at once. Returns null when the spot can't be reached. */
+  applyPlacement(target: { rot: number; x: number; y: number }, movement: "place" | "path" = "path"): LockResult | null {
+    return this.steer(target, movement) ? this.advanceDrop(0, 0).lock : null;
   }
 
   /** Drops the piece straight down from where it is and locks it. */
   hardDrop(): LockResult | null {
-    const a = this.active;
-    if (!a) return null;
-    a.y = this.dropY(a.type, a.rot, a.x, a.y);
-    return this.lock(false);
+    if (!this.active) return null;
+    this.release();
+    return this.advanceDrop(0, 0).lock;
   }
 
   private dropY(type: PieceType, rot: number, x: number, y: number): number {

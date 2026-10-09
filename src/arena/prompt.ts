@@ -4,6 +4,13 @@ import type { CandidateView, DecisionRequest } from "./types";
 // What every model is shown for one piece. Jev and the LLM get the same state
 // text and the same option descriptions, word for word; only the transport
 // differs (a Choice question vs a JSON answer), so neither gets a better view.
+//
+// Each option carries its consequences (lines cleared, holes, stack height,
+// bumpiness), computed here on purpose. Jev is a System One model: it scores
+// predefined options and returns probabilities rather than reasoning through
+// board geometry. The arena does the geometry and the models do the choosing,
+// so the comparison is about picking fast and well, not spatial reasoning.
+// That is also why there is no variant that sends options without these numbers.
 
 export const TASK =
   "You are playing Tetris. Choose where the current piece should land. " +

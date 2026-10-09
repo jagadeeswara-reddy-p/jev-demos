@@ -50,6 +50,31 @@ describe("TetrisGame", () => {
     expect(g.pieces).toBe(1);
   });
 
+  it("drops a steered piece row by row and locks it where it lands", () => {
+    const g = new TetrisGame(1);
+    g.spawn();
+    const target = g.candidates().at(-1)!;
+    expect(g.steer(target)).toBe(true);
+    let lock = null;
+    let steps = 0;
+    while (!lock) {
+      const r = g.advance(10, 1000, 500, 30);
+      lock = r.lock;
+      steps++;
+    }
+    expect(steps).toBeGreaterThan(10);
+    expect(lock.byDecision).toBe(true);
+    expect(lock.cells).toEqual(target.cells);
+  });
+
+  it("drops instantly when the drop speed is 0", () => {
+    const g = new TetrisGame(1);
+    g.spawn();
+    const target = g.candidates()[0];
+    g.steer(target);
+    expect(g.advance(1, 1000, 500, 0).lock?.cells).toEqual(target.cells);
+  });
+
   it("locks by gravity after the lock delay", () => {
     const g = new TetrisGame(1);
     g.spawn();

@@ -31,6 +31,11 @@ export interface RunConfig {
    * moving from wherever gravity has taken it, so slow answers can also be "blocked".
    */
   movement: "place" | "path";
+  /**
+   * How fast a piece falls once its spot is chosen (or the frozen clock gives up
+   * on it), in ms per row, capped at gravity. 0 drops it instantly.
+   */
+  dropMsPerRow: number;
   /** In frozen mode, how long the game waits for a decision before dropping the piece. */
   frozenTimeoutMs: number;
   /** Ends the run even if somebody is still alive. */
@@ -184,6 +189,7 @@ export const DEFAULT_CONFIG: Omit<RunConfig, "agents" | "seed" | "mode"> = {
   lockDelayMs: 500,
   entryDelayMs: 200,
   movement: "place",
+  dropMsPerRow: 30,
   frozenTimeoutMs: 30_000,
   maxDurationMs: 10 * 60_000,
   maxPieces: 1000,

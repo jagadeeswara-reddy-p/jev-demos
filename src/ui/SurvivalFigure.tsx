@@ -1,28 +1,34 @@
 import { useRef } from "react";
 import { useArena, useArenaState, useFrame } from "./hooks";
+import type { AgentSpec } from "../arena/types";
 import { fmtMs, fmtSeconds, percentile, type BoardState } from "./store";
 
 // One line per board across shared game time: how long it lasted, where it
 // cleared lines, and where it went out. Levels are marked along the top.
 // When the run ends, rows are ranked, which doubles as the results table.
+// There is always one row per board on screen, run or not, so the figure keeps
+// the same height and the boards below it never jump.
 
 const ROW = 46;
 const LABEL_W = 150;
 const PAD_TOP = 26;
 
-export function SurvivalFigure({ figIndex }: { figIndex: number }) {
+export function SurvivalFigure({ figIndex, agents }: { figIndex: number; agents: AgentSpec[] }) {
   const state = useArenaState();
   const { backend } = useArena();
   const nowRef = useRef<SVGLineElement>(null);
 
-  const boards = [...state.boards];
-  const finished = state.status === "finished";
+  const byId = new Map(state.boards.map((b) => [b.spec.id, b]));
+  const boards = agents.map((spec) => byId.get(spec.id)).filter((b): b is BoardState => b !== undefined);
+  const finished = state.status === "finished" && boards.length === agents.length;
   if (finished) boards.sort(rank);
+  // Boards without run data yet (before the first event arrives) keep their row as a placeholder.
+  const waiting = agents.filter((spec) => !byId.has(spec.id));
   const live = state.status === "running" || state.status === "paused";
   const span = Math.max(30_000, state.endAt ?? state.lastAt, ...boards.map((b) => b.outAt ?? 0)) * 1.04;
 
   const W = 900;
-  const H = PAD_TOP + Math.max(1, boards.length) * ROW + 24;
+  const H = PAD_TOP + Math.max(1, agents.length) * ROW + 24;
   const plotW = W - LABEL_W - 170;
   const x = (t: number) => LABEL_W + (Math.min(t, span) / span) * plotW;
 
@@ -47,31 +53,44 @@ export function SurvivalFigure({ figIndex }: { figIndex: number }) {
       <p className="section-note">
         Each line is one board over the same game clock. Ticks are line clears; the line ends where the board topped out.
       </p>
-      {boards.length === 0 ? (
-        <p className="empty">Start a run to draw this figure.</p>
-      ) : (
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Survival time per board">
-          {levelMarks.map((l) => (
-            <g key={l.at}>
-              <line x1={x(l.at)} x2={x(l.at)} y1={PAD_TOP - 8} y2={H - 20} stroke="var(--ink-faint)" strokeDasharray="2 4" />
-              <text x={x(l.at) + 3} y={PAD_TOP - 12} fontFamily="var(--font-mono)" fontSize="11" fill="var(--muted)">
-                L{l.level}
-              </text>
-            </g>
-          ))}
-          {boards.map((b, i) => (
-            <SurvivalRow key={b.spec.id} b={b} y={PAD_TOP + i * ROW + ROW / 2} x={x} rank={finished ? i + 1 : null} endX={W} liveAt={live ? state.lastAt : state.endAt ?? state.lastAt} />
-          ))}
-          <line x1={LABEL_W} x2={LABEL_W + plotW} y1={H - 18} y2={H - 18} stroke="var(--ink-soft)" />
-          {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-            <text key={f} x={LABEL_W + f * plotW} y={H - 2} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="11" fill="var(--muted)">
-              {fmtSeconds(f * span)}
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Survival time per board">
+        {levelMarks.map((l) => (
+          <g key={l.at}>
+            <line x1={x(l.at)} x2={x(l.at)} y1={PAD_TOP - 8} y2={H - 20} stroke="var(--ink-faint)" strokeDasharray="2 4" />
+            <text x={x(l.at) + 3} y={PAD_TOP - 12} fontFamily="var(--font-mono)" fontSize="11" fill="var(--muted)">
+              L{l.level}
             </text>
-          ))}
-          {live && <line ref={nowRef} y1={PAD_TOP - 8} y2={H - 18} stroke="var(--ink)" strokeWidth="1" />}
-        </svg>
-      )}
+          </g>
+        ))}
+        {boards.map((b, i) => (
+          <SurvivalRow key={b.spec.id} b={b} y={PAD_TOP + i * ROW + ROW / 2} x={x} rank={finished ? i + 1 : null} endX={W} liveAt={live ? state.lastAt : state.endAt ?? state.lastAt} />
+        ))}
+        {waiting.map((spec, i) => (
+          <WaitingRow key={spec.id} name={spec.name} y={PAD_TOP + (boards.length + i) * ROW + ROW / 2} x0={x(0)} x1={LABEL_W + plotW} />
+        ))}
+        <line x1={LABEL_W} x2={LABEL_W + plotW} y1={H - 18} y2={H - 18} stroke="var(--ink-soft)" />
+        {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+          <text key={f} x={LABEL_W + f * plotW} y={H - 2} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="11" fill="var(--muted)">
+            {fmtSeconds(f * span)}
+          </text>
+        ))}
+        {live && <line ref={nowRef} y1={PAD_TOP - 8} y2={H - 18} stroke="var(--ink)" strokeWidth="1" />}
+      </svg>
     </section>
+  );
+}
+
+function WaitingRow({ name, y, x0, x1 }: { name: string; y: number; x0: number; x1: number }) {
+  return (
+    <g>
+      <text x={0} y={y - 4} fontFamily="var(--font-pixel)" fontSize="15" fill="var(--ink)">
+        {name}
+      </text>
+      <text x={0} y={y + 13} fontFamily="var(--font-mono)" fontSize="11" fill="var(--muted)">
+        waiting for a run
+      </text>
+      <line x1={x0} x2={x1} y1={y} y2={y} stroke="var(--ink-faint)" strokeDasharray="2 4" />
+    </g>
   );
 }
 
