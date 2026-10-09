@@ -13,6 +13,48 @@ skill**, includes **baselines**, and saves every run so it can be replayed and c
 
 ---
 
+## Results so far
+
+Live runs on 2026-10-09: **Jev** (`jev-latest`, TypeSafe API) against
+**dev-model-alpha** (OpenAI-compatible gateway). Both boards got the same
+pieces (seed 1), the same prompts and the same rules. Runs stopped within the
+first few decisions are left out (`bun run stats --since 2026-10-09T16:20 --min-decisions 20`).
+
+**Who wins a run:** the board with the most **pieces landed**, meaning pieces
+the model put where it chose, in time. Ties go to more lines, then longer survival.
+
+| Model | Clock | Runs | Wins | Pieces landed | Landed per run | Lines | Too late |
+|---|---|---|---|---|---|---|---|
+| **Jev** | real time | 5 | **5** | **523** | 104.6 | 133 | **0** |
+| dev-model-alpha | real time | 5 | 0 | 16 | 3.2 | 0 | 24 |
+| **Jev** | frozen | 1 | **1** | 20 | 20.0 | 3 | 0 |
+| dev-model-alpha | frozen | 1 | 0 | 1 | 1.0 | 0 | 0 |
+
+| Model | Decisions | Median | p90 | p95 | Fastest | Slowest | Answered in time | Tokens out per decision |
+|---|---|---|---|---|---|---|---|---|
+| **Jev** | 523 | **294 ms** | 338 ms | 361 ms | 257 ms | 626 ms | **100%** | 241 |
+| dev-model-alpha | 29 | 10.5 s | 27.2 s | 31.8 s | 1.8 s | 36.8 s | 55% | 2,394 |
+
+*(Real-time clock. In the one run that played to the end, both boards topped
+out at about the same time, 84 s and 83 s, but for opposite reasons: Jev landed
+113 pieces and buried itself, while dev-model-alpha landed 3 and 11 more fell
+before its answer arrived.)*
+
+**What it shows**
+- **Speed:** Jev answered every piece in time, with a median of 6.6 s of its
+  deadline unused. dev-model-alpha took a median of 10.5 s per answer; it
+  appears to reason at length, about 2,400 output tokens for a one-line answer,
+  so 60% of its pieces fell before it answered, even at the slowest levels.
+- **Placement:** Jev clears about 25 lines per 100 pieces landed. Keeping the
+  stack level needs about 40, since each piece adds 4 cells and each line
+  removes 10. The hand-written bot manages about 39. So Jev's stack slowly rises,
+  and it tops out around level 4–6 even though it is never late.
+- **Caveats:** one seed only, most runs were stopped early, and only one frozen
+  run (10 s long). Language model cost shows as $0 because no prices are set in
+  `.env`. Regenerate these numbers any time with `bun run stats`.
+
+---
+
 ## Contents
 
 1. [Quick start](#quick-start)
@@ -252,13 +294,13 @@ left and the settings and log are on the right.
 - **Log**: misses, failures and milestones, newest first.
 
 **Left column**
-- **Survival (FIG_001)**: one line per board on the shared game clock. Ticks are line clears; × marks where a board topped out and a square marks a board that survived. When the run ends it becomes **Results**, ranked by survivors first, then time survived, then lines. It keeps the same height before, during and after a run.
+- **Survival (FIG_001)**: one line per board on the shared game clock. Ticks are line clears; × marks where a board topped out and a square marks a board that survived. Each row ends with its pieces landed and lines. When the run ends it becomes **Results**, ranked by **most pieces landed** (the winner), then lines, then time survived. It keeps the same height before, during and after a run.
 - **Boards (FIG_002 onward)**, each with:
   - **Deadline bar**: time spent thinking against the time left before the piece locks. Hatched means the deadline passed.
   - **The board**. In the gutter: the next 3 pieces, and labels with arrows pointing at:
     - **solid outline + "OPT N, xx% chosen"**: where the model put the last piece;
     - **dashed outlines + "OPT N, xx%"**: the two strongest alternatives the model considered.
-  - **Stats**: Lines, Pieces, Decision p50/p95 (median and 95th-percentile answer time), Too late, Bad answers, Cost.
+  - **Stats**: **Landed** (pieces placed where the model chose, in time), Lines, Pieces (all that locked, including ones that fell without an answer), Decision p50/p95 (median and 95th-percentile answer time), Too late, Bad answers, Cost.
 
 **Are the outlines real?**
 - **Live Jev**: yes. The chosen spot is Jev's `choice`, and the dashed outlines and percentages are Jev's own probabilities from the API (top 2 alternatives at 1% or more).
@@ -302,6 +344,12 @@ out around level 13 with about 9 late pieces, and the `llm-frontier` mock around
 ---
 
 ## Server API and run logs
+
+**Statistics:** `bun run stats` reads every log in `runs/` and prints per-run
+and per-model tables: wins, pieces landed, lines, too-late rate, answer-time
+percentiles, in-time/late/invalid/error counts, deadline margin, tokens, cost
+and Jev's confidence. Options: `--since <UTC time>`, `--min-decisions <n>`,
+`--json <file>`, or a list of log files. Stopped and cut-off runs are handled.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -355,6 +403,7 @@ runs/                   saved live runs (git-ignored)
 ## Testing and tools
 
 ```sh
+bun run stats               # statistics from saved runs (see "Results so far")
 bun test                    # engine and simulation tests
 CALIBRATE=1 bun test        # also print how each mock profile fares
 bun run typecheck

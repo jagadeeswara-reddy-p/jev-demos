@@ -5,7 +5,8 @@ import { fmtMs, fmtSeconds, percentile, type BoardState } from "./store";
 
 // One line per board across shared game time: how long it lasted, where it
 // cleared lines, and where it went out. Levels are marked along the top.
-// When the run ends, rows are ranked, which doubles as the results table.
+// When the run ends, rows are ranked by pieces landed (each model's own in-time
+// placements), which doubles as the results table.
 // There is always one row per board on screen, run or not, so the figure keeps
 // the same height and the boards below it never jump.
 
@@ -51,7 +52,7 @@ export function SurvivalFigure({ figIndex, agents }: { figIndex: number; agents:
         {finished ? "Results" : "Survival"}
       </h2>
       <p className="section-note">
-        Each line is one board over the same game clock. Ticks are line clears; the line ends where the board topped out.
+        Each line is one board over the same game clock. Ticks are line clears; the line ends where the board topped out. At the end, the board with the most pieces landed wins.
       </p>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Survival time per board">
         {levelMarks.map((l) => (
@@ -134,7 +135,7 @@ function SurvivalRow({
           <path d={`M${ex - 6} ${y - 6} L${ex + 6} ${y + 6} M${ex + 6} ${y - 6} L${ex - 6} ${y + 6}`} stroke="var(--ink)" strokeWidth="2" />
         ))}
       <text x={endX} y={y - 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="13" fill="var(--text)">
-        {b.stats.lines} lines
+        {b.stats.landed} landed, {b.stats.lines} lines
       </text>
       <text x={endX} y={y + 13} textAnchor="end" fontFamily="var(--font-mono)" fontSize="11" fill="var(--muted)">
         {outcome}
@@ -143,11 +144,9 @@ function SurvivalRow({
   );
 }
 
-/** Survivors first, then whoever lasted longest; lines break ties. */
+/** Most pieces landed wins; lines break ties, then time survived. */
 function rank(a: BoardState, b: BoardState): number {
-  if (a.survived !== b.survived) return a.survived ? -1 : 1;
-  const at = a.outAt ?? Infinity;
-  const bt = b.outAt ?? Infinity;
-  if (at !== bt) return bt - at;
-  return b.stats.lines - a.stats.lines;
+  if (a.stats.landed !== b.stats.landed) return b.stats.landed - a.stats.landed;
+  if (a.stats.lines !== b.stats.lines) return b.stats.lines - a.stats.lines;
+  return (b.outAt ?? Infinity) - (a.outAt ?? Infinity);
 }

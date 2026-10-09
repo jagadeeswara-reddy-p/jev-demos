@@ -18,6 +18,8 @@ export type ShownStatus = DecisionStatus | "dropped";
 export interface BoardStats {
   lines: number;
   pieces: number;
+  /** Pieces the model put where it chose, in time. The board with the most wins the run. */
+  landed: number;
   decisions: number;
   late: number;
   dropped: number;
@@ -85,6 +87,7 @@ function emptyStats(): BoardStats {
   return {
     lines: 0,
     pieces: 0,
+    landed: 0,
     decisions: 0,
     late: 0,
     dropped: 0,
@@ -245,6 +248,7 @@ export class ArenaStore {
         b.active = null;
         b.lastLock = { pieceId: e.pieceId, cells: e.cells };
         b.stats.pieces += 1;
+        if (e.byDecision) b.stats.landed += 1;
         if (!e.byDecision && b.thinking?.pieceId === e.pieceId) {
           b.stats.dropped += 1;
           b.last = {

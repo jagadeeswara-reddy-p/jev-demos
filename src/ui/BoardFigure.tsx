@@ -157,6 +157,7 @@ function Stats({ board }: { board: BoardState | undefined }) {
   const p50 = st ? percentile(st.latencies, 50) : null;
   const p95 = st ? percentile(st.latencies, 95) : null;
   const items: [string, string, boolean?][] = [
+    ["Landed", String(st?.landed ?? 0), true],
     ["Lines", String(st?.lines ?? 0), true],
     ["Pieces", String(st?.pieces ?? 0)],
     ["Decision p50", p50 === null ? "–" : fmtMs(p50)],
