@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { VISIBLE_HEIGHT } from "../engine/board";
-import { MOCK_PROFILES } from "../mock/profiles";
 import { WIDTH_CELLS, drawBoard } from "./drawBoard";
 import { useArena, useFrame } from "./hooks";
 import { fmtMs, percentile, type BoardState, type ShownStatus } from "./store";
-import type { AgentSpec } from "../arena/types";
+import type { AgentSpec, SourceInfo } from "../arena/types";
 
 const KIND_LABEL = { "system-one": "System One model", llm: "Language model", baseline: "Baseline" } as const;
 
 interface Props {
   index: number;
   spec: AgentSpec;
+  sources: SourceInfo[];
   board: BoardState | undefined;
   editable: boolean;
   canRemove: boolean;
@@ -18,8 +18,8 @@ interface Props {
   onRemove: () => void;
 }
 
-export function BoardFigure({ index, spec, board, editable, canRemove, onChangeSource, onRemove }: Props) {
-  const profile = MOCK_PROFILES.find((p) => p.id === spec.sourceId);
+export function BoardFigure({ index, spec, sources, board, editable, canRemove, onChangeSource, onRemove }: Props) {
+  const source = sources.find((s) => s.id === spec.sourceId);
   const tag = `FIG_${String(index + 1).padStart(3, "0")}`;
   return (
     <figure className="figure" aria-labelledby={`${spec.id}-name`} style={{ margin: 0 }}>
@@ -39,11 +39,24 @@ export function BoardFigure({ index, spec, board, editable, canRemove, onChangeS
             disabled={!editable}
             onChange={(e) => onChangeSource(e.target.value)}
           >
-            {MOCK_PROFILES.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label} (mock)
-              </option>
-            ))}
+            <optgroup label="Live">
+              {sources
+                .filter((s) => s.live)
+                .map((s) => (
+                  <option key={s.id} value={s.id} disabled={!s.available}>
+                    {s.label} (live){s.available ? "" : ", needs a key"}
+                  </option>
+                ))}
+            </optgroup>
+            <optgroup label="Mock">
+              {sources
+                .filter((s) => !s.live)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label} (mock)
+                  </option>
+                ))}
+            </optgroup>
           </select>
           <button
             type="button"
@@ -56,7 +69,9 @@ export function BoardFigure({ index, spec, board, editable, canRemove, onChangeS
             ×
           </button>
         </div>
-        <span className="kind">{profile ? profile.description : KIND_LABEL[spec.kind]}</span>
+        <span className="kind">
+          {source ? (source.available ? source.description : `${source.description}. ${source.reason}.`) : KIND_LABEL[spec.kind]}
+        </span>
       </div>
       <DeadlineBar board={board} />
       <BoardCanvas agentId={spec.id} />

@@ -108,6 +108,65 @@ export type ArenaEvent =
 
 export type ArenaEventOf<T extends ArenaEvent["t"]> = Extract<ArenaEvent, { t: T }>;
 
+// ---------- decision sources ----------
+
+/** Everything a model is shown for one piece. Identical for every board in a run. */
+export interface DecisionRequest {
+  agentId: string;
+  pieceId: number;
+  type: PieceType;
+  /** Board before placing the piece, one char per cell including the hidden rows. */
+  board: string;
+  next: PieceType[];
+  candidates: CandidateView[];
+  level: number;
+  mode: ClockMode;
+  deadlineMs: number;
+  /** Simulated time the request was made. */
+  requestedAt: number;
+}
+
+export interface DecisionAnswer {
+  status: "ok" | "invalid" | "error";
+  choice?: string;
+  probabilities?: Record<string, number>;
+  confidence?: number;
+  usage?: DecisionUsage;
+  detail?: string;
+}
+
+/**
+ * Hands an answer back to the run. `arrivesAt` is in simulated time; pass the
+ * measured wall-clock latency for live calls, or leave it out to use arrivesAt - requestedAt.
+ */
+export type DeliverAnswer = (answer: DecisionAnswer, arrivesAt: number, latencyMs?: number) => void;
+
+export interface DecisionContext {
+  /** Current simulated time of the run. */
+  now(): number;
+  /** Aborted when the run stops, so in-flight HTTP calls can be cancelled. */
+  signal: AbortSignal;
+}
+
+/** Something that picks landing spots: a mock profile, Jev, or an LLM. */
+export interface DecisionSource {
+  /** Called once per piece. Call `deliver` once with the answer, or never to simulate a hang. */
+  request(req: DecisionRequest, deliver: DeliverAnswer, ctx: DecisionContext): void;
+}
+
+/** What the UI knows about a source. Never includes keys. */
+export interface SourceInfo {
+  id: string;
+  label: string;
+  kind: AgentKind;
+  description: string;
+  /** Live sources call a real API and can only run on the server, at 1×. */
+  live: boolean;
+  available: boolean;
+  /** Why an unavailable source can't be used, e.g. a missing key. */
+  reason?: string;
+}
+
 export interface ArenaBackend {
   start(config: RunConfig): void;
   pause(): void;

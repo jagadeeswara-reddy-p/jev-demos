@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { HEIGHT, WIDTH, emptyBoard, fullRows } from "./board";
 import { TetrisGame, gravityMsPerRow } from "./game";
 import { evaluatePlacement, softmax } from "./heuristic";

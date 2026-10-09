@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { DEFAULT_CONFIG, type ArenaEvent, type ClockMode, type RunConfig } from "../arena/types";
-import { MOCK_PROFILES } from "./profiles";
+import { describe, expect, it } from "bun:test";
+import { MOCK_PROFILES } from "../mock/profiles";
+import { mockSourceFor } from "../mock/mockSource";
 import { ArenaSimulation } from "./simulation";
+import { DEFAULT_CONFIG, type ArenaEvent, type ClockMode, type DecisionSource, type RunConfig } from "./types";
 
 function config(sources: string[], mode: ClockMode = "realtime", seed = 1): RunConfig {
   return {
@@ -13,8 +14,8 @@ function config(sources: string[], mode: ClockMode = "realtime", seed = 1): RunC
   };
 }
 
-function runToEnd(cfg: RunConfig): ArenaEvent[] {
-  const sim = new ArenaSimulation(cfg);
+function runToEnd(cfg: RunConfig, sources?: DecisionSource[]): ArenaEvent[] {
+  const sim = new ArenaSimulation(cfg, sources ?? cfg.agents.map((a) => mockSourceFor(cfg, a)));
   const events = sim.start();
   while (!sim.finished) events.push(...sim.step(1000));
   return events;
@@ -68,6 +69,34 @@ describe("ArenaSimulation", () => {
         expect(events.at(-1)?.t).toBe("run_finished");
       }
     }
+  });
+
+  it("rejects an answer that names an option that doesn't exist", () => {
+    const cfg = { ...config(["jev"]), maxPieces: 3 };
+    const bogus: DecisionSource = { request: (req, deliver) => deliver({ status: "ok", choice: "option_999" }, req.requestedAt + 10) };
+    const events = runToEnd(cfg, [bogus]);
+    const decisions = events.filter((e) => e.t === "decision");
+    expect(decisions.length).toBeGreaterThan(0);
+    expect(decisions.every((e) => e.t === "decision" && e.status === "invalid")).toBe(true);
+  });
+
+  it("accepts answers delivered later, the way a live API call does", () => {
+    const cfg = { ...config(["jev"]), maxPieces: 5 };
+    const queue: (() => void)[] = [];
+    const live: DecisionSource = {
+      request: (req, deliver, ctx) => {
+        queue.push(() => deliver({ status: "ok", choice: req.candidates[0].id }, ctx.now(), 42));
+      },
+    };
+    const sim = new ArenaSimulation(cfg, [live]);
+    const events = sim.start();
+    while (!sim.finished) {
+      queue.splice(0).forEach((f) => f());
+      events.push(...sim.step(20));
+    }
+    const ok = events.filter((e) => e.t === "decision" && e.status === "ok");
+    expect(ok.length).toBe(5);
+    expect(ok.every((e) => e.t === "decision" && e.latencyMs === 42)).toBe(true);
   });
 
   // CALIBRATE=1 pnpm test prints how each mock profile fares, to tune profiles against the demo.

@@ -1,15 +1,19 @@
 import { ClockedBackend } from "../arena/clockedBackend";
+import { ArenaSimulation } from "../arena/simulation";
 import type { RunConfig } from "../arena/types";
-import { ArenaSimulation } from "./simulation";
+import { mockSourceFor } from "./mockSource";
 
-// Stands in for the real server: runs the simulation in the browser and emits
-// the same events the server will stream. Swap it out, and the UI stays the same.
+// Runs a mock-only line-up in the browser. Because mock models answer in
+// simulated time, the whole run can be played at any speed.
 export class MockBackend extends ClockedBackend {
   private sim: ArenaSimulation | null = null;
 
   start(config: RunConfig) {
     this.pause();
-    this.sim = new ArenaSimulation(config);
+    this.sim = new ArenaSimulation(
+      config,
+      config.agents.map((spec) => mockSourceFor(config, spec)),
+    );
     this.emit(this.sim.start());
     this.resume();
   }

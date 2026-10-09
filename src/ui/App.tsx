@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ReplayBackend, fromJsonl, toJsonl } from "../arena/replayBackend";
-import { DEFAULT_CONFIG, type AgentSpec, type ArenaBackend, type ClockMode } from "../arena/types";
+import { ServerBackend, fetchSources } from "../arena/serverBackend";
+import { DEFAULT_CONFIG, type AgentSpec, type ArenaBackend, type ClockMode, type SourceInfo } from "../arena/types";
 import { MockBackend } from "../mock/mockBackend";
-import { getProfile } from "../mock/profiles";
+import { MOCK_SOURCES } from "../mock/mockSource";
 import { BoardFigure } from "./BoardFigure";
 import { EventLog } from "./EventLog";
 import { ArenaContext, useArenaState } from "./hooks";
@@ -11,22 +12,38 @@ import { ArenaStore, fmtClock, fmtMs } from "./store";
 import { SurvivalFigure } from "./SurvivalFigure";
 
 const MAX_BOARDS = 6;
+const MOCK_DEFAULT = SCENARIOS.find((s) => s.id === "jev-vs-llm")!;
 const SPEEDS = [1, 2, 4, 8];
 
 let nextAgent = 1;
 
-function specsFor(sources: string[]): AgentSpec[] {
+function sourceOf(sources: SourceInfo[], id: string): SourceInfo {
+  return (
+    sources.find((s) => s.id === id) ?? {
+      id,
+      label: id,
+      kind: "llm",
+      description: "Unknown source",
+      live: true,
+      available: false,
+      reason: "Not offered by this server",
+    }
+  );
+}
+
+/** Board specs for a list of sources; repeated sources get numbered names ("Jev 2"). */
+function specsFor(sources: SourceInfo[], ids: string[]): AgentSpec[] {
   const seen = new Map<string, number>();
-  return sources.map((sourceId) => {
-    const p = getProfile(sourceId);
-    const n = (seen.get(p.label) ?? 0) + 1;
-    seen.set(p.label, n);
-    return { id: `b${nextAgent++}`, name: n > 1 ? `${p.label} ${n}` : p.label, kind: p.kind, sourceId };
+  return ids.map((sourceId) => {
+    const s = sourceOf(sources, sourceId);
+    const n = (seen.get(s.label) ?? 0) + 1;
+    seen.set(s.label, n);
+    return { id: `b${nextAgent++}`, name: n > 1 ? `${s.label} ${n}` : s.label, kind: s.kind, sourceId };
   });
 }
 
-function renamed(agents: AgentSpec[]): AgentSpec[] {
-  const fresh = specsFor(agents.map((a) => a.sourceId));
+function renamed(sources: SourceInfo[], agents: AgentSpec[]): AgentSpec[] {
+  const fresh = specsFor(sources, agents.map((a) => a.sourceId));
   return agents.map((a, i) => ({ ...a, name: fresh[i].name, kind: fresh[i].kind }));
 }
 
@@ -68,23 +85,45 @@ function Page({
   backendRef: React.MutableRefObject<ArenaBackend>;
 }) {
   const state = useArenaState();
-  const [scenarioId, setScenarioId] = useState(SCENARIOS[0].id);
-  const [agents, setAgents] = useState<AgentSpec[]>(() => specsFor(SCENARIOS[0].sources));
-  const [mode, setMode] = useState<ClockMode>(SCENARIOS[0].mode);
+  const [sources, setSources] = useState<SourceInfo[]>(MOCK_SOURCES);
+  const [scenarioId, setScenarioId] = useState(MOCK_DEFAULT.id);
+  const [agents, setAgents] = useState<AgentSpec[]>(() => specsFor(MOCK_SOURCES, MOCK_DEFAULT.sources));
+  const [mode, setMode] = useState<ClockMode>(MOCK_DEFAULT.mode);
   const [speed, setSpeed] = useState(4);
   const [seed, setSeed] = useState(1);
   const [editing, setEditing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // The server adds the live models (and says whether their keys are set).
+  // Start on the live line-up when both keys are set, otherwise on the mock one.
+  useEffect(() => {
+    void fetchSources().then((list) => {
+      if (!list) return;
+      setSources(list);
+      const live = SCENARIOS.find((s) => s.id === "live")!;
+      if (live.sources.every((id) => list.find((s) => s.id === id)?.available)) {
+        setScenarioId(live.id);
+        setMode(live.mode);
+        setAgents(specsFor(list, live.sources));
+      } else {
+        setAgents((current) => renamed(list, current));
+      }
+    });
+  }, []);
+
   const scenario = SCENARIOS.find((s) => s.id === scenarioId)!;
   const active = state.status === "running" || state.status === "paused";
   const editable = !active;
   const shown = editing || !state.config ? agents : state.config.agents;
   const hasRecording = store.recording.length > 0 && !active;
+  const isLive = (list: AgentSpec[]) => list.some((a) => sourceOf(sources, a.sourceId).live);
+  // A live run is in progress: real response times, so no speed-up and no pause.
+  const liveRunning = active && backendRef.current instanceof ServerBackend;
+  const blocked = agents.map((a) => sourceOf(sources, a.sourceId)).find((s) => !s.available);
 
   const edit = (next: AgentSpec[]) => {
-    setAgents(renamed(next));
+    setAgents(renamed(sources, next));
     setEditing(true);
   };
 
@@ -92,16 +131,18 @@ function Page({
     const s = SCENARIOS.find((x) => x.id === id)!;
     setScenarioId(id);
     setMode(s.mode);
-    edit(specsFor(s.sources));
+    edit(specsFor(sources, s.sources));
   };
 
   const startRun = () => {
     setError(null);
-    const backend = new MockBackend();
+    const live = isLive(agents);
+    const backend = live ? new ServerBackend((msg) => (setError(msg), store.setStatus("idle"))) : new MockBackend();
     use(backend);
-    backend.setSpeed(speed);
+    backend.setSpeed(live ? 1 : speed);
     store.reset();
     setEditing(false);
+    if (live) store.setStatus("running");
     backend.start({ ...DEFAULT_CONFIG, seed, mode, agents });
   };
 
@@ -160,6 +201,7 @@ function Page({
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== "Space" || (e.target as HTMLElement).closest("input, select, button, textarea")) return;
       e.preventDefault();
+      if (liveRunning) return;
       if (state.status === "running") pause();
       else if (state.status === "paused") resume();
     };
@@ -211,7 +253,14 @@ function Page({
           </span>
           <div className="segmented" role="group" aria-labelledby="speed-label">
             {SPEEDS.map((s) => (
-              <button key={s} type="button" aria-pressed={speed === s} onClick={() => changeSpeed(s)}>
+              <button
+                key={s}
+                type="button"
+                aria-pressed={liveRunning ? s === 1 : speed === s}
+                disabled={liveRunning}
+                title={liveRunning ? "Live runs play at 1×. Replay the run afterwards to fast-forward." : undefined}
+                onClick={() => changeSpeed(s)}
+              >
                 {s}×
               </button>
             ))}
@@ -248,11 +297,11 @@ function Page({
 
         <div className="btn-row" style={{ marginLeft: "auto" }}>
           {!active && (
-            <button type="button" className="btn primary" onClick={startRun} disabled={agents.length === 0}>
-              Start run
+            <button type="button" className="btn primary" onClick={startRun} disabled={agents.length === 0 || Boolean(blocked)}>
+              {isLive(agents) ? "Start live run" : "Start run"}
             </button>
           )}
-          {state.status === "running" && (
+          {state.status === "running" && !liveRunning && (
             <button type="button" className="btn" onClick={pause}>
               Pause
             </button>
@@ -288,7 +337,16 @@ function Page({
             }}
           />
         </div>
-        <p className="scenario-note">{error ?? scenario.note}</p>
+        <p className="scenario-note">
+          {error ??
+            (blocked && editable
+              ? `${blocked.label} can't run yet: ${blocked.reason}.`
+              : liveRunning
+                ? "Live run: real response times at 1×. When it ends, use Replay to watch it faster."
+                : isLive(agents) && editable
+                  ? `${scenario.note} Live boards call the real APIs and play at 1×.`
+                  : scenario.note)}
+        </p>
       </section>
 
       <div className="readout" aria-live="polite">
@@ -316,6 +374,7 @@ function Page({
             key={spec.id}
             index={i}
             spec={spec}
+            sources={sources}
             board={state.boards.find((b) => b.spec.id === spec.id)}
             editable={editable}
             canRemove={shown.length > 1}
@@ -324,7 +383,7 @@ function Page({
           />
         ))}
         {editable && shown.length < MAX_BOARDS && (
-          <button type="button" className="add-board" onClick={() => edit([...shown, ...specsFor(["llm-fast"])])}>
+          <button type="button" className="add-board" onClick={() => edit([...shown, ...specsFor(sources, ["llm-fast"])])}>
             <span className="plus" aria-hidden="true">
               +
             </span>
