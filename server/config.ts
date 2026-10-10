@@ -23,6 +23,47 @@ function json(name: string): Record<string, unknown> {
 
 export type LlmProvider = "openai" | "anthropic";
 
+export interface BedrockModel {
+  /** Short key from BEDROCK_MODELS; the source id is `bedrock-<key>`. */
+  key: string;
+  /** Bedrock model or inference profile id, e.g. us.anthropic.claude-haiku-5-5. */
+  modelId: string;
+  label: string;
+  inputPricePerM: number;
+  outputPricePerM: number;
+  /** Prompt-cache prices; default to the input price when not set. */
+  cacheReadPricePerM: number;
+  cacheWritePricePerM: number;
+}
+
+/** "gpt=us.openai.gpt-6.1-sol,claude=us.anthropic.claude-haiku-5-5" → models. */
+function bedrockModels(spec: string): BedrockModel[] {
+  return spec
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [key, modelId] = entry.split("=").map((s) => s.trim());
+      if (!key || !modelId) throw new Error(`BEDROCK_MODELS entries look like key=model-id, got "${entry}"`);
+      const K = key.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      // "us.anthropic.claude-haiku-5-5" -> "claude-haiku-5-5", "us.openai.gpt-6.1-sol" -> "gpt-6.1-sol"
+      const fallbackLabel = modelId
+        .replace(/^(us|eu|apac|global|jp|au|ca|us-gov)\./, "")
+        .replace(/^[a-z0-9-]+\./, "")
+        .replace(/-v\d+(:\d+)?$/, "");
+      const inputPricePerM = num(`BEDROCK_${K}_INPUT_PRICE_PER_M`, 0);
+      return {
+        key,
+        modelId,
+        label: env[`BEDROCK_${K}_LABEL`] || fallbackLabel,
+        inputPricePerM,
+        outputPricePerM: num(`BEDROCK_${K}_OUTPUT_PRICE_PER_M`, 0),
+        cacheReadPricePerM: num(`BEDROCK_${K}_CACHE_READ_PRICE_PER_M`, inputPricePerM),
+        cacheWritePricePerM: num(`BEDROCK_${K}_CACHE_WRITE_PRICE_PER_M`, inputPricePerM),
+      };
+    });
+}
+
 export const config = {
   port: num("PORT", 5317),
   runsDir: env.RUNS_DIR ?? "runs",
@@ -41,6 +82,15 @@ export const config = {
     timeoutMs: num("TYPESAFE_TIMEOUT_MS", 30_000),
     inputPricePerM: num("TYPESAFE_INPUT_PRICE_PER_M", 0.042),
     outputPricePerM: num("TYPESAFE_OUTPUT_PRICE_PER_M", 0),
+  },
+
+  bedrock: {
+    region: env.AWS_REGION ?? env.AWS_DEFAULT_REGION ?? "us-east-1",
+    /** The AWS SDK reads the usual AWS_* variables (or a profile) itself. */
+    hasCredentials: Boolean(env.AWS_ACCESS_KEY_ID || env.AWS_PROFILE),
+    models: bedrockModels(env.BEDROCK_MODELS ?? ""),
+    maxTokens: num("BEDROCK_MAX_TOKENS", 1024),
+    timeoutMs: num("BEDROCK_TIMEOUT_MS", 60_000),
   },
 
   llm: {

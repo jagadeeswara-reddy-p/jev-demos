@@ -1,6 +1,7 @@
 import type { AgentSpec, DecisionSource, RunConfig, SourceInfo } from "../../src/arena/types";
 import { MOCK_SOURCES, isMockSource, mockSourceFor } from "../../src/mock/mockSource";
 import { config } from "../config";
+import { bedrockSource } from "./bedrock";
 import { jevSource } from "./jev";
 import { llmSource } from "./llm";
 
@@ -9,6 +10,7 @@ import { llmSource } from "./llm";
 
 export const LIVE_JEV = "live-jev";
 export const LIVE_LLM = "live-llm";
+const BEDROCK_PREFIX = "bedrock-";
 
 export function listSources(): SourceInfo[] {
   const jev = config.jev;
@@ -33,6 +35,15 @@ export function listSources(): SourceInfo[] {
       available: !llmMissing,
       reason: llmMissing,
     },
+    ...config.bedrock.models.map((m) => ({
+      id: `${BEDROCK_PREFIX}${m.key}`,
+      label: m.label,
+      kind: "llm" as const,
+      description: `Language model ${m.modelId}, through AWS Bedrock`,
+      live: true,
+      available: config.bedrock.hasCredentials,
+      reason: config.bedrock.hasCredentials ? undefined : "Set AWS credentials in .env",
+    })),
     ...MOCK_SOURCES,
   ];
 }
@@ -49,5 +60,7 @@ export function createSource(run: RunConfig, spec: AgentSpec): DecisionSource {
   if (isMockSource(spec.sourceId)) return mockSourceFor(run, spec);
   if (spec.sourceId === LIVE_JEV) return jevSource();
   if (spec.sourceId === LIVE_LLM) return llmSource();
+  const bedrock = config.bedrock.models.find((m) => `${BEDROCK_PREFIX}${m.key}` === spec.sourceId);
+  if (bedrock) return bedrockSource(bedrock);
   throw new Error(`Unknown source "${spec.sourceId}"`);
 }

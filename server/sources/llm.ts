@@ -8,16 +8,16 @@ import { cost, httpError, liveSource } from "./live";
 // Together, vLLM, Ollama, Gemini's OpenAI endpoint, ...) and Anthropic Messages.
 // Which model it is stays in .env, so the UI can keep it unnamed.
 
-const SYSTEM = `${TASK} Reply with JSON only, in the form {"choice": "<option id>"}.`;
+export const SYSTEM = `${TASK} Reply with JSON only, in the form {"choice": "<option id>"}.`;
 
-function userText(req: DecisionRequest): string {
+export function userText(req: DecisionRequest): string {
   const options = Object.entries(optionDescriptions(req))
     .map(([id, text]) => `${id}: ${text}`)
     .join("\n");
   return `${stateText(req)}\n\nOptions:\n${options}`;
 }
 
-function schema(req: DecisionRequest) {
+export function choiceSchema(req: DecisionRequest) {
   return {
     type: "object",
     properties: { choice: { type: "string", enum: req.candidates.map((c) => c.id) } },
@@ -36,7 +36,7 @@ async function openaiCompatible(req: DecisionRequest, signal: AbortSignal): Prom
   const c = config.llm;
   const responseFormat =
     c.jsonMode === "schema"
-      ? { type: "json_schema", json_schema: { name: "placement", strict: true, schema: schema(req) } }
+      ? { type: "json_schema", json_schema: { name: "placement", strict: true, schema: choiceSchema(req) } }
       : c.jsonMode === "object"
         ? { type: "json_object" }
         : undefined;
@@ -82,7 +82,7 @@ async function anthropic(req: DecisionRequest, signal: AbortSignal): Promise<Dec
       max_tokens: c.maxTokens ?? 1024,
       system: SYSTEM,
       messages: [{ role: "user", content: userText(req) }],
-      tools: [{ name: "choose_placement", description: "Report the chosen landing spot.", input_schema: schema(req) }],
+      tools: [{ name: "choose_placement", description: "Report the chosen landing spot.", input_schema: choiceSchema(req) }],
       tool_choice: thinking ? { type: "auto" } : { type: "tool", name: "choose_placement" },
       ...c.extraBody,
     }),
@@ -102,7 +102,7 @@ async function anthropic(req: DecisionRequest, signal: AbortSignal): Promise<Dec
 }
 
 /** Strict: the answer must be JSON naming an option. No guessing from free text. */
-function parseChoice(text: string, usage: DecisionAnswer["usage"]): DecisionAnswer {
+export function parseChoice(text: string, usage: DecisionAnswer["usage"]): DecisionAnswer {
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   try {
     const parsed = JSON.parse(cleaned) as { choice?: unknown };

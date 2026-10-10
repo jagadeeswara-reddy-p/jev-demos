@@ -54,7 +54,7 @@ export function SurvivalFigure({ figIndex, agents }: { figIndex: number; agents:
       <p className="section-note">
         Each line is one board over the same game clock. Ticks are line clears; the line ends where the board topped out. At the end, the board with the most pieces landed wins.
       </p>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Survival time per board">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMinYMin meet" role="img" aria-label="Survival time per board">
         {levelMarks.map((l) => (
           <g key={l.at}>
             <line x1={x(l.at)} x2={x(l.at)} y1={PAD_TOP - 8} y2={H - 20} stroke="var(--ink-faint)" strokeDasharray="2 4" />

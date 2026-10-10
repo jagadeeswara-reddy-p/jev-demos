@@ -3,8 +3,8 @@
 Deadline Tetris puts decision models side by side in the same Tetris game, piece
 for piece. In the main mode the pieces keep falling while each model thinks, so
 **an answer that arrives after the piece has landed doesn't count**. The point
-is to compare a System One model (Jev, from TypeSafe) with a regular language
-model fairly. Both get identical games, identical prompts and identical rules,
+is to compare a System One model (Jev, from TypeSafe) with regular language
+models fairly. Both get identical games, identical prompts and identical rules,
 and the game can be played under time pressure or without it.
 
 It is our own take on the Jev vs Haiku vs Opus Tetris video. That video showed
@@ -13,15 +13,72 @@ skill**, includes **baselines**, and saves every run so it can be replayed and c
 
 ---
 
+## Demo
+
+[![Live run: Jev vs gpt-6.1-sol vs claude-haiku-5-5, 4x speed](docs/media/demo.gif)](docs/media/demo.mp4)
+
+*A full live run (seed 1, real-time clock) at 4× speed: Jev vs gpt-6.1-sol vs
+claude-haiku-5-5, both through AWS Bedrock. Click for the full two-minute
+recording at normal speed ([demo.mp4](docs/media/demo.mp4)).*
+
+---
+
 ## Results so far
 
-Live runs on 2026-10-09: **Jev** (`jev-latest`, TypeSafe API) against
-**dev-model-alpha** (OpenAI-compatible gateway). Both boards got the same
-pieces (seed 1), the same prompts and the same rules. Runs stopped within the
-first few decisions are left out (`bun run stats --since 2026-10-09T16:20 --min-decisions 20`).
-
 **Who wins a run:** the board with the most **pieces landed**, meaning pieces
-the model put where it chose, in time. Ties go to more lines, then longer survival.
+the model put where it chose, in time. Ties go to more lines, then longer
+survival. Every board in a run gets the same pieces, prompts and rules. Runs
+stopped within the first few decisions are left out. Regenerate any of these
+numbers with `bun run stats`.
+
+### Round 2 (2026-10-10): Jev vs GPT-6.1 Sol vs Claude Haiku 5.5
+
+**Jev** (`jev-latest`, TypeSafe API) against **gpt-6.1-sol** and
+**claude-haiku-5-5**, both on AWS Bedrock through the regional `us.` inference
+profiles. 5 real-time runs: four on seed 1 and one on seed 2; one played to the end and four were stopped early.
+(`bun run stats --since 2026-10-10T18:40 --min-decisions 20`)
+
+| Model | Runs | Wins | Pieces landed | Landed per run | Lines | Lines per 100 landed | Too late |
+|---|---|---|---|---|---|---|---|
+| **Jev** | 5 | **5** | **368** | 73.6 | 92 | 25.0 | **0 (0%)** |
+| claude-haiku-5-5 | 5 | 0 | 154 | 30.8 | 39 | 25.3 | 4 (3%) |
+| gpt-6.1-sol | 5 | 0 | 46 | 9.2 | 10 | 21.7 | 17 (27%) |
+
+| Model | Decisions | Median | p90 | p95 | Fastest | Slowest | Answered in time | Tokens out per decision |
+|---|---|---|---|---|---|---|---|---|
+| **Jev** | 369 | **279 ms** | 318 ms | 330 ms | 251 ms | 626 ms | **100%** | 241 |
+| claude-haiku-5-5 | 157 | 1.52 s | 1.60 s | 1.63 s | 1.35 s | 2.87 s | 98% | 35 |
+| gpt-6.1-sol | 55 | 4.01 s | 9.27 s | 15.35 s | 1.70 s | 19.04 s | 84% | 113 |
+
+**The run that played to the end** (seed 1, 112 s, the one in the demo):
+
+| Model | Pieces landed | Lines | Too late | Topped out | Level reached | Cost | Cost per 1,000 decisions |
+|---|---|---|---|---|---|---|---|
+| **Jev** (winner) | **115** | **30** | 0 | at 88 s | 6 | $0.0081 | **$0.07** |
+| claude-haiku-5-5 | 53 | 12 | 4 | at 112 s (lasted longest) | 8 | $0.0151 | $0.27 |
+| gpt-6.1-sol | 12 | 2 | 11 | at 93 s | 7 | $0.0745 | $3.92 |
+
+**What it shows**
+- **Speed:** Jev answers in about 0.28 s and never missed a deadline. Haiku
+  is remarkably steady at about 1.5 s (95th percentile 1.63 s) and missed 3% of
+  pieces. GPT-6.1 Sol has a median of 4 s but a long tail (95th percentile 15 s),
+  so 27% of its pieces fell before it answered.
+- **Wins:** Jev won all five runs on pieces landed, placing about 2.4× as many
+  pieces as Haiku and 8× as many as GPT.
+- **Placement:** Jev and Haiku place equally well, at about 25 lines per 100
+  pieces landed. GPT manages about 22. None comes near the ~40 needed to keep
+  the stack from rising. Because Jev plays fastest, its stack rises fastest:
+  in the full run it topped out first (88 s), while Haiku lasted longest (112 s).
+- **Cost:** per 1,000 decisions, Jev $0.07, Haiku $0.27, GPT $3.92, about 56× Jev.
+- **Caveats:** mostly one seed, and only one run went to the end. GPT's price
+  comes from third-party Bedrock listings, not AWS's own price list. Prices
+  were added partway through, so the first two runs show $0 for GPT and Haiku,
+  and the cost columns above come from the full run only.
+
+### Round 1 (2026-10-09): Jev vs dev-model-alpha
+
+**Jev** against **dev-model-alpha** (OpenAI-compatible gateway), seed 1.
+(`bun run stats --since 2026-10-09T16:20 --min-decisions 20`)
 
 | Model | Clock | Runs | Wins | Pieces landed | Landed per run | Lines | Too late |
 |---|---|---|---|---|---|---|---|
@@ -35,23 +92,13 @@ the model put where it chose, in time. Ties go to more lines, then longer surviv
 | **Jev** | 523 | **294 ms** | 338 ms | 361 ms | 257 ms | 626 ms | **100%** | 241 |
 | dev-model-alpha | 29 | 10.5 s | 27.2 s | 31.8 s | 1.8 s | 36.8 s | 55% | 2,394 |
 
-*(Real-time clock. In the one run that played to the end, both boards topped
-out at about the same time, 84 s and 83 s, but for opposite reasons: Jev landed
-113 pieces and buried itself, while dev-model-alpha landed 3 and 11 more fell
-before its answer arrived.)*
-
-**What it shows**
-- **Speed:** Jev answered every piece in time, with a median of 6.6 s of its
-  deadline unused. dev-model-alpha took a median of 10.5 s per answer; it
-  appears to reason at length, about 2,400 output tokens for a one-line answer,
-  so 60% of its pieces fell before it answered, even at the slowest levels.
-- **Placement:** Jev clears about 25 lines per 100 pieces landed. Keeping the
-  stack level needs about 40, since each piece adds 4 cells and each line
-  removes 10. The hand-written bot manages about 39. So Jev's stack slowly rises,
-  and it tops out around level 4–6 even though it is never late.
-- **Caveats:** one seed only, most runs were stopped early, and only one frozen
-  run (10 s long). Language model cost shows as $0 because no prices are set in
-  `.env`. Regenerate these numbers any time with `bun run stats`.
+- dev-model-alpha reasons at length, about 2,400 output tokens for a one-line
+  answer, so 60% of its pieces fell before it answered, even at the slowest levels.
+- In the one run that played to the end, both boards topped out at about the
+  same time (84 s and 83 s) for opposite reasons. Jev landed 113 pieces and
+  buried itself; dev-model-alpha landed 3, and 11 more fell before its answer arrived.
+- No prices were set for dev-model-alpha, so its cost shows as $0. The only
+  frozen run lasted 10 s.
 
 ---
 
@@ -122,15 +169,37 @@ learns each model's display name and whether it is available. `.env` is in
 | `LLM_MAX_TOKENS` | Output token cap | provider default |
 | `LLM_TIMEOUT_MS` | Give up on an LLM call after this long | `60000` |
 | `LLM_INPUT_PRICE_PER_M`, `LLM_OUTPUT_PRICE_PER_M` | USD per million tokens, for the cost column | `0`, `0` |
+| `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` (or `AWS_PROFILE`) | AWS credentials for Bedrock. Temporary session credentials expire and must be refreshed. | `us-east-1` |
+| `BEDROCK_MODELS` | Any number of Bedrock models as `key=model-or-inference-profile-id`, comma-separated. Each becomes a source `bedrock-<key>`. | — |
+| `BEDROCK_<KEY>_LABEL` | Name shown on that model's board | the model id without the region and provider prefix, e.g. `gpt-6.1-sol` |
+| `BEDROCK_<KEY>_INPUT_PRICE_PER_M`, `BEDROCK_<KEY>_OUTPUT_PRICE_PER_M` | USD per million tokens for that model | `0`, `0` |
+| `BEDROCK_<KEY>_CACHE_READ_PRICE_PER_M`, `BEDROCK_<KEY>_CACHE_WRITE_PRICE_PER_M` | Prompt-cache prices for that model | the input price |
+| `BEDROCK_MAX_TOKENS`, `BEDROCK_TIMEOUT_MS` | Output token cap and timeout for Bedrock calls | `1024`, `60000` |
 
 **Changing the line-up.** Boards can't be added or removed in the page; the
 line-up is set on the server. Edit `LINEUP` and restart `bun dev`. Source ids:
 
 - `live-jev`: Jev through the TypeSafe API
 - `live-llm`: the language model configured above
+- `bedrock-<key>`: each model listed in `BEDROCK_MODELS`
 - mock sources (simulated, no API calls): `jev`, `llm-fast`, `llm-frontier`, `llm-flaky`, `heuristic`, `random`, `no-input`
 
 For example, `LINEUP=live-jev,live-llm,heuristic` adds a hand-written bot as a third board, for reference.
+
+Current set-up: Jev against two models on AWS Bedrock:
+
+```
+LINEUP=live-jev,bedrock-gpt,bedrock-claude
+BEDROCK_MODELS=gpt=us.openai.gpt-6.1-sol,claude=us.anthropic.claude-haiku-5-5
+```
+
+Prices used (USD per million tokens, regional `us.` inference profiles):
+
+| Model | Input | Output | Cache read | Cache write | Source |
+|---|---|---|---|---|---|
+| Jev (`jev-latest`) | 0.042 | 0 | — | — | TypeSafe |
+| gpt-6.1-sol | 2.20 | 11.00 | 0.11 | 2.75 | third-party Bedrock listings (OpenAI's $2 / $10 plus Bedrock's 10% regional premium) |
+| claude-haiku-5-5 | 0.11 | 0.55 | 0.011 | 0.1375 | AWS Price List API |
 
 > `.env` is read once at startup. **Restart `bun dev` after editing it.**
 
@@ -258,6 +327,13 @@ is not the comparison this project is about.
 | Options | a `choice` question with one entry per option (`option_N` → description) | listed as `option_N: description` lines after the board |
 | Answer | `choice`, a probability for every option, and a `confidence` | strict JSON `{"choice":"option_N"}`; the schema only allows the offered ids (Anthropic: a forced tool call) |
 
+**AWS Bedrock models** (`server/sources/bedrock.ts`) get the same system and
+user text as the language model above. They go through Bedrock's Converse API,
+which uses one request shape for every provider, and answer with a forced
+`choose_placement` tool call whose `choice` is limited to the offered ids.
+Bedrock caches OpenAI prompts automatically and reports cache reads and writes
+separately, so those are counted as input tokens to keep the token columns comparable.
+
 **Latency** is measured on the server's clock, from just before the request to
 just after the response is read, so it **includes the network round trip**, as
 a real game loop would experience it.
@@ -286,9 +362,12 @@ guessed from free text.
 ## Reading the screen
 
 The title and summary run across the top. Below them, the figures are on the
-left and the settings and log are on the right.
+left and the settings and log are on the right. **On screens wider than 1100 px
+the whole page fits in one window, with no page scroll.** The boards grow or shrink to fill
+the height left over, and the log scrolls inside its own panel. On narrower
+screens the page scrolls and the right column moves under the boards.
 
-**Right column (stays in view while scrolling)**
+**Right column**
 - **Level readout**: current level, how fast pieces fall ("a row every …"), game time, clock and seed.
 - **Settings**: Line-up, Clock, Speed, Seed (↻ picks a random one), Theme (System / Light / Dark, saved in this browser), and the buttons **Start run**, **Replay**, **Export log** and **Load log**. Space pauses or resumes a mock run or replay.
 - **Log**: misses, failures and milestones, newest first.
@@ -384,7 +463,8 @@ server/                 Bun server: page + API, live runs, settings
   index.ts              routes
   config.ts             reads .env
   runs.ts               live runs on the wall clock, SSE, saving logs
-  sources/              decision sources: jev.ts, llm.ts, live.ts (timing, errors), registry.ts
+  sources/              decision sources: jev.ts, llm.ts (OpenAI-compatible / Anthropic),
+                        bedrock.ts (AWS Bedrock), live.ts (timing, errors), registry.ts
 src/engine/             game rules: pieces, board, gravity, landing spots, the hand-written evaluator
 src/arena/              the shared core
   simulation.ts         one run: clock, levels, deadlines, decisions, drops, events
@@ -394,7 +474,8 @@ src/arena/              the shared core
   replayBackend.ts      replays and JSONL import/export
 src/mock/               mock profiles and the in-browser mock backend
 src/ui/                 React + canvas UI, theme, store
-scripts/                smoke test, fake providers, Playwright helpers
+scripts/                stats.ts, smoke.ts, probe-bedrock.ts, fake-providers.ts, Playwright helpers (*.mjs)
+docs/media/             demo recording (MP4) and preview (GIF)
 runs/                   saved live runs (git-ignored)
 ```
 
@@ -407,7 +488,8 @@ bun run stats               # statistics from saved runs (see "Results so far")
 bun test                    # engine and simulation tests
 CALIBRATE=1 bun test        # also print how each mock profile fares
 bun run typecheck
-bun run smoke               # one real decision from each live model
+bun run smoke               # one real decision from every configured live model
+bun scripts/probe-bedrock.ts <model-id>   # raw Bedrock usage and answer for the real prompt
 bun run fake-providers      # stand-in TypeSafe / OpenAI / Anthropic APIs on :5400
 ```
 
@@ -431,3 +513,8 @@ is up, with `CHROME_PATH=/usr/bin/google-chrome bun scripts/live.mjs <out-dir>`.
 - **Dashed outlines after a line clear** are drawn at their pre-clear height, so they can appear to float.
 - **Live latency includes your network.** Running from a different region changes the numbers.
 - **One seed is one game.** Compare across several seeds before drawing conclusions.
+- **Speed and survival are linked.** A faster model places more pieces per minute, so with the same placement quality its stack also rises faster. That's why the winner is decided by pieces landed, not by time survived.
+- **Costs are recorded when each answer arrives.** Runs made before a model's prices were set keep $0 for that model.
+- **GPT-6.1 Sol's price isn't in AWS's price list.** It comes from third-party Bedrock listings; Claude Haiku 5.5's comes from the AWS Price List API.
+- **Bedrock session credentials expire.** When they do, live Bedrock boards fail with errors: refresh the `AWS_*` values in `.env` and restart.
+- **Runs started through the API** (`POST /api/runs`) don't appear in a page that's already open. Watch them by replaying their log afterwards.

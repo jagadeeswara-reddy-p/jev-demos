@@ -44,11 +44,15 @@ function BoardCanvas({ agentId }: { agentId: string }) {
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    // Fit the width, but never let a board grow taller than the window.
+    // Fit the space given. In the full-frame layout the wrapper's height is set
+    // by the page, so the board fills it; otherwise cap it by the window height.
     const fit = () => {
+      const fullFrame = window.matchMedia("(min-width: 1101px)").matches;
       const byWidth = Math.floor(el.clientWidth / WIDTH_CELLS);
-      const byHeight = Math.floor((window.innerHeight - 260) / VISIBLE_HEIGHT);
-      setCell(Math.max(10, Math.min(byWidth, byHeight, 32)));
+      const byHeight = fullFrame
+        ? Math.floor((el.clientHeight - 2) / VISIBLE_HEIGHT)
+        : Math.floor((window.innerHeight - 260) / VISIBLE_HEIGHT);
+      setCell(Math.max(8, Math.min(byWidth, byHeight, fullFrame ? 48 : 32)));
     };
     const ro = new ResizeObserver(fit);
     ro.observe(el);
