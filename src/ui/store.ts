@@ -28,6 +28,9 @@ export interface BoardStats {
   errors: number;
   timeouts: number;
   latencies: number[];
+  /** Answers that named a real option, on time or not, and how many were the heuristic's top pick. */
+  graded: number;
+  best: number;
   costUsd: number;
   inputTokens: number;
   outputTokens: number;
@@ -57,6 +60,8 @@ export interface BoardState {
   outAt: number | null;
   outLevel: number | null;
   survived: boolean;
+  /** Sprint mode: reached the line target. */
+  reachedGoal: boolean;
 }
 
 export interface LogLine {
@@ -96,6 +101,8 @@ function emptyStats(): BoardStats {
     errors: 0,
     timeouts: 0,
     latencies: [],
+    graded: 0,
+    best: 0,
     costUsd: 0,
     inputTokens: 0,
     outputTokens: 0,
@@ -167,8 +174,14 @@ export class ArenaStore {
           outAt: null,
           outLevel: null,
           survived: false,
+          reachedGoal: false,
         }));
-        this.log(0, null, `Run started on seed ${e.config.seed}, ${e.config.mode === "realtime" ? "real-time clock" : "frozen clock"}`, "strong");
+        this.log(
+          0,
+          null,
+          `Run started on seed ${e.config.seed}, ${e.config.mode === "realtime" ? "real-time clock" : "frozen clock"}${e.config.targetLines ? `, first to ${e.config.targetLines} lines` : ""}`,
+          "strong",
+        );
         break;
 
       case "level":
@@ -209,6 +222,10 @@ export class ArenaStore {
         if (e.status === "invalid") st.invalid += 1;
         if (e.status === "error") st.errors += 1;
         if (e.status === "timeout") st.timeouts += 1;
+        if (e.bestRank !== undefined) {
+          st.graded += 1;
+          if (e.bestRank === 1) st.best += 1;
+        }
 
         const isCurrent = b.thinking?.pieceId === e.pieceId;
         if (e.status === "late" && b.last?.pieceId === e.pieceId) {
@@ -291,6 +308,17 @@ export class ArenaStore {
         break;
       }
 
+      case "goal": {
+        const b = this.board(e.agentId);
+        b.outAt = e.at;
+        b.outLevel = e.level;
+        b.reachedGoal = true;
+        b.thinking = null;
+        b.active = null;
+        this.log(e.at, b.spec.name, `cleared ${e.lines} lines in ${e.pieces} pieces, ${fmtSeconds(e.at)}`, "strong");
+        break;
+      }
+
       case "run_finished":
         s.status = "finished";
         s.endAt = e.at;
@@ -360,4 +388,9 @@ export function fmtSeconds(ms: number): string {
 export function fmtClock(ms: number): string {
   const s = Math.floor(ms / 1000);
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** Share of graded answers that matched the heuristic's top pick, e.g. "72%". */
+export function fmtBest(st: BoardStats): string {
+  return st.graded === 0 ? "–" : `${Math.round((100 * st.best) / st.graded)}%`;
 }

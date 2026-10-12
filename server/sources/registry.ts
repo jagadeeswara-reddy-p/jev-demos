@@ -2,7 +2,7 @@ import type { AgentSpec, DecisionSource, RunConfig, SourceInfo } from "../../src
 import { MOCK_SOURCES, isMockSource, mockSourceFor } from "../../src/mock/mockSource";
 import { config } from "../config";
 import { bedrockSource } from "./bedrock";
-import { jevSource } from "./jev";
+import { jevSource, layaSource } from "./jev";
 import { llmSource } from "./llm";
 
 // Every decision source the server can offer: the mocks, plus the live models
@@ -10,10 +10,12 @@ import { llmSource } from "./llm";
 
 export const LIVE_JEV = "live-jev";
 export const LIVE_LLM = "live-llm";
+export const LIVE_LAYA = "live-laya";
 const BEDROCK_PREFIX = "bedrock-";
 
 export function listSources(): SourceInfo[] {
   const jev = config.jev;
+  const laya = config.laya;
   const llm = config.llm;
   const llmMissing = !llm.apiKey ? "Set LLM_API_KEY in .env" : !llm.model ? "Set LLM_MODEL in .env" : undefined;
   return [
@@ -25,6 +27,15 @@ export function listSources(): SourceInfo[] {
       live: true,
       available: Boolean(jev.apiKey),
       reason: jev.apiKey ? undefined : "Set TYPESAFE_API_KEY in .env",
+    },
+    {
+      id: LIVE_LAYA,
+      label: laya.label,
+      kind: "system-one",
+      description: `Open-source System One model laya ${laya.model}, ${laya.host}`,
+      live: true,
+      available: Boolean(laya.baseUrl),
+      reason: laya.baseUrl ? undefined : "Set LAYA_BASE_URL in .env and start laya-serve",
     },
     {
       id: LIVE_LLM,
@@ -39,7 +50,7 @@ export function listSources(): SourceInfo[] {
       id: `${BEDROCK_PREFIX}${m.key}`,
       label: m.label,
       kind: "llm" as const,
-      description: `Language model ${m.modelId}, through AWS Bedrock`,
+      description: `Language model ${m.modelId}, through AWS Bedrock${settingsNote(m.extra)}`,
       live: true,
       available: config.bedrock.hasCredentials,
       reason: config.bedrock.hasCredentials ? undefined : "Set AWS credentials in .env",
@@ -59,8 +70,15 @@ export function lineup(): string[] {
 export function createSource(run: RunConfig, spec: AgentSpec): DecisionSource {
   if (isMockSource(spec.sourceId)) return mockSourceFor(run, spec);
   if (spec.sourceId === LIVE_JEV) return jevSource();
+  if (spec.sourceId === LIVE_LAYA) return layaSource();
   if (spec.sourceId === LIVE_LLM) return llmSource();
   const bedrock = config.bedrock.models.find((m) => `${BEDROCK_PREFIX}${m.key}` === spec.sourceId);
   if (bedrock) return bedrockSource(bedrock);
   throw new Error(`Unknown source "${spec.sourceId}"`);
+}
+
+/** Request settings worth showing on the board, e.g. ", reasoning_effort low". */
+function settingsNote(extra: Record<string, unknown>): string {
+  const parts = Object.entries(extra).map(([k, v]) => `${k} ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
+  return parts.length ? `, ${parts.join(", ")}` : "";
 }

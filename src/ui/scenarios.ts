@@ -15,16 +15,16 @@ export interface Scenario {
 export const SCENARIOS: Scenario[] = [
   {
     id: "live",
-    label: "Live models",
-    note: "The real models through their APIs, on the same pieces.",
+    label: "Live models: real time",
+    note: "The real models through their APIs, on the same pieces. The pieces keep falling while each one thinks, so this measures speed.",
     mode: "realtime",
     sources: ["live-jev", "live-llm"],
     live: true,
   },
   {
     id: "live-frozen",
-    label: "Live models, frozen clock",
-    note: "The real models with the clock frozen, to compare placement skill without speed.",
+    label: "Live models: frozen clock",
+    note: "The same models with the game paused until each answers, so this measures move quality without speed.",
     mode: "frozen",
     sources: ["live-jev", "live-llm"],
     live: true,

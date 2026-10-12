@@ -184,7 +184,7 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
     ctx.beginPath();
     ctx.rect(0, 0, W, H);
     ctx.clip();
-    if (!b.survived) {
+    if (!b.survived && !b.reachedGoal) {
       ctx.strokeStyle = th.inkSoft;
       ctx.lineWidth = 1;
       for (let k = -H; k < W; k += 9) {
@@ -207,10 +207,12 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
     ctx.fillStyle = th.ink;
     ctx.textAlign = "center";
     ctx.font = `${Math.round(cell * 0.78)}px "Silkscreen", ui-monospace, monospace`;
-    ctx.fillText(b.survived ? "SURVIVED" : "TOPPED OUT", W / 2, sy + cell * 0.45);
+    ctx.fillText(b.reachedGoal ? "FINISHED" : b.survived ? "SURVIVED" : "TOPPED OUT", W / 2, sy + cell * 0.45);
     ctx.fillStyle = th.muted;
     ctx.font = mono(cell * 0.4);
-    const detail = b.survived
+    const detail = b.reachedGoal
+      ? `${b.stats.lines} lines in ${b.stats.pieces} pieces, ${fmtSeconds(b.outAt)}`
+      : b.survived
       ? `${b.stats.pieces} pieces, level ${b.outLevel}`
       : `at ${fmtSeconds(b.outAt)}, level ${b.outLevel}`;
     ctx.fillText(detail, W / 2, sy + cell * 1.55);

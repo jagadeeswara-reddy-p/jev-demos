@@ -99,6 +99,37 @@ describe("ArenaSimulation", () => {
     expect(ok.every((e) => e.t === "decision" && e.latencyMs === 42)).toBe(true);
   });
 
+  it("grades every answer that names an option, late ones included", () => {
+    const events = runToEnd(config(["heuristic", "llm-frontier"]));
+    const graded = (id: string, status?: string) =>
+      events.filter((e) => e.t === "decision" && e.agentId === id && (!status || e.status === status) && e.bestRank !== undefined);
+    // The heuristic bot plays the reference heuristic, so it always picks a rank-1 option.
+    expect(graded("a0").length).toBeGreaterThan(0);
+    expect(graded("a0").every((e) => e.t === "decision" && e.bestRank === 1)).toBe(true);
+    expect(graded("a1", "late").length).toBeGreaterThan(0);
+  });
+
+  it("leaves bad answers ungraded", () => {
+    const cfg = { ...config(["jev"]), maxPieces: 3 };
+    const bogus: DecisionSource = { request: (req, deliver) => deliver({ status: "ok", choice: "option_999" }, req.requestedAt + 10) };
+    const events = runToEnd(cfg, [bogus]);
+    expect(events.some((e) => e.t === "decision" && e.bestRank !== undefined)).toBe(false);
+  });
+
+  it("stops a board at the line target in sprint mode", () => {
+    const cfg = { ...config(["heuristic", "jev"], "frozen"), targetLines: 10 };
+    const events = runToEnd(cfg);
+    const goals = events.filter((e) => e.t === "goal");
+    expect(goals.length).toBeGreaterThan(0);
+    for (const g of goals) {
+      if (g.t !== "goal") continue;
+      expect(g.lines).toBeGreaterThanOrEqual(10);
+      expect(events.filter((e) => e.t === "lock" && e.agentId === g.agentId).length).toBe(g.pieces);
+      // Nothing more happens on a finished board.
+      expect(events.some((e) => "agentId" in e && e.agentId === g.agentId && e.at > g.at)).toBe(false);
+    }
+  });
+
   // CALIBRATE=1 pnpm test prints how each mock profile fares, to tune profiles against the demo.
   it.skipIf(!process.env.CALIBRATE)("prints a calibration table", () => {
     const rows = [1, 2, 3].map((seed) => {

@@ -1,4 +1,4 @@
-import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
+import { BedrockRuntimeClient, ConverseCommand, type ConverseCommandInput } from "@aws-sdk/client-bedrock-runtime";
 import type { DecisionSource } from "../../src/arena/types";
 import { config, type BedrockModel } from "../config";
 import { liveSource } from "./live";
@@ -30,9 +30,10 @@ export function bedrockSource(model: BedrockModel): DecisionSource {
               },
             },
           ],
-          toolChoice: { tool: { name: "choose_placement" } },
+          toolChoice: model.toolChoice === "auto" ? { auto: {} } : { tool: { name: "choose_placement" } },
         },
         inferenceConfig: { maxTokens: config.bedrock.maxTokens },
+        ...(Object.keys(model.extra).length ? { additionalModelRequestFields: model.extra as ConverseCommandInput["additionalModelRequestFields"] } : {}),
       }),
       { abortSignal: signal },
     );

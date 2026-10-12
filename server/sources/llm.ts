@@ -108,7 +108,9 @@ export function parseChoice(text: string, usage: DecisionAnswer["usage"]): Decis
     const parsed = JSON.parse(cleaned) as { choice?: unknown };
     if (typeof parsed.choice === "string") return { status: "ok", choice: parsed.choice, usage };
   } catch {
-    // fall through to invalid
+    // A model that may answer in text sometimes wraps the JSON in a sentence; take the object if there is exactly one.
+    const found = cleaned.match(/\{\s*"choice"\s*:\s*"[^"]*"\s*\}/g);
+    if (found?.length === 1) return { status: "ok", choice: (JSON.parse(found[0]) as { choice: string }).choice, usage };
   }
   return { status: "invalid", usage, detail: `Not a JSON choice: ${text.slice(0, 120) || "(empty)"}` };
 }

@@ -142,10 +142,12 @@ export function validateConfig(input: unknown): RunConfig {
   }
   const mode = body.mode === "frozen" ? "frozen" : "realtime";
   const seed = Number.isInteger(body.seed) && body.seed! >= 0 ? body.seed! : 1;
+  const targetLines = Number.isInteger(body.targetLines) && body.targetLines! > 0 ? Math.min(body.targetLines!, 1000) : 0;
   return {
     ...DEFAULT_CONFIG,
     seed,
     mode,
+    targetLines,
     agents: agents.map((a) => ({ id: a.id, name: a.name.slice(0, 40), kind: sources.get(a.sourceId)!.kind, sourceId: a.sourceId })),
   };
 }

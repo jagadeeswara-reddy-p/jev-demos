@@ -10,7 +10,11 @@
 
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
+import { compareStandings, winRule } from "../src/arena/ranking";
+import { rankOptions } from "../src/arena/simulation";
 import type { ArenaEvent, ArenaEventOf, RunConfig } from "../src/arena/types";
+import { decodeBoard, emptyBoard, type Board } from "../src/engine/board";
+import type { PieceType } from "../src/engine/pieces";
 
 type Decision = ArenaEventOf<"decision">;
 
@@ -20,7 +24,7 @@ interface AgentStats {
   agentId: string;
   name: string;
   sourceId: string;
-  outcome: "topped out" | "survived" | "still playing";
+  outcome: "topped out" | "survived" | "reached goal" | "still playing";
   outAt: number | null;
   level: number;
   lines: number;
@@ -35,6 +39,10 @@ interface AgentStats {
   marginMs: number[];
   confidence: number[];
   chosenP: number[];
+  /** Answers naming a real option (on time or not), graded by the reference heuristic. */
+  graded: number;
+  best: number;
+  top3: number;
   inputTokens: number;
   outputTokens: number;
   costUsd: number;
@@ -44,10 +52,12 @@ interface RunStats {
   id: string;
   seed: number;
   mode: RunConfig["mode"];
+  /** 0 for a survival run, otherwise the sprint's line target. */
+  targetLines: number;
   durationMs: number;
   end: string;
   agents: AgentStats[];
-  /** Name of the board with the most pieces landed (ties: lines, then time survived); null if nobody landed any. */
+  /** Name of the winning board under the run's rules (see src/arena/ranking.ts); null if nobody landed any. */
   winner: string | null;
 }
 
@@ -106,6 +116,9 @@ async function analyse(path: string): Promise<RunStats | null> {
       marginMs: [],
       confidence: [],
       chosenP: [],
+      graded: 0,
+      best: 0,
+      top3: 0,
       inputTokens: 0,
       outputTokens: 0,
       costUsd: 0,
@@ -113,7 +126,11 @@ async function analyse(path: string): Promise<RunStats | null> {
   }
 
   let level = config.startLevel;
+  const targetLines = config.targetLines ?? 0;
   const deadlines = new Map<string, number>(); // agentId:pieceId -> deadline
+  // Logs written before decisions carried bestRank are graded here from the board and options.
+  const boards = new Map<string, Board>();
+  const offers = new Map<string, { board: Board; type: PieceType; candidates: ArenaEventOf<"spawn">["candidates"] }>();
   for (const e of events) {
     if (e.t === "level") level = e.level;
     if (!("agentId" in e)) continue;
@@ -123,11 +140,22 @@ async function analyse(path: string): Promise<RunStats | null> {
     switch (e.t) {
       case "spawn":
         deadlines.set(`${e.agentId}:${e.pieceId}`, e.deadlineMs);
+        offers.set(`${e.agentId}:${e.pieceId}`, { board: boards.get(e.agentId) ?? emptyBoard(), type: e.type, candidates: e.candidates });
         break;
-      case "decision":
+      case "decision": {
         countDecision(s, e, deadlines.get(`${e.agentId}:${e.pieceId}`));
+        let rank = e.bestRank;
+        const offer = offers.get(`${e.agentId}:${e.pieceId}`);
+        if (rank === undefined && e.choice && offer) rank = rankOptions(offer.board, offer.type, offer.candidates).get(e.choice);
+        if (rank !== undefined) {
+          s.graded += 1;
+          if (rank === 1) s.best += 1;
+          if (rank <= 3) s.top3 += 1;
+        }
         break;
+      }
       case "lock":
+        boards.set(e.agentId, decodeBoard(e.board));
         s.pieces += 1;
         s.lines += e.rows.length;
         if (e.byDecision) s.placedByDecision += 1;
@@ -143,6 +171,11 @@ async function analyse(path: string): Promise<RunStats | null> {
         s.outAt = e.at;
         s.level = e.level;
         break;
+      case "goal":
+        s.outcome = "reached goal";
+        s.outAt = e.at;
+        s.level = e.level;
+        break;
     }
   }
 
@@ -153,28 +186,32 @@ async function analyse(path: string): Promise<RunStats | null> {
     id,
     seed: config.seed,
     mode: config.mode,
+    targetLines,
     durationMs: last.at,
     end: last.t === "run_finished" ? last.reason : "cut off",
     agents: list,
-    winner: winnerOf(list),
+    winner: winnerOf(list, { mode: config.mode, targetLines }),
   };
 }
 
-/** Most pieces landed wins; lines break ties, then time survived. */
-function winnerOf(list: AgentStats[]): string | null {
+/** The winner under the run's rules, the same ones the results chart uses. */
+function winnerOf(list: AgentStats[], rules: { mode: RunConfig["mode"]; targetLines: number }): string | null {
   if (list.length < 2) return null;
-  const ranked = [...list].sort(
-    (a, b) =>
-      b.placedByDecision - a.placedByDecision ||
-      b.lines - a.lines ||
-      (b.outAt ?? Infinity) - (a.outAt ?? Infinity),
-  );
+  const standing = (a: AgentStats) => ({
+    landed: a.placedByDecision,
+    lines: a.lines,
+    pieces: a.pieces,
+    outAt: a.outAt,
+    reachedGoal: a.outcome === "reached goal",
+  });
+  const ranked = [...list].sort((a, b) => compareStandings(standing(a), standing(b), rules));
   const [first, second] = ranked;
   if (first.placedByDecision === 0) return null;
-  const tie =
-    first.placedByDecision === second.placedByDecision && first.lines === second.lines && first.outAt === second.outAt;
-  return tie ? "tie" : first.name;
+  return compareStandings(standing(first), standing(second), rules) === 0 ? "tie" : first.name;
 }
+
+/** "realtime" or "frozen", plus the sprint target when there is one. */
+const format = (r: { mode: RunConfig["mode"]; targetLines: number }) => (r.targetLines ? `${r.mode}, ${r.targetLines} lines` : r.mode);
 
 function countDecision(s: AgentStats, e: Decision, deadline: number | undefined) {
   s.status[e.status] = (s.status[e.status] ?? 0) + 1;
@@ -231,19 +268,20 @@ out.push(`${runs.length} run(s): ${runs.filter((r) => r.end === "all_out").lengt
 out.push(`## Per run\n`);
 out.push(
   table(
-    ["Run", "Seed", "Clock", "Length", "End", "Model", "Landed", "Lines", "Too late", "Outcome", "Level", "p50", "Cost", "Winner"],
+    ["Run", "Seed", "Format", "Length", "End", "Model", "Landed", "Lines", "Too late", "Best moves", "Outcome", "Level", "p50", "Cost", "Winner"],
     runs.flatMap((r) =>
       r.agents.map((a) => [
         r.id.slice(0, 19),
         r.seed,
-        r.mode,
+        format(r),
         secs(r.durationMs),
         r.end,
         a.name,
         a.placedByDecision,
         a.lines,
         a.fellWithoutDecision,
-        a.outcome === "topped out" ? `out at ${secs(a.outAt)}` : a.outcome,
+        share(a.best, a.graded),
+        a.outcome === "topped out" ? `out at ${secs(a.outAt)}` : a.outcome === "reached goal" ? `${a.lines} lines at ${secs(a.outAt)}` : a.outcome,
         a.level,
         ms(pct(a.latencies, 50)),
         usd(a.costUsd),
@@ -256,13 +294,14 @@ out.push(
 // Pool by source and clock mode.
 const groups = new Map<string, AgentStats[]>();
 for (const r of runs) for (const a of r.agents) {
-  const key = `${a.name}\u0000${a.sourceId}\u0000${a.mode}`;
+  const key = `${a.name}\u0000${a.sourceId}\u0000${format(r)}`;
   groups.set(key, [...(groups.get(key) ?? []), a]);
 }
 
 out.push(`\n## Per model, all selected runs pooled\n`);
 const pooled = [...groups.entries()].map(([key, list]) => {
   const [name, sourceId, mode] = key.split("\u0000");
+  const inGroup = (r: RunStats) => format(r) === mode && r.agents.some((a) => a.sourceId === sourceId);
   const lat = list.flatMap((a) => a.latencies);
   const margin = list.flatMap((a) => a.marginMs);
   const status: Record<string, number> = {};
@@ -272,7 +311,8 @@ const pooled = [...groups.entries()].map(([key, list]) => {
   const tooLate = list.reduce((n, a) => n + a.fellWithoutDecision, 0);
   const lines = list.reduce((n, a) => n + a.lines, 0);
   const landed = list.reduce((n, a) => n + a.placedByDecision, 0);
-  const wins = runs.filter((r) => r.winner === name && r.mode === mode && r.agents.some((a) => a.sourceId === sourceId)).length;
+  const wins = runs.filter((r) => r.winner === name && inGroup(r)).length;
+  const goals = list.filter((a) => a.outcome === "reached goal");
   const cost = list.reduce((n, a) => n + a.costUsd, 0);
   const tokensIn = list.reduce((n, a) => n + a.inputTokens, 0);
   const tokensOut = list.reduce((n, a) => n + a.outputTokens, 0);
@@ -281,13 +321,19 @@ const pooled = [...groups.entries()].map(([key, list]) => {
     confidence: mean(list.flatMap((a) => a.confidence)),
     chosenP: mean(list.flatMap((a) => a.chosenP)),
     toppedOut: list.filter((a) => a.outcome === "topped out").map((a) => a.outAt!),
+    graded: list.reduce((n, a) => n + a.graded, 0),
+    best: list.reduce((n, a) => n + a.best, 0),
+    top3: list.reduce((n, a) => n + a.top3, 0),
+    goals: goals.length,
+    goalMs: goals.map((a) => a.outAt!),
+    goalPieces: goals.map((a) => a.pieces),
     levels: list.map((a) => a.level),
   };
 });
 
 out.push(
   table(
-    ["Model", "Clock", "Runs", "Wins", "Pieces landed", "Lines", "Too late", "Landed / run", "Lines / 100 landed"],
+    ["Model", "Format", "Runs", "Wins", "Pieces landed", "Lines", "Too late", "Landed / run", "Lines / 100 landed"],
     pooled.map((g) => [
       g.name,
       g.mode,
@@ -304,14 +350,31 @@ out.push(
 out.push("");
 out.push(
   table(
-    ["Model", "Clock", "Runs", "Decisions", "p50", "p90", "p95", "Mean", "Min", "Max"],
+    ["Model", "Format", "Graded answers", "Best moves", "In top 3", "p50"],
+    pooled.map((g) => [g.name, g.mode, g.graded, share(g.best, g.graded), share(g.top3, g.graded), ms(pct(g.lat, 50))]),
+  ),
+);
+const sprints = pooled.filter((g) => runs.some((r) => r.targetLines && format(r) === g.mode));
+if (sprints.length) {
+  out.push("");
+  out.push(
+    table(
+      ["Model", "Format", "Runs", "Reached target", "Mean time to target", "Mean pieces to target", "Wins"],
+      sprints.map((g) => [g.name, g.mode, g.runs, `${g.goals}/${g.runs}`, secs(mean(g.goalMs)), num(mean(g.goalPieces), 1), g.wins]),
+    ),
+  );
+}
+out.push("");
+out.push(
+  table(
+    ["Model", "Format", "Runs", "Decisions", "p50", "p90", "p95", "Mean", "Min", "Max"],
     pooled.map((g) => [g.name, g.mode, g.runs, g.total, ms(pct(g.lat, 50)), ms(pct(g.lat, 90)), ms(pct(g.lat, 95)), ms(mean(g.lat)), ms(pct(g.lat, 0)), ms(pct(g.lat, 100))]),
   ),
 );
 out.push("");
 out.push(
   table(
-    ["Model", "Clock", "In time", "Late", "Invalid", "Error", "Timeout", "Pieces", "Too late", "Lines", "Lines/100 pieces", "Median margin left"],
+    ["Model", "Format", "In time", "Late", "Invalid", "Error", "Timeout", "Pieces", "Too late", "Lines", "Lines/100 pieces", "Median margin left"],
     pooled.map((g) => [
       g.name,
       g.mode,
@@ -331,7 +394,7 @@ out.push(
 out.push("");
 out.push(
   table(
-    ["Model", "Clock", "Tokens in / decision", "Tokens out / decision", "Cost total", "Cost / decision", "Mean confidence", "Mean p(chosen)", "Topped out", "Mean time to top out", "Max level"],
+    ["Model", "Format", "Tokens in / decision", "Tokens out / decision", "Cost total", "Cost / decision", "Mean confidence", "Mean p(chosen)", "Topped out", "Mean time to top out", "Max level"],
     pooled.map((g) => [
       g.name,
       g.mode,
@@ -349,7 +412,10 @@ out.push(
 );
 
 out.push(`\n## Notes\n`);
-out.push(`- **Landed**: pieces the model put where it chose, in time. **The board with the most pieces landed wins the run** (ties: more lines, then longer survival).`);
+out.push(`- **Winner**: ${winRule({ mode: "realtime", targetLines: 0 })} Ties go to more lines, then longer survival.`);
+out.push(`- **Sprint runs** (format shows the line target): ${winRule({ mode: "realtime", targetLines: 40 })} On the frozen clock, fewest pieces wins instead of time.`);
+out.push(`- **Landed**: pieces the model put where it chose, in time.`);
+out.push(`- **Best moves / in top 3**: how often the model's answer was the reference heuristic's top pick, or among its top three. Late answers are graded too, so this measures move quality apart from speed.`);
 out.push(`- **Too late**: pieces that locked before an answer arrived (or, on the frozen clock, after a timeout or a bad answer).`);
 out.push(`- **Late**: answers that arrived after their piece had already locked.`);
 out.push(`- **Latency** counts every answer that came back (in time, late or invalid); failed requests are excluded.`);

@@ -1,12 +1,13 @@
 import { useRef } from "react";
 import { useArena, useArenaState, useFrame } from "./hooks";
+import { compareStandings, winRule, type RankRules } from "../arena/ranking";
 import type { AgentSpec } from "../arena/types";
-import { fmtMs, fmtSeconds, percentile, type BoardState } from "./store";
+import { fmtBest, fmtMs, fmtSeconds, percentile, type BoardState } from "./store";
 
 // One line per board across shared game time: how long it lasted, where it
 // cleared lines, and where it went out. Levels are marked along the top.
-// When the run ends, rows are ranked by pieces landed (each model's own in-time
-// placements), which doubles as the results table.
+// When the run ends, rows are ranked by the run's win rule (see arena/ranking),
+// which doubles as the results table.
 // There is always one row per board on screen, run or not, so the figure keeps
 // the same height and the boards below it never jump.
 
@@ -14,7 +15,7 @@ const ROW = 46;
 const LABEL_W = 150;
 const PAD_TOP = 26;
 
-export function SurvivalFigure({ figIndex, agents }: { figIndex: number; agents: AgentSpec[] }) {
+export function SurvivalFigure({ figIndex, agents, rules }: { figIndex: number; agents: AgentSpec[]; rules: RankRules }) {
   const state = useArenaState();
   const { backend } = useArena();
   const nowRef = useRef<SVGLineElement>(null);
@@ -22,7 +23,7 @@ export function SurvivalFigure({ figIndex, agents }: { figIndex: number; agents:
   const byId = new Map(state.boards.map((b) => [b.spec.id, b]));
   const boards = agents.map((spec) => byId.get(spec.id)).filter((b): b is BoardState => b !== undefined);
   const finished = state.status === "finished" && boards.length === agents.length;
-  if (finished) boards.sort(rank);
+  if (finished) boards.sort((a, b) => compareStandings(standing(a), standing(b), rules));
   // Boards without run data yet (before the first event arrives) keep their row as a placeholder.
   const waiting = agents.filter((spec) => !byId.has(spec.id));
   const live = state.status === "running" || state.status === "paused";
@@ -30,7 +31,7 @@ export function SurvivalFigure({ figIndex, agents }: { figIndex: number; agents:
 
   const W = 900;
   const H = PAD_TOP + Math.max(1, agents.length) * ROW + 24;
-  const plotW = W - LABEL_W - 170;
+  const plotW = W - LABEL_W - 240;
   const x = (t: number) => LABEL_W + (Math.min(t, span) / span) * plotW;
 
   useFrame(() => {
@@ -52,7 +53,7 @@ export function SurvivalFigure({ figIndex, agents }: { figIndex: number; agents:
         {finished ? "Results" : "Survival"}
       </h2>
       <p className="section-note">
-        Each line is one board over the same game clock. Ticks are line clears; the line ends where the board topped out. At the end, the board with the most pieces landed wins.
+        Each line is one board over the same game clock. Ticks are line clears; the line ends where the board stopped. {winRule(rules)} "Best" is how often it picked the reference heuristic's top option.
       </p>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMinYMin meet" role="img" aria-label="Survival time per board">
         {levelMarks.map((l) => (
@@ -113,7 +114,13 @@ function SurvivalRow({
   const end = b.outAt ?? liveAt;
   const p50 = percentile(b.stats.latencies, 50);
   const outcome =
-    b.outAt === null ? "still playing" : b.survived ? `survived, ${b.stats.pieces} pieces` : `out at ${fmtSeconds(b.outAt)}, L${b.outLevel}`;
+    b.outAt === null
+      ? "still playing"
+      : b.reachedGoal
+        ? `finished at ${fmtSeconds(b.outAt)}, ${b.stats.pieces} pieces`
+        : b.survived
+          ? `survived, ${b.stats.pieces} pieces`
+          : `out at ${fmtSeconds(b.outAt)}, L${b.outLevel}`;
   const ex = x(end);
   return (
     <g>
@@ -129,13 +136,13 @@ function SurvivalRow({
         <line key={p.at} x1={x(p.at)} x2={x(p.at)} y1={y - 6} y2={y + 6} stroke="var(--ink)" strokeWidth="1" />
       ))}
       {b.outAt !== null &&
-        (b.survived ? (
+        (b.survived || b.reachedGoal ? (
           <rect x={ex - 5} y={y - 5} width="10" height="10" fill="var(--ink)" />
         ) : (
           <path d={`M${ex - 6} ${y - 6} L${ex + 6} ${y + 6} M${ex + 6} ${y - 6} L${ex - 6} ${y + 6}`} stroke="var(--ink)" strokeWidth="2" />
         ))}
       <text x={endX} y={y - 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="13" fill="var(--text)">
-        {b.stats.landed} landed, {b.stats.lines} lines
+        {b.stats.landed} landed, {b.stats.lines} lines, {fmtBest(b.stats)} best
       </text>
       <text x={endX} y={y + 13} textAnchor="end" fontFamily="var(--font-mono)" fontSize="11" fill="var(--muted)">
         {outcome}
@@ -144,9 +151,6 @@ function SurvivalRow({
   );
 }
 
-/** Most pieces landed wins; lines break ties, then time survived. */
-function rank(a: BoardState, b: BoardState): number {
-  if (a.stats.landed !== b.stats.landed) return b.stats.landed - a.stats.landed;
-  if (a.stats.lines !== b.stats.lines) return b.stats.lines - a.stats.lines;
-  return (b.outAt ?? Infinity) - (a.outAt ?? Infinity);
+function standing(b: BoardState) {
+  return { landed: b.stats.landed, lines: b.stats.lines, pieces: b.stats.pieces, outAt: b.outAt, reachedGoal: b.reachedGoal };
 }

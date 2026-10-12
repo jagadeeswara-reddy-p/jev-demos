@@ -34,6 +34,17 @@ export interface BedrockModel {
   /** Prompt-cache prices; default to the input price when not set. */
   cacheReadPricePerM: number;
   cacheWritePricePerM: number;
+  /**
+   * Provider-specific request fields from BEDROCK_<KEY>_EXTRA, passed as the
+   * Converse API's additionalModelRequestFields, e.g. {"reasoning_effort":"low"}.
+   */
+  extra: Record<string, unknown>;
+  /**
+   * "tool" forces the choose_placement tool call. Some models reject a forced
+   * tool (Claude Opus 5.5 on Bedrock does), so "auto" offers the same tool
+   * without forcing it, and a plain-text JSON answer is read instead.
+   */
+  toolChoice: "tool" | "auto";
 }
 
 /** "gpt=us.openai.gpt-6.1-sol,claude=us.anthropic.claude-haiku-5-5" → models. */
@@ -60,6 +71,8 @@ function bedrockModels(spec: string): BedrockModel[] {
         outputPricePerM: num(`BEDROCK_${K}_OUTPUT_PRICE_PER_M`, 0),
         cacheReadPricePerM: num(`BEDROCK_${K}_CACHE_READ_PRICE_PER_M`, inputPricePerM),
         cacheWritePricePerM: num(`BEDROCK_${K}_CACHE_WRITE_PRICE_PER_M`, inputPricePerM),
+        extra: json(`BEDROCK_${K}_EXTRA`),
+        toolChoice: env[`BEDROCK_${K}_TOOL_CHOICE`] === "auto" ? ("auto" as const) : ("tool" as const),
       };
     });
 }
@@ -82,6 +95,30 @@ export const config = {
     timeoutMs: num("TYPESAFE_TIMEOUT_MS", 30_000),
     inputPricePerM: num("TYPESAFE_INPUT_PRICE_PER_M", 0.042),
     outputPricePerM: num("TYPESAFE_OUTPUT_PRICE_PER_M", 0),
+  },
+
+  /**
+   * Laya, the open-source System One model, served by its own `laya-serve`
+   * (Jev-compatible API). Unavailable until LAYA_BASE_URL is set.
+   */
+  laya: {
+    baseUrl: (env.LAYA_BASE_URL ?? "").replace(/\/$/, ""),
+    apiKey: env.LAYA_API_KEY ?? "",
+    /** A laya-serve checkpoint name: typed-decisions, english or multilingual. */
+    model: env.LAYA_MODEL || "typed-decisions",
+    label: env.LAYA_LABEL || "Laya",
+    /** Where it runs, shown on the board, e.g. "self-hosted on a T4". */
+    host: env.LAYA_HOST_NOTE || "self-hosted",
+    /**
+     * Token budgets sent with every request. The full option list is about
+     * 1,100 tokens, far over laya-serve's default option budget (192–256),
+     * so both are raised; laya-serve caps them at its LAYA_MAX_TOKEN_BUDGET (8192).
+     */
+    maxLen: num("LAYA_MAX_LEN", 4096),
+    headMaxLen: num("LAYA_HEAD_MAX_LEN", 2048),
+    timeoutMs: num("LAYA_TIMEOUT_MS", 30_000),
+    inputPricePerM: num("LAYA_INPUT_PRICE_PER_M", 0),
+    outputPricePerM: num("LAYA_OUTPUT_PRICE_PER_M", 0),
   },
 
   bedrock: {

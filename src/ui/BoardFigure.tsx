@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { VISIBLE_HEIGHT } from "../engine/board";
 import { WIDTH_CELLS, drawBoard } from "./drawBoard";
 import { useArena, useFrame } from "./hooks";
-import { fmtMs, percentile, type BoardState, type ShownStatus } from "./store";
+import { fmtBest, fmtMs, percentile, type BoardState, type ShownStatus } from "./store";
 import type { AgentSpec, SourceInfo } from "../arena/types";
 
 const KIND_LABEL = { "system-one": "System One model", llm: "Language model", baseline: "Baseline" } as const;
@@ -131,7 +131,7 @@ function DeadlineBar({ board }: { board: BoardState | undefined }) {
       tone = b.last.status === "ok" ? "normal" : "warn";
     }
     if (b?.outAt !== null && b?.outAt !== undefined) {
-      text = b.survived ? "finished all pieces" : "topped out";
+      text = b.reachedGoal ? `cleared ${b.stats.lines} lines` : b.survived ? "finished all pieces" : "topped out";
       budget = "";
       ratio = 0;
       tone = "normal";
@@ -161,9 +161,9 @@ function Stats({ board }: { board: BoardState | undefined }) {
   const p50 = st ? percentile(st.latencies, 50) : null;
   const p95 = st ? percentile(st.latencies, 95) : null;
   const items: [string, string, boolean?][] = [
-    ["Landed", String(st?.landed ?? 0), true],
+    ["Landed / pieces", `${st?.landed ?? 0} / ${st?.pieces ?? 0}`, true],
     ["Lines", String(st?.lines ?? 0), true],
-    ["Pieces", String(st?.pieces ?? 0)],
+    ["Best moves", st ? fmtBest(st) : "–"],
     ["Decision p50", p50 === null ? "–" : fmtMs(p50)],
     ["Decision p95", p95 === null ? "–" : fmtMs(p95)],
     ["Too late", String(st?.dropped ?? 0), (st?.dropped ?? 0) > 0],

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ReplayBackend, fromJsonl, toJsonl } from "../arena/replayBackend";
 import { ServerBackend, fetchServerSetup } from "../arena/serverBackend";
-import { DEFAULT_CONFIG, type AgentSpec, type ArenaBackend, type ClockMode, type SourceInfo } from "../arena/types";
+import { DEFAULT_CONFIG, SPRINT_LINES, type AgentSpec, type ArenaBackend, type ClockMode, type SourceInfo } from "../arena/types";
 import { MockBackend } from "../mock/mockBackend";
 import { MOCK_SOURCES } from "../mock/mockSource";
 import { BoardFigure } from "./BoardFigure";
@@ -88,6 +88,8 @@ function Page({
   const [mode, setMode] = useState<ClockMode>(MOCK_DEFAULT.mode);
   const [speed, setSpeed] = useState(4);
   const [seed, setSeed] = useState(1);
+  // 0 plays until everyone tops out; SPRINT_LINES races to that many lines.
+  const [targetLines, setTargetLines] = useState(0);
   const [editing, setEditing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -116,6 +118,11 @@ function Page({
   const isLive = (list: AgentSpec[]) => list.some((a) => sourceOf(sources, a.sourceId).live);
   // A live run is in progress: real response times, so no speed-up and no pause.
   const liveRunning = active && backendRef.current instanceof ServerBackend;
+  // The rules on screen: the run's own once it has started (old logs predate sprint mode), otherwise the settings.
+  const rules =
+    editing || !state.config
+      ? { mode, targetLines }
+      : { mode: state.config.mode, targetLines: state.config.targetLines ?? 0 };
   const blocked = agents.map((a) => sourceOf(sources, a.sourceId)).find((s) => !s.available);
 
   const pickScenario = (id: string) => {
@@ -135,7 +142,7 @@ function Page({
     store.reset();
     setEditing(false);
     if (live) store.setStatus("running");
-    backend.start({ ...DEFAULT_CONFIG, seed, mode, agents });
+    backend.start({ ...DEFAULT_CONFIG, seed, mode, targetLines, agents });
   };
 
   const replay = (events = store.recording.slice()) => {
@@ -215,7 +222,7 @@ function Page({
 
       <div className="arena">
         <div className="arena-main">
-          <SurvivalFigure figIndex={1} agents={shown} />
+          <SurvivalFigure figIndex={1} agents={shown} rules={rules} />
           <div className="boards">
             {shown.map((spec, i) => (
               <BoardFigure
@@ -236,7 +243,10 @@ function Page({
             </span>
             <ClockStat />
             <span className="stat">
-              clock <b>{(state.config?.mode ?? mode) === "realtime" ? "real time" : "frozen"}</b>
+              clock <b>{rules.mode === "realtime" ? "real time" : "frozen"}</b>
+            </span>
+            <span className="stat">
+              goal <b>{rules.targetLines ? `${rules.targetLines} lines` : "survive"}</b>
             </span>
             <span className="stat">
               seed <b>{state.config?.seed ?? seed}</b>
@@ -269,6 +279,26 @@ function Page({
                 {(["realtime", "frozen"] as const).map((m) => (
                   <button key={m} type="button" aria-pressed={mode === m} disabled={!editable} onClick={() => (setMode(m), setEditing(true))}>
                     {m === "realtime" ? "Real time" : "Frozen"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="control">
+              <span className="label" id="goal-label">
+                Goal
+              </span>
+              <div className="segmented" role="group" aria-labelledby="goal-label">
+                {[0, SPRINT_LINES].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={targetLines === n}
+                    disabled={!editable}
+                    title={n ? `Race to clear ${n} lines` : "Play until every board tops out"}
+                    onClick={() => (setTargetLines(n), setEditing(true))}
+                  >
+                    {n ? `${n} lines` : "Survive"}
                   </button>
                 ))}
               </div>
