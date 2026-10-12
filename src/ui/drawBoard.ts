@@ -106,7 +106,7 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
   const ann = b.annotation;
   if (ann && b.lastLock && ann.pieceId === b.lastLock.pieceId) {
     for (const alt of ann.alternatives) {
-      outline(ctx, alt.candidate.cells, cell, th.inkSoft, [4, 3], 1.25);
+      outline(ctx, alt.candidate.cells, cell, th.inkSoft, [4, 3], 1, 0.4);
       callouts.push({
         y: centerY(alt.candidate.cells, cell),
         anchor: rightEdge(alt.candidate.cells, cell),
@@ -115,7 +115,7 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
         strong: false,
       });
     }
-    outline(ctx, b.lastLock.cells, cell, th.inkDeep, [], 2);
+    outline(ctx, b.lastLock.cells, cell, th.ink, [], 1.5, 0.5);
     if (ann.chosen) {
       callouts.push({
         y: centerY(b.lastLock.cells, cell),
@@ -206,8 +206,8 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
     ctx.strokeRect(sx + 0.75, sy + 0.75, sw - 1.5, sh - 1.5);
     ctx.fillStyle = th.ink;
     ctx.textAlign = "center";
-    ctx.font = `${Math.round(cell * 0.78)}px "Silkscreen", ui-monospace, monospace`;
-    ctx.fillText(b.reachedGoal ? "FINISHED" : b.survived ? "SURVIVED" : "TOPPED OUT", W / 2, sy + cell * 0.45);
+    ctx.font = `italic 600 ${Math.round(cell * 0.95)}px "Newsreader", Georgia, serif`;
+    ctx.fillText(b.reachedGoal ? "Finished" : b.survived ? "Survived" : "Topped out", W / 2, sy + cell * 0.45);
     ctx.fillStyle = th.muted;
     ctx.font = mono(cell * 0.4);
     const detail = b.reachedGoal
@@ -239,8 +239,9 @@ function drawMini(ctx: CanvasRenderingContext2D, type: PieceType, x0: number, y0
 }
 
 /** Traces only the outer edges of a group of cells, so a piece reads as one shape. */
-function outline(ctx: CanvasRenderingContext2D, cells: readonly Cell[], cell: number, color: string, dash: number[], width: number) {
+function outline(ctx: CanvasRenderingContext2D, cells: readonly Cell[], cell: number, color: string, dash: number[], width: number, alpha = 1) {
   const set = new Set(cells.map(([x, y]) => `${x},${y}`));
+  ctx.globalAlpha = alpha;
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.setLineDash(dash);
@@ -259,6 +260,7 @@ function outline(ctx: CanvasRenderingContext2D, cells: readonly Cell[], cell: nu
   }
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
 }
 
 function centerY(cells: readonly Cell[], cell: number): number {

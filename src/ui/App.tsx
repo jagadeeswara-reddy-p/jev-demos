@@ -5,17 +5,17 @@ import { DEFAULT_CONFIG, SPRINT_LINES, type AgentSpec, type ArenaBackend, type C
 import { MockBackend } from "../mock/mockBackend";
 import { MOCK_SOURCES } from "../mock/mockSource";
 import { BoardFigure } from "./BoardFigure";
-import { EventLog } from "./EventLog";
 import { ArenaContext, useArenaState } from "./hooks";
 import { ResultsScreen } from "./ResultsScreen";
 import { SCENARIOS } from "./scenarios";
 import { ScoreStrip } from "./ScoreStrip";
 import { ArenaStore, fmtClock, fmtMs, type ArenaState } from "./store";
-import { SurvivalFigure } from "./SurvivalFigure";
+import { Icon } from "./Icon";
 import { ThemeToggle } from "./ThemeToggle";
 
 const MOCK_DEFAULT = SCENARIOS.find((s) => s.id === "jev-vs-llm")!;
-const SPEEDS = [1, 2, 4, 8];
+// Speed isn't offered on screen (recordings play at 1×); ?speed=8 fast-forwards mock runs and replays.
+const SPEED = Math.max(1, Number(new URLSearchParams(location.search).get("speed")) || 1);
 
 let nextAgent = 1;
 
@@ -88,7 +88,6 @@ function Page({
   const [scenarioId, setScenarioId] = useState(MOCK_DEFAULT.id);
   const [agents, setAgents] = useState<AgentSpec[]>(() => specsFor(MOCK_SOURCES, MOCK_DEFAULT.sources));
   const [mode, setMode] = useState<ClockMode>(MOCK_DEFAULT.mode);
-  const [speed, setSpeed] = useState(4);
   const [seed, setSeed] = useState(1);
   // 0 plays until everyone tops out; SPRINT_LINES races to that many lines.
   const [targetLines, setTargetLines] = useState(0);
@@ -142,7 +141,7 @@ function Page({
     const live = isLive(agents);
     const backend = live ? new ServerBackend((msg) => (setError(msg), store.setStatus("idle"))) : new MockBackend();
     use(backend);
-    backend.setSpeed(live ? 1 : speed);
+    backend.setSpeed(live ? 1 : SPEED);
     store.reset();
     setEditing(false);
     if (live) store.setStatus("running");
@@ -154,7 +153,7 @@ function Page({
     setError(null);
     const backend = new ReplayBackend(events);
     use(backend);
-    backend.setSpeed(speed);
+    backend.setSpeed(SPEED);
     store.reset();
     setEditing(false);
     setPhase("fight");
@@ -176,11 +175,6 @@ function Page({
       store.state.endAt = store.state.lastAt;
       store.setStatus("finished");
     }
-  };
-
-  const changeSpeed = (s: number) => {
-    setSpeed(s);
-    backendRef.current.setSpeed(s);
   };
 
   const exportLog = () => {
@@ -238,200 +232,124 @@ function Page({
     );
   }
 
-  const runButtons = (
-    <>
-      {state.status === "running" && !liveRunning && (
-        <button type="button" className="btn" onClick={pause}>
-          Pause
-        </button>
-      )}
-      {state.status === "paused" && (
-        <button type="button" className="btn primary" onClick={resume}>
-          Resume
-        </button>
-      )}
-      {active && (
-        <button type="button" className="btn" onClick={stop}>
-          Stop
-        </button>
-      )}
-    </>
-  );
-
   const boardFigures = shown.map((spec, i) => (
     <BoardFigure key={spec.id} index={i + 1} spec={spec} sources={sources} board={state.boards.find((b) => b.spec.id === spec.id)} />
   ));
+  const cols = Math.min(3, Math.max(1, shown.length));
+  const rowCount = Math.ceil(shown.length / cols);
+  const note = error ?? (blocked && editable ? `${blocked.label} can't run yet: ${blocked.reason}.` : null);
 
-  if (phase === "fight") {
-    const cols = Math.min(3, Math.max(1, shown.length));
-    const rowCount = Math.ceil(shown.length / cols);
-    return (
-      <main className="page stage">
-        <header className="stage-bar">
-          <h1 className="stage-title">Deadline Tetris</h1>
-          <Readout state={state} rules={rules} seed={seed} />
-          <div className="btn-row">
-            {!liveRunning && (
-              <div className="segmented" role="group" aria-label="Speed">
-                {SPEEDS.map((sp) => (
-                  <button key={sp} type="button" aria-pressed={speed === sp} onClick={() => changeSpeed(sp)}>
-                    {sp}×
-                  </button>
-                ))}
-              </div>
-            )}
-            {runButtons}
-          </div>
-        </header>
-        {error && <p className="scenario-note">{error}</p>}
-        <ScoreStrip agents={shown} rules={rules} />
-        <div
-          className="boards"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }}
-        >
-          {boardFigures}
-        </div>
-      </main>
-    );
-  }
-
+  // One screen for setting up and for playing: the bar holds the settings until
+  // Start, then the live readout; the cards stay where they are.
   return (
-    <main className="page">
-      <header className="masthead">
-        <h1>Deadline Tetris</h1>
-        <p>
-          Models play the same game, piece for piece. The pieces keep falling while each one thinks,{" "}
-          <strong>so an answer that comes too late doesn't count.</strong>
-        </p>
-      </header>
-      <div className="rule" aria-hidden="true" />
-
-
-      <div className="arena">
-        <div className="arena-main">
-          <SurvivalFigure figIndex={1} agents={shown} rules={rules} />
-          <div className="boards">{boardFigures}</div>
-        </div>
-        <aside className="arena-side">
-          <Readout state={state} rules={rules} seed={seed} />
-          <section className="controls" aria-label="Run settings">
-            <div className="control">
-              <label className="label" htmlFor="scenario">
-                Line-up
-              </label>
-              <select id="scenario" className="field" value={scenarioId} disabled={!editable} onChange={(e) => pickScenario(e.target.value)}>
-                {SCENARIOS.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="control">
-              <span className="label" id="clock-label">
-                Clock
-              </span>
-              <div className="segmented" role="group" aria-labelledby="clock-label">
-                {(["realtime", "frozen"] as const).map((m) => (
-                  <button key={m} type="button" aria-pressed={mode === m} disabled={!editable} onClick={() => (setMode(m), setEditing(true))}>
-                    {m === "realtime" ? "Real time" : "Frozen"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="control">
-              <span className="label" id="goal-label">
-                Goal
-              </span>
-              <div className="segmented" role="group" aria-labelledby="goal-label">
-                {[0, SPRINT_LINES].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    aria-pressed={targetLines === n}
-                    disabled={!editable}
-                    title={n ? `Race to clear ${n} lines` : "Play until every board tops out"}
-                    onClick={() => (setTargetLines(n), setEditing(true))}
-                  >
-                    {n ? `${n} lines` : "Survive"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="control">
-              <span className="label" id="speed-label">
-                Speed
-              </span>
-              <div className="segmented" role="group" aria-labelledby="speed-label">
-                {SPEEDS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    aria-pressed={liveRunning ? s === 1 : speed === s}
-                    disabled={liveRunning}
-                    title={liveRunning ? "Live runs play at 1×. Replay the run afterwards to fast-forward." : undefined}
-                    onClick={() => changeSpeed(s)}
-                  >
-                    {s}×
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="control">
-              <label className="label" htmlFor="seed">
-                Seed
-              </label>
-              <div className="btn-row">
-                <input
-                  id="seed"
-                  className="field"
-                  type="number"
-                  min={0}
-                  value={seed}
-                  disabled={!editable}
-                  onChange={(e) => (setSeed(Math.max(0, Number(e.target.value) || 0)), setEditing(true))}
-                />
-                <button
-                  type="button"
-                  className="icon-btn"
-                  style={{ height: 34, width: 34 }}
-                  disabled={!editable}
-                  onClick={() => (setSeed(Math.floor(Math.random() * 100_000)), setEditing(true))}
-                  aria-label="Pick a random seed"
-                  title="Random seed"
-                >
-                  ↻
-                </button>
-              </div>
-            </div>
-
-            <ThemeToggle />
-
-            <div className="btn-row">
-              {!active && (
-                <button type="button" className="btn primary" onClick={startRun} disabled={agents.length === 0 || Boolean(blocked)}>
-                  {isLive(agents) ? "Start live run" : "Start run"}
+    <main className="page stage">
+      <header className="stage-bar">
+        <h1 className="stage-title">Deadline Tetris</h1>
+        {phase === "fight" ? (
+          <>
+            <Readout state={state} rules={rules} seed={seed} />
+            <div className="bar-group">
+              {state.status === "running" && !liveRunning && (
+                <button type="button" className="btn" onClick={pause}>
+                  Pause
                 </button>
               )}
-              {runButtons}
+              {state.status === "paused" && (
+                <button type="button" className="btn primary" onClick={resume}>
+                  Resume
+                </button>
+              )}
+              {active && (
+                <button type="button" className="btn" onClick={stop}>
+                  Stop
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="bar-settings" aria-label="Run settings">
+              <label className="bar-field">
+                <span className="bar-label">Line-up</span>
+                <select className="field" value={scenarioId} onChange={(e) => pickScenario(e.target.value)} title={scenario.note}>
+                  {SCENARIOS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="bar-field">
+                <span className="bar-label" id="clock-label">
+                  Clock
+                </span>
+                <div className="segmented" role="group" aria-labelledby="clock-label">
+                  {(["realtime", "frozen"] as const).map((m) => (
+                    <button key={m} type="button" aria-pressed={mode === m} onClick={() => (setMode(m), setEditing(true))}>
+                      {m === "realtime" ? "Real time" : "Frozen"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="bar-field">
+                <span className="bar-label" id="goal-label">
+                  Goal
+                </span>
+                <div className="segmented" role="group" aria-labelledby="goal-label">
+                  {[0, SPRINT_LINES].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      aria-pressed={targetLines === n}
+                      title={n ? `Race to clear ${n} lines` : "Play until every board tops out"}
+                      onClick={() => (setTargetLines(n), setEditing(true))}
+                    >
+                      {n ? `${n} lines` : "Survive"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="bar-field">
+                <label className="bar-label" htmlFor="seed">
+                  Seed
+                </label>
+                <span className="seed-group">
+                  <input
+                    id="seed"
+                    className="field seed-field"
+                    type="number"
+                    min={0}
+                    value={seed}
+                    onChange={(e) => (setSeed(Math.max(0, Number(e.target.value) || 0)), setEditing(true))}
+                  />
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => (setSeed(Math.floor(Math.random() * 100_000)), setEditing(true))}
+                    aria-label="Pick a random seed"
+                    title="Random seed"
+                  >
+                    <Icon name="dice" />
+                  </button>
+                </span>
+              </div>
+            </div>
+            <div className="bar-group">
               {state.status === "finished" && state.config && (
-                <button type="button" className="btn" onClick={() => setPhase("results")}>
-                  Results
+                <button type="button" className="icon-btn" onClick={() => setPhase("results")} aria-label="Show results" title="Results">
+                  <Icon name="chart" />
                 </button>
               )}
-              <button type="button" className="btn" onClick={() => replay()} disabled={!hasRecording}>
-                Replay
+              <button type="button" className="icon-btn" onClick={() => replay()} disabled={!hasRecording} aria-label="Replay the last run" title="Replay">
+                <Icon name="replay" />
               </button>
-              <button type="button" className="btn" onClick={exportLog} disabled={!hasRecording}>
-                Export log
+              <button type="button" className="icon-btn" onClick={exportLog} disabled={!hasRecording} aria-label="Export the run log" title="Export log">
+                <Icon name="download" />
               </button>
-              <button type="button" className="btn" onClick={() => fileRef.current?.click()} disabled={active}>
-                Load log
+              <button type="button" className="icon-btn" onClick={() => fileRef.current?.click()} aria-label="Load a run log" title="Load log">
+                <Icon name="upload" />
               </button>
+              <ThemeToggle />
               <input
                 ref={fileRef}
                 type="file"
@@ -443,20 +361,17 @@ function Page({
                   e.target.value = "";
                 }}
               />
+              <button type="button" className="btn primary start-btn" onClick={startRun} disabled={agents.length === 0 || Boolean(blocked)}>
+                {isLive(agents) ? "Start live run" : "Start"}
+              </button>
             </div>
-            <p className="scenario-note">
-              {error ??
-                (blocked && editable
-                  ? `${blocked.label} can't run yet: ${blocked.reason}.`
-                  : liveRunning
-                    ? "Live run: real response times at 1×. When it ends, use Replay to watch it faster."
-                    : isLive(agents) && editable
-                      ? `${scenario.note} Live runs play at 1×.`
-                      : scenario.note)}
-            </p>
-          </section>
-          <EventLog />
-        </aside>
+          </>
+        )}
+      </header>
+      {note && <p className="bar-note">{note}</p>}
+      <ScoreStrip agents={shown} rules={rules} />
+      <div className="boards" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }}>
+        {boardFigures}
       </div>
     </main>
   );

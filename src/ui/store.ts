@@ -401,6 +401,7 @@ export function fmtBest(st: BoardStats): string {
 
 export function fmtCost(usd: number): string {
   if (usd === 0) return "$0";
+  if (usd < 0.0001) return `$${usd.toPrecision(2)}`;
   if (usd < 0.01) return `$${usd.toFixed(4)}`;
   return `$${usd.toFixed(2)}`;
 }

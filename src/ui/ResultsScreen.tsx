@@ -1,25 +1,43 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  LabelList,
+  Line,
+  LineChart,
+  ReferenceArea,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  XAxis,
+  YAxis,
+  ZAxis,
+} from "recharts";
 import { compareStandings, winRule, type RankRules } from "../arena/ranking";
 import type { AgentKind, RunConfig } from "../arena/types";
 import { standing } from "./ScoreStrip";
 import { fmtClock, fmtCost, fmtMs, percentile, type BoardState } from "./store";
 
-// The screen after a fight. It reveals in order, one beat at a time, so a
-// recording can sit on it: the winner, the race replayed, smart against fast,
-// then each measure side by side, then every number in one table.
+// The screen after a fight, sized to one window with no scrolling so it can be
+// recorded as is. It reveals in beats: the winner, the race replayed, the game
+// over time, smart against fast, then four measures as bar charts and one row
+// of numbers per model. Each model keeps one colour and one marker throughout.
 
-const KIND = { "system-one": "System One model", llm: "Language model", baseline: "Baseline" } satisfies Record<AgentKind, string>;
+const KIND = { "system-one": "System One", llm: "Language model", baseline: "Baseline" } satisfies Record<AgentKind, string>;
+const SHAPES = ["circle", "square", "diamond", "triangle", "star", "cross"] as const;
+type Shape = (typeof SHAPES)[number];
 
 const RACE_MS = 5000;
-const BEAT = {
-  race: 300,
-  scatter: 1200,
-  minis: RACE_MS + 600,
-  table: RACE_MS + 2200,
-};
+const BEAT = { race: 300, time: 700, scatter: 1100, bars: 1700, table: 2400 };
 
 interface Row {
   b: BoardState;
+  /** Position on the fight screen; picks the model's colour and marker. */
+  slot: number;
+  key: string;
+  color: string;
+  shape: Shape;
   rank: number;
   name: string;
   kind: AgentKind;
@@ -54,6 +72,7 @@ export function ResultsScreen({ boards, config, rules, endAt, mocked, onBack, on
   const rows = toRows(boards, rules);
   const winner = rows[0];
   const sprint = rules.targetLines > 0;
+  const metric = sprint ? "lines" : "landed";
 
   return (
     <main className="page results">
@@ -66,6 +85,16 @@ export function ResultsScreen({ boards, config, rules, endAt, mocked, onBack, on
           <h1 className="results-title">{winner ? `${winner.name} wins` : "No result"}</h1>
           <p className="results-rule">{winRule(rules)}</p>
         </div>
+        <ul className="results-legend" aria-label="Models">
+          {[...rows]
+            .sort((a, b) => a.slot - b.slot)
+            .map((r) => (
+              <li key={r.key}>
+                <Marker shape={r.shape} color={r.color} />
+                {r.name}
+              </li>
+            ))}
+        </ul>
         <div className="btn-row results-actions">
           <button type="button" className="btn" onClick={onBack}>
             Back to boards
@@ -79,39 +108,64 @@ export function ResultsScreen({ boards, config, rules, endAt, mocked, onBack, on
         </div>
       </header>
 
-      <div className="results-grid">
-        <section className="results-card reveal" style={delay(BEAT.race)} aria-labelledby="race-title">
-          <h2 id="race-title" className="section-title">
-            The game, replayed
-          </h2>
-          <p className="section-note">{sprint ? "Lines cleared over the game." : "Pieces landed over the game: placed where the model chose, in time."}</p>
-          <Race rows={rows} metric={sprint ? "lines" : "landed"} endAt={endAt} startDelay={BEAT.race + 400} />
-        </section>
+      <Card area="race" title="The game, replayed" note={sprint ? "Lines cleared, played back." : "Pieces landed, played back."} at={BEAT.race}>
+        <Race rows={rows} metric={metric} endAt={endAt} startDelay={BEAT.race + 400} />
+      </Card>
 
-        <section className="results-card reveal" style={delay(BEAT.scatter)} aria-labelledby="scatter-title">
-          <h2 id="scatter-title" className="section-title">
-            Smart versus fast
-          </h2>
-          <p className="section-note">How good each model's choices were against how long it took to make them. Up is better moves, left is faster.</p>
-          <Scatter rows={rows} startDelay={BEAT.scatter + 300} />
-        </section>
-      </div>
+      <Card area="time" title="Over the game" note={sprint ? "Lines cleared against game time." : "Pieces landed against game time. A line goes flat when its board tops out."} at={BEAT.time}>
+        <OverTime rows={rows} metric={metric} endAt={endAt} />
+      </Card>
 
-      <div className="results-minis">
-        <MiniBars title="Pieces landed" rows={rows} value={(r) => r.landed} fmt={(v) => String(Math.round(v))} better="high" startDelay={BEAT.minis} />
-        <MiniBars title="Best moves" rows={rows} value={(r) => (r.best === null ? null : r.best * 100)} fmt={(v) => `${Math.round(v)}%`} better="high" startDelay={BEAT.minis + 250} />
-        <MiniBars title="Decision time, p50" rows={rows} value={(r) => r.p50} fmt={fmtMs} better="low" startDelay={BEAT.minis + 500} />
-        <MiniBars title="Too late or bad" rows={rows} value={(r) => r.late + r.bad} fmt={(v) => String(Math.round(v))} better="low" startDelay={BEAT.minis + 750} />
-        <MiniBars title="Cost" rows={rows} value={(r) => r.cost} fmt={fmtCost} better="low" startDelay={BEAT.minis + 1000} />
-      </div>
+      <Card area="scatter" title="Smart versus fast" note="Best moves against time per decision. Up is smarter, left is faster." at={BEAT.scatter}>
+        <SmartFast rows={rows} />
+      </Card>
 
-      <section className="results-card reveal" style={delay(BEAT.table)} aria-labelledby="table-title">
-        <h2 id="table-title" className="section-title">
-          Every number
-        </h2>
-        <MetricTable rows={rows} startDelay={BEAT.table + 200} />
+      <Card area="b1" title="Time per decision" note="p50 and p95, lower is better." at={BEAT.bars}>
+        <Bars rows={rows} series={[{ key: "p50", label: "p50", get: (r) => r.p50 }, { key: "p95", label: "p95", get: (r) => r.p95, faint: true }]} fmt={fmtMs} />
+      </Card>
+
+      <Card area="b2" title="Move quality" note="Best moves and pieces placed in time." at={BEAT.bars + 150}>
+        <Bars
+          rows={rows}
+          series={[
+            { key: "best", label: "best", get: (r) => (r.best === null ? null : r.best * 100) },
+            { key: "inTime", label: "in time", get: (r) => (r.inTime === null ? null : r.inTime * 100), faint: true },
+          ]}
+          fmt={pct}
+          max={100}
+        />
+      </Card>
+
+      <Card area="b3" title="Mistakes" note="Too late plus bad answers, lower is better." at={BEAT.bars + 300}>
+        <Bars
+          rows={rows}
+          series={[
+            { key: "late", label: "too late", get: (r) => r.late },
+            { key: "bad", label: "bad", get: (r) => r.bad, faint: true },
+          ]}
+          fmt={int}
+          stacked
+        />
+      </Card>
+
+      <Card area="b4" title="Cost" note="Total for the run, lower is better." at={BEAT.bars + 450}>
+        <Bars rows={rows} series={[{ key: "cost", label: "cost", get: (r) => r.cost }]} fmt={fmtCost} />
+      </Card>
+
+      <section className="results-card results-table reveal" style={{ ...delay(BEAT.table), gridArea: "table" }} aria-label="Every number">
+        <SummaryTable rows={rows} sprint={sprint} startDelay={BEAT.table + 200} />
       </section>
     </main>
+  );
+}
+
+function Card({ area, title, note, at, children }: { area: string; title: string; note: string; at: number; children: ReactNode }) {
+  return (
+    <section className="results-card reveal" style={{ ...delay(at), gridArea: area }} aria-label={title}>
+      <h2 className="section-title">{title}</h2>
+      <p className="section-note">{note}</p>
+      <div className="chart-box">{children}</div>
+    </section>
   );
 }
 
@@ -121,26 +175,24 @@ function Race({ rows, metric, endAt, startDelay }: { rows: Row[]; metric: "lande
   const t = useProgress(startDelay, RACE_MS);
   const at = t * endAt;
   const values = rows.map((r) => valueAt(r.b, metric, at));
-  const max = Math.max(1, ...rows.map((r) => (metric === "landed" ? r.landed : r.lines)));
+  const max = Math.max(1, ...rows.map((r) => r[metric]));
   const done = t >= 1;
   // While playing, order by the value so far; at the end, by the official ranking.
   const order = rows
-    .map((r, i) => ({ r, i, v: values[i] }))
+    .map((r, i) => ({ r, v: values[i] }))
     .sort((a, b) => (done ? a.r.rank - b.r.rank : b.v - a.v || a.r.rank - b.r.rank));
-  const slot = new Map(order.map((o, k) => [o.r.name, k]));
+  const place = new Map(order.map((o, k) => [o.r.key, k]));
 
   return (
-    <div className="race" style={{ height: rows.length * 44 }} role="img" aria-label={`Final ranking: ${rows.map((r) => r.name).join(", ")}`}>
+    <div className="race" style={{ ["--n" as string]: rows.length }} role="img" aria-label={`Final ranking: ${rows.map((r) => r.name).join(", ")}`}>
       {rows.map((r, i) => (
-        <div key={r.name} className="race-row" data-winner={done && r.rank === 1 ? "true" : undefined} style={{ transform: `translateY(${(slot.get(r.name) ?? i) * 44}px)` }}>
-          <span className="race-rank">{done ? r.rank : (slot.get(r.name) ?? i) + 1}</span>
+        <div key={r.key} className="race-row" data-winner={done && r.rank === 1 ? "true" : undefined} style={{ transform: `translateY(${(place.get(r.key) ?? i) * 100}%)` }}>
+          <span className="race-rank">{done ? r.rank : (place.get(r.key) ?? i) + 1}</span>
           <span className="race-name">{r.name}</span>
           <span className="race-track">
-            <span className="race-fill" style={{ width: `${(values[i] / max) * 100}%` }} />
+            <span className="race-fill" style={{ width: `${(values[i] / max) * 100}%`, background: r.color }} />
           </span>
-          <span className="race-value">
-            {values[i]} {metric}
-          </span>
+          <span className="race-value">{values[i]}</span>
         </div>
       ))}
       <span className="race-clock">{fmtClock(at)}</span>
@@ -157,174 +209,234 @@ function valueAt(b: BoardState, metric: "landed" | "lines", at: number): number 
   return v;
 }
 
-// ---------- smart versus fast ----------
+// ---------- charts ----------
 
-const SC = { W: 560, H: 300, L: 44, R: 16, T: 14, B: 36 };
+const AXIS = { fontFamily: "var(--font-mono)", fontSize: 11, fill: "var(--muted)" };
+const animate = !reducedMotion();
 
-function Scatter({ rows, startDelay }: { rows: Row[]; startDelay: number }) {
-  const plotted = rows.filter((r) => r.p50 !== null && r.best !== null);
-  const lo = Math.min(100, ...plotted.map((r) => r.p50!)) / 1.6;
-  const hi = Math.max(2000, ...plotted.map((r) => r.p50!)) * 1.6;
-  const x = (ms: number) => SC.L + ((Math.log(ms) - Math.log(lo)) / (Math.log(hi) - Math.log(lo))) * (SC.W - SC.L - SC.R);
-  const y = (share: number) => SC.T + (1 - share) * (SC.H - SC.T - SC.B);
+function OverTime({ rows, metric, endAt }: { rows: Row[]; metric: "landed" | "lines"; endAt: number }) {
+  const N = 80;
+  const data = Array.from({ length: N + 1 }, (_, k) => {
+    const at = (k / N) * endAt;
+    const point: Record<string, number> = { at };
+    for (const r of rows) point[r.key] = valueAt(r.b, metric, at);
+    return point;
+  });
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
+        <CartesianGrid stroke="var(--ink-faint)" strokeDasharray="2 4" vertical={false} />
+        <XAxis dataKey="at" type="number" domain={[0, endAt]} tickFormatter={fmtClock} tick={AXIS} stroke="var(--ink-soft)" tickCount={5} />
+        <YAxis tick={AXIS} stroke="var(--ink-soft)" width={44} />
+        {[...rows].reverse().map((r) => (
+          <Line
+            key={r.key}
+            dataKey={r.key}
+            type="stepAfter"
+            stroke={r.color}
+            strokeWidth={r.rank === 1 ? 3 : 1.75}
+            dot={false}
+            isAnimationActive={animate}
+            animationBegin={BEAT.time + 300}
+            animationDuration={2200}
+          />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function SmartFast({ rows }: { rows: Row[] }) {
+  const pts = rows.filter((r) => r.p50 !== null && r.best !== null);
+  const lo = Math.min(100, ...pts.map((r) => r.p50!)) / 1.6;
+  const hi = Math.max(2000, ...pts.map((r) => r.p50!)) * 1.6;
+  // The y axis starts just under the weakest model, in steps of 10%, so close scores stay apart.
+  const yMin = Math.max(0, Math.floor(Math.min(100, ...pts.map((r) => r.best! * 100)) / 10 - 0.5) * 10);
   const ticks = [10, 30, 100, 300, 1000, 3000, 10_000, 30_000].filter((v) => v >= lo && v <= hi);
-
+  const midX = Math.sqrt(lo * hi);
+  const midY = (100 + yMin) / 2;
   return (
-    <svg className="scatter" viewBox={`0 0 ${SC.W} ${SC.H}`} role="img" aria-label="Best-move share against decision time">
-      <rect x={SC.L} y={SC.T} width={(SC.W - SC.L - SC.R) / 2} height={(SC.H - SC.T - SC.B) / 2} fill="var(--ink-faint)" opacity="0.35" />
-      <text x={SC.L + 8} y={SC.T + 18} className="scatter-zone">
-        fast and smart
-      </text>
-      {[0, 0.25, 0.5, 0.75, 1].map((s) => (
-        <g key={s}>
-          <line x1={SC.L} x2={SC.W - SC.R} y1={y(s)} y2={y(s)} stroke="var(--ink-faint)" strokeDasharray="2 4" />
-          <text x={SC.L - 6} y={y(s) + 4} textAnchor="end" className="scatter-tick">
-            {s * 100}%
-          </text>
-        </g>
-      ))}
-      {ticks.map((v) => (
-        <text key={v} x={x(v)} y={SC.H - SC.B + 16} textAnchor="middle" className="scatter-tick">
-          {fmtMs(v)}
-        </text>
-      ))}
-      <line x1={SC.L} x2={SC.W - SC.R} y1={SC.H - SC.B} y2={SC.H - SC.B} stroke="var(--ink-soft)" />
-      <text x={SC.W - SC.R} y={SC.H - 4} textAnchor="end" className="scatter-tick">
-        decision time, p50 (log scale) →
-      </text>
-      {plotted.map((r, i) => {
-        const cx = x(r.p50!);
-        const cy = y(r.best!);
-        const right = cx < SC.W * 0.7;
-        return (
-          <g key={r.name} className="scatter-dot" style={delay(startDelay + i * 180)}>
-            <circle cx={cx} cy={cy} r={r.rank === 1 ? 7 : 5.5} fill={r.rank === 1 ? "var(--ink)" : "var(--sheet)"} stroke="var(--ink)" strokeWidth="1.5" />
-            <text x={cx + (right ? 11 : -11)} y={cy + 4} textAnchor={right ? "start" : "end"} className="scatter-label">
-              {r.name}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+    <ResponsiveContainer width="100%" height="100%">
+      <ScatterChart margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
+        <CartesianGrid stroke="var(--ink-faint)" strokeDasharray="2 4" />
+        <ReferenceArea
+          x1={lo}
+          x2={midX}
+          y1={midY}
+          y2={100}
+          fill="var(--ink-faint)"
+          fillOpacity={0.35}
+          stroke="none"
+          label={{ value: "fast and smart", position: "insideTopLeft", style: { ...AXIS, fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 13 } }}
+        />
+        <XAxis dataKey="p50" type="number" scale="log" domain={[lo, hi]} ticks={ticks} tickFormatter={fmtMs} tick={AXIS} stroke="var(--ink-soft)" allowDataOverflow />
+        <YAxis dataKey="best" type="number" domain={[yMin, 100]} tickFormatter={(v: number) => `${v}%`} tick={AXIS} stroke="var(--ink-soft)" width={48} allowDataOverflow />
+        <ZAxis range={[140, 140]} />
+        {pts.map((r) => (
+          <Scatter
+            key={r.key}
+            data={[{ p50: r.p50, best: r.best! * 100 }]}
+            fill={r.color}
+            shape={r.shape}
+            isAnimationActive={animate}
+            animationBegin={BEAT.scatter + 300 + r.slot * 150}
+            animationDuration={600}
+          />
+        ))}
+      </ScatterChart>
+    </ResponsiveContainer>
   );
 }
 
-// ---------- one measure per panel, same model order everywhere ----------
+interface Series {
+  key: string;
+  label: string;
+  get: (r: Row) => number | null;
+  faint?: boolean;
+}
 
-function MiniBars({
-  title,
-  rows,
-  value,
-  fmt,
-  better,
-  startDelay,
-}: {
-  title: string;
-  rows: Row[];
-  value: (r: Row) => number | null;
-  fmt: (v: number) => string;
-  better: "high" | "low";
-  startDelay: number;
-}) {
-  const vals = rows.map(value);
-  const known = vals.filter((v): v is number => v !== null);
-  const max = Math.max(...known, 1e-9);
-  const top = known.length ? (better === "high" ? Math.max(...known) : Math.min(...known)) : null;
+/** Horizontal bars, one group per model in rank order, with each value printed at the bar's end. */
+function Bars({ rows, series, fmt, max, stacked }: { rows: Row[]; series: Series[]; fmt: (v: number) => string; max?: number; stacked?: boolean }) {
+  const data = rows.map((r) => {
+    const d: Record<string, string | number | null> = { name: r.name };
+    for (const s of series) d[s.key] = s.get(r);
+    return d;
+  });
   return (
-    <section className="results-card mini reveal" style={delay(startDelay)}>
-      <h3 className="mini-title">
-        {title}
-        <span className="mini-better">{better === "high" ? "higher is better" : "lower is better"}</span>
-      </h3>
-      <ul className="mini-list">
-        {rows.map((r, i) => {
-          const v = vals[i];
-          return (
-            <li key={r.name} data-top={v !== null && v === top ? "true" : undefined}>
-              <span className="mini-name">{r.name}</span>
-              <span className="mini-track">
-                <span className="mini-fill grow" style={{ width: v === null ? 0 : `${Math.max(1.5, (v / max) * 100)}%`, ...delay(startDelay + 150 + i * 60) }} />
-              </span>
-              <CountUp className="mini-value" value={v} fmt={fmt} startDelay={startDelay + 150 + i * 60} />
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} layout="vertical" margin={{ top: 0, right: 70, bottom: 0, left: 0 }} barCategoryGap="22%" barGap={1}>
+        <XAxis type="number" hide domain={[0, max ?? "auto"]} />
+        <YAxis type="category" dataKey="name" width={118} tick={{ ...AXIS, fill: "var(--text)" }} tickLine={false} axisLine={{ stroke: "var(--ink-soft)" }} interval={0} />
+        {series.map((s, i) => (
+          <Bar
+            key={s.key}
+            dataKey={s.key}
+            stackId={stacked ? "a" : undefined}
+            fill={s.faint ? "var(--ink-soft)" : "var(--ink)"}
+            fillOpacity={s.faint ? 0.45 : 1}
+            isAnimationActive={animate}
+            animationBegin={BEAT.bars + 300 + i * 200}
+            animationDuration={900}
+          >
+            {(!stacked || i === series.length - 1) && (
+              <LabelList
+                position="right"
+                content={(p) => {
+                  const { x = 0, y = 0, width = 0, height = 0, index = 0 } = p as { x?: number; y?: number; width?: number; height?: number; index?: number };
+                  const values = series.map((ss) => data[index][ss.key] as number | null);
+                  const text = stacked ? fmt(values.reduce<number>((a, v) => a + (v ?? 0), 0)) : values[i] === null ? "–" : fmt(values[i]!);
+                  return (
+                    <text x={Number(x) + Number(width) + 5} y={Number(y) + Number(height) / 2 + 4} style={{ ...AXIS, fill: s.faint ? "var(--muted)" : "var(--text)" }}>
+                      {series.length > 1 && !stacked ? `${text} ${s.label}` : text}
+                    </text>
+                  );
+                }}
+              />
+            )}
+          </Bar>
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 
-// ---------- every number ----------
+// ---------- every number, one row per model ----------
 
-function MetricTable({ rows, startDelay }: { rows: Row[]; startDelay: number }) {
-  const lines: { label: string; value: (r: Row) => number | null; fmt: (v: number) => string; better?: "high" | "low" }[] = [
-    { label: "Pieces landed", value: (r) => r.landed, fmt: (v) => String(Math.round(v)), better: "high" },
-    { label: "Pieces dealt", value: (r) => r.pieces, fmt: (v) => String(Math.round(v)) },
-    { label: "Lines cleared", value: (r) => r.lines, fmt: (v) => String(Math.round(v)), better: "high" },
-    { label: "Placed in time", value: (r) => (r.inTime === null ? null : r.inTime * 100), fmt: (v) => `${Math.round(v)}%`, better: "high" },
-    { label: "Best moves", value: (r) => (r.best === null ? null : r.best * 100), fmt: (v) => `${Math.round(v)}%`, better: "high" },
-    { label: "Decision time p50", value: (r) => r.p50, fmt: fmtMs, better: "low" },
-    { label: "Decision time p95", value: (r) => r.p95, fmt: fmtMs, better: "low" },
-    { label: "Too late", value: (r) => r.late, fmt: (v) => String(Math.round(v)), better: "low" },
-    { label: "Bad answers", value: (r) => r.bad, fmt: (v) => String(Math.round(v)), better: "low" },
+function SummaryTable({ rows, sprint, startDelay }: { rows: Row[]; sprint: boolean; startDelay: number }) {
+  const cols: { label: string; value: (r: Row) => number | null; fmt: (v: number) => string; better?: "high" | "low" }[] = [
+    { label: "Landed", value: (r) => r.landed, fmt: int, better: "high" },
+    { label: "Dealt", value: (r) => r.pieces, fmt: int },
+    { label: "Lines", value: (r) => r.lines, fmt: int, better: "high" },
+    { label: "In time", value: (r) => (r.inTime === null ? null : r.inTime * 100), fmt: pct, better: "high" },
+    { label: "Best moves", value: (r) => (r.best === null ? null : r.best * 100), fmt: pct, better: "high" },
+    { label: "p50", value: (r) => r.p50, fmt: fmtMs, better: "low" },
+    { label: "p95", value: (r) => r.p95, fmt: fmtMs, better: "low" },
+    { label: "Too late", value: (r) => r.late, fmt: int, better: "low" },
+    { label: "Bad", value: (r) => r.bad, fmt: int, better: "low" },
     { label: "Tokens", value: (r) => r.tokens, fmt: (v) => Math.round(v).toLocaleString("en-US") },
     { label: "Cost", value: (r) => r.cost, fmt: fmtCost, better: "low" },
-    { label: "Cost per landed piece", value: (r) => r.costPerLanded, fmt: fmtCost, better: "low" },
+    { label: "Per landed", value: (r) => r.costPerLanded, fmt: fmtCost, better: "low" },
   ];
+  const tops = cols.map((c) => {
+    const known = rows.map(c.value).filter((v): v is number => v !== null);
+    return c.better && known.length > 1 ? (c.better === "high" ? Math.max(...known) : Math.min(...known)) : null;
+  });
   return (
-    <div className="table-scroll">
-      <table className="metric-table">
-        <thead>
-          <tr>
-            <th scope="col" />
-            {rows.map((r) => (
-              <th key={r.name} scope="col">
-                <span className="mt-rank">{r.rank}</span>
-                {r.name}
-                <span className="mt-kind">{KIND[r.kind]}</span>
-              </th>
-            ))}
+    <table className="metric-table">
+      <thead>
+        <tr>
+          <th scope="col" className="mt-left">
+            Model
+          </th>
+          {cols.map((c) => (
+            <th key={c.label} scope="col">
+              {c.label}
+            </th>
+          ))}
+          <th scope="col" className="mt-left">
+            {sprint ? "Finish" : "Outcome"}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, ri) => (
+          <tr key={r.key}>
+            <th scope="row" className="mt-left">
+              <span className="mt-rank">{r.rank}</span>
+              <Marker shape={r.shape} color={r.color} />
+              <span className="mt-name">{r.name}</span>
+              <span className="mt-kind">{KIND[r.kind]}</span>
+            </th>
+            {cols.map((c, ci) => {
+              const v = c.value(r);
+              return (
+                <td key={c.label} data-top={tops[ci] !== null && v === tops[ci] ? "true" : undefined}>
+                  <CountUp value={v} fmt={c.fmt} startDelay={startDelay + ri * 60} />
+                </td>
+              );
+            })}
+            <td className="mt-left mt-outcome">{r.outcome}</td>
           </tr>
-        </thead>
-        <tbody>
-          {lines.map((line, li) => {
-            const vals = rows.map(line.value);
-            const known = vals.filter((v): v is number => v !== null);
-            const top = line.better && known.length > 1 ? (line.better === "high" ? Math.max(...known) : Math.min(...known)) : null;
-            return (
-              <tr key={line.label}>
-                <th scope="row">{line.label}</th>
-                {rows.map((r, i) => (
-                  <td key={r.name} data-top={top !== null && vals[i] === top ? "true" : undefined}>
-                    <CountUp value={vals[i]} fmt={line.fmt} startDelay={startDelay + li * 70} />
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-          <tr>
-            <th scope="row">Outcome</th>
-            {rows.map((r) => (
-              <td key={r.name} className="mt-outcome">
-                {r.outcome}
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
 // ---------- helpers ----------
 
+/** A small SVG marker in the model's colour and shape, for the legend and the table. */
+function Marker({ shape, color }: { shape: Shape; color: string }) {
+  const paths: Record<Shape, string> = {
+    circle: "M6 1a5 5 0 1 0 0 10A5 5 0 0 0 6 1z",
+    square: "M1.5 1.5h9v9h-9z",
+    diamond: "M6 0.5l5.5 5.5L6 11.5 0.5 6z",
+    triangle: "M6 1l5.5 10h-11z",
+    star: "M6 0.5l1.6 3.6 3.9.4-2.9 2.6.8 3.9L6 9 2.6 11l.8-3.9L.5 4.5l3.9-.4z",
+    cross: "M4.5 0.5h3v4h4v3h-4v4h-3v-4h-4v-3h4z",
+  };
+  return (
+    <svg className="marker" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+      <path d={paths[shape]} fill={color} />
+    </svg>
+  );
+}
+
+const int = (v: number) => String(Math.round(v));
+const pct = (v: number) => `${Math.round(v)}%`;
+
 function toRows(boards: BoardState[], rules: RankRules): Row[] {
-  return [...boards]
-    .sort((a, b) => compareStandings(standing(a), standing(b), rules))
-    .map((b, i) => {
+  return boards
+    .map((b, slot) => ({ b, slot }))
+    .sort((x, y) => compareStandings(standing(x.b), standing(y.b), rules))
+    .map(({ b, slot }, i) => {
       const st = b.stats;
       return {
         b,
+        slot,
+        key: `m${slot}`,
+        color: `var(--series-${(slot % 6) + 1})`,
+        shape: SHAPES[slot % SHAPES.length],
         rank: i + 1,
         name: b.spec.name,
         kind: b.spec.kind,
@@ -340,7 +452,7 @@ function toRows(boards: BoardState[], rules: RankRules): Row[] {
         cost: st.costUsd,
         costPerLanded: st.landed ? st.costUsd / st.landed : null,
         tokens: st.inputTokens + st.outputTokens,
-        outcome: b.reachedGoal ? `reached ${rules.targetLines} lines at ${fmtClock(b.outAt ?? 0)}` : b.survived ? "survived" : b.outAt !== null ? `topped out at ${fmtClock(b.outAt)}` : "still playing",
+        outcome: b.reachedGoal ? `${rules.targetLines} lines at ${fmtClock(b.outAt ?? 0)}` : b.survived ? "survived" : b.outAt !== null ? `out at ${fmtClock(b.outAt)}` : "still playing",
       };
     });
 }
@@ -349,7 +461,9 @@ function delay(ms: number) {
   return { ["--delay" as string]: `${ms}ms` } as CSSProperties;
 }
 
-const reducedMotion = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function reducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 /** 0 → 1 over `duration` after `startDelay`, eased; jumps to 1 when motion is reduced. */
 function useProgress(startDelay: number, duration: number): number {
@@ -369,7 +483,7 @@ function useProgress(startDelay: number, duration: number): number {
   return t;
 }
 
-function CountUp({ value, fmt, startDelay, className }: { value: number | null; fmt: (v: number) => string; startDelay: number; className?: string }) {
+function CountUp({ value, fmt, startDelay }: { value: number | null; fmt: (v: number) => string; startDelay: number }) {
   const t = useProgress(startDelay, 900);
-  return <span className={className}>{value === null ? "–" : t > 0 ? fmt(value * t) : fmt(0)}</span>;
+  return <span>{value === null ? "–" : fmt(value * t)}</span>;
 }

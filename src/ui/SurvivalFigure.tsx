@@ -85,7 +85,7 @@ export function SurvivalFigure({ figIndex, agents, rules }: { figIndex: number; 
 function WaitingRow({ name, y, x0, x1 }: { name: string; y: number; x0: number; x1: number }) {
   return (
     <g>
-      <text x={0} y={y - 4} fontFamily="var(--font-pixel)" fontSize="15" fill="var(--ink)">
+      <text x={0} y={y - 4} fontFamily="var(--font-display)" fontStyle="italic" fontSize="15" fill="var(--ink)">
         {name}
       </text>
       <text x={0} y={y + 13} fontFamily="var(--font-mono)" fontSize="11" fill="var(--muted)">
@@ -124,7 +124,7 @@ function SurvivalRow({
   const ex = x(end);
   return (
     <g>
-      <text x={0} y={y - 4} fontFamily="var(--font-pixel)" fontSize="15" fill="var(--ink)">
+      <text x={0} y={y - 4} fontFamily="var(--font-display)" fontStyle="italic" fontSize="15" fill="var(--ink)">
         {rank !== null ? `${rank}. ` : ""}
         {b.spec.name}
       </text>

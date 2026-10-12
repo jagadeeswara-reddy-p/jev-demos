@@ -69,9 +69,12 @@ function BoardCanvas({ agentId }: { agentId: string }) {
     if (!el) return;
     // Fit the space given. In the full-frame layout the wrapper's height is set
     // by the page, so the board fills it; otherwise cap it by the window height.
+    // On the fight screen the stats sit beside the board, so the board column
+    // shrinks to the canvas and the board may use up to 62% of the card's width.
+    const card = el.closest<HTMLElement>(".stage .figure");
     const fit = () => {
       const fullFrame = window.matchMedia("(min-width: 1101px)").matches;
-      const byWidth = Math.floor(el.clientWidth / WIDTH_CELLS);
+      const byWidth = Math.floor((card ? card.clientWidth * 0.62 : el.clientWidth) / WIDTH_CELLS);
       const byHeight = fullFrame
         ? Math.floor((el.clientHeight - 2) / VISIBLE_HEIGHT)
         : Math.floor((window.innerHeight - 260) / VISIBLE_HEIGHT);
@@ -89,6 +92,7 @@ function BoardCanvas({ agentId }: { agentId: string }) {
     fit();
     const ro = new ResizeObserver(schedule);
     ro.observe(el);
+    if (card) ro.observe(card);
     window.addEventListener("resize", schedule);
     return () => {
       cancelAnimationFrame(frame);
