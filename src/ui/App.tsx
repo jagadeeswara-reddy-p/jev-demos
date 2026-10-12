@@ -7,8 +7,10 @@ import { MOCK_SOURCES } from "../mock/mockSource";
 import { BoardFigure } from "./BoardFigure";
 import { EventLog } from "./EventLog";
 import { ArenaContext, useArenaState } from "./hooks";
+import { ResultsScreen } from "./ResultsScreen";
 import { SCENARIOS } from "./scenarios";
-import { ArenaStore, fmtClock, fmtMs } from "./store";
+import { ScoreStrip } from "./ScoreStrip";
+import { ArenaStore, fmtClock, fmtMs, type ArenaState } from "./store";
 import { SurvivalFigure } from "./SurvivalFigure";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -91,6 +93,8 @@ function Page({
   // 0 plays until everyone tops out; SPRINT_LINES races to that many lines.
   const [targetLines, setTargetLines] = useState(0);
   const [editing, setEditing] = useState(true);
+  // setup: settings and boards; fight: boards only, full page; results: the animated summary.
+  const [phase, setPhase] = useState<"setup" | "fight" | "results">("setup");
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -142,6 +146,7 @@ function Page({
     store.reset();
     setEditing(false);
     if (live) store.setStatus("running");
+    setPhase("fight");
     backend.start({ ...DEFAULT_CONFIG, seed, mode, targetLines, agents });
   };
 
@@ -152,6 +157,7 @@ function Page({
     backend.setSpeed(speed);
     store.reset();
     setEditing(false);
+    setPhase("fight");
     backend.start();
   };
 
@@ -208,6 +214,87 @@ function Page({
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // A finished fight moves on to the results after a beat; a run that failed to start goes back to setup.
+  useEffect(() => {
+    if (phase !== "fight") return;
+    if (state.status === "idle") return setPhase("setup");
+    if (state.status !== "finished") return;
+    const id = setTimeout(() => setPhase("results"), 1500);
+    return () => clearTimeout(id);
+  }, [phase, state.status]);
+
+  if (phase === "results" && state.config && state.status === "finished") {
+    return (
+      <ResultsScreen
+        boards={state.boards}
+        config={state.config}
+        rules={rules}
+        endAt={state.endAt ?? state.lastAt}
+        mocked={!isLive(state.config.agents)}
+        onBack={() => setPhase("setup")}
+        onReplay={() => replay()}
+        onRunAgain={startRun}
+      />
+    );
+  }
+
+  const runButtons = (
+    <>
+      {state.status === "running" && !liveRunning && (
+        <button type="button" className="btn" onClick={pause}>
+          Pause
+        </button>
+      )}
+      {state.status === "paused" && (
+        <button type="button" className="btn primary" onClick={resume}>
+          Resume
+        </button>
+      )}
+      {active && (
+        <button type="button" className="btn" onClick={stop}>
+          Stop
+        </button>
+      )}
+    </>
+  );
+
+  const boardFigures = shown.map((spec, i) => (
+    <BoardFigure key={spec.id} index={i + 1} spec={spec} sources={sources} board={state.boards.find((b) => b.spec.id === spec.id)} />
+  ));
+
+  if (phase === "fight") {
+    const cols = Math.min(3, Math.max(1, shown.length));
+    const rowCount = Math.ceil(shown.length / cols);
+    return (
+      <main className="page stage">
+        <header className="stage-bar">
+          <h1 className="stage-title">Deadline Tetris</h1>
+          <Readout state={state} rules={rules} seed={seed} />
+          <div className="btn-row">
+            {!liveRunning && (
+              <div className="segmented" role="group" aria-label="Speed">
+                {SPEEDS.map((sp) => (
+                  <button key={sp} type="button" aria-pressed={speed === sp} onClick={() => changeSpeed(sp)}>
+                    {sp}×
+                  </button>
+                ))}
+              </div>
+            )}
+            {runButtons}
+          </div>
+        </header>
+        {error && <p className="scenario-note">{error}</p>}
+        <ScoreStrip agents={shown} rules={rules} />
+        <div
+          className="boards"
+          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }}
+        >
+          {boardFigures}
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="page">
       <header className="masthead">
@@ -223,40 +310,10 @@ function Page({
       <div className="arena">
         <div className="arena-main">
           <SurvivalFigure figIndex={1} agents={shown} rules={rules} />
-          <div className="boards">
-            {shown.map((spec, i) => (
-              <BoardFigure
-                key={spec.id}
-                index={i + 1}
-                spec={spec}
-                sources={sources}
-                board={state.boards.find((b) => b.spec.id === spec.id)}
-              />
-            ))}
-          </div>
+          <div className="boards">{boardFigures}</div>
         </div>
         <aside className="arena-side">
-          <div className="readout" aria-live="polite">
-            <span className="level">LEVEL {String(state.level).padStart(2, "0")}</span>
-            <span className="stat">
-              a row every <b>{fmtMs(state.gravityMs)}</b>
-            </span>
-            <ClockStat />
-            <span className="stat">
-              clock <b>{rules.mode === "realtime" ? "real time" : "frozen"}</b>
-            </span>
-            <span className="stat">
-              goal <b>{rules.targetLines ? `${rules.targetLines} lines` : "survive"}</b>
-            </span>
-            <span className="stat">
-              seed <b>{state.config?.seed ?? seed}</b>
-            </span>
-            {state.status === "paused" && (
-              <span className="stat">
-                <b>paused</b>, press space to resume
-              </span>
-            )}
-          </div>
+          <Readout state={state} rules={rules} seed={seed} />
           <section className="controls" aria-label="Run settings">
             <div className="control">
               <label className="label" htmlFor="scenario">
@@ -360,19 +417,10 @@ function Page({
                   {isLive(agents) ? "Start live run" : "Start run"}
                 </button>
               )}
-              {state.status === "running" && !liveRunning && (
-                <button type="button" className="btn" onClick={pause}>
-                  Pause
-                </button>
-              )}
-              {state.status === "paused" && (
-                <button type="button" className="btn primary" onClick={resume}>
-                  Resume
-                </button>
-              )}
-              {active && (
-                <button type="button" className="btn" onClick={stop}>
-                  Stop
+              {runButtons}
+              {state.status === "finished" && state.config && (
+                <button type="button" className="btn" onClick={() => setPhase("results")}>
+                  Results
                 </button>
               )}
               <button type="button" className="btn" onClick={() => replay()} disabled={!hasRecording}>
@@ -411,6 +459,32 @@ function Page({
         </aside>
       </div>
     </main>
+  );
+}
+
+function Readout({ state, rules, seed }: { state: ArenaState; rules: { mode: ClockMode; targetLines: number }; seed: number }) {
+  return (
+    <div className="readout" aria-live="polite">
+      <span className="level">LEVEL {String(state.level).padStart(2, "0")}</span>
+      <span className="stat">
+        a row every <b>{fmtMs(state.gravityMs)}</b>
+      </span>
+      <ClockStat />
+      <span className="stat">
+        clock <b>{rules.mode === "realtime" ? "real time" : "frozen"}</b>
+      </span>
+      <span className="stat">
+        goal <b>{rules.targetLines ? `${rules.targetLines} lines` : "survive"}</b>
+      </span>
+      <span className="stat">
+        seed <b>{state.config?.seed ?? seed}</b>
+      </span>
+      {state.status === "paused" && (
+        <span className="stat">
+          <b>paused</b>, press space to resume
+        </span>
+      )}
+    </div>
   );
 }
 

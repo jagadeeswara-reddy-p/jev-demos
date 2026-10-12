@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { VISIBLE_HEIGHT } from "../engine/board";
 import { WIDTH_CELLS, drawBoard } from "./drawBoard";
 import { useArena, useFrame } from "./hooks";
-import { fmtBest, fmtMs, percentile, type BoardState, type ShownStatus } from "./store";
+import { fmtBest, fmtCost, fmtMs, percentile, type BoardState, type ShownStatus } from "./store";
 import type { AgentSpec, SourceInfo } from "../arena/types";
 
 const KIND_LABEL = { "system-one": "System One model", llm: "Language model", baseline: "Baseline" } as const;
@@ -16,6 +16,7 @@ interface Props {
 
 export function BoardFigure({ index, spec, sources, board }: Props) {
   const source = sources.find((s) => s.id === spec.sourceId);
+  const kindText = source ? (source.available ? source.description : `${source.description}. ${source.reason}.`) : KIND_LABEL[spec.kind];
   const tag = `FIG_${String(index + 1).padStart(3, "0")}`;
   return (
     <figure className="figure" aria-labelledby={`${spec.id}-name`} style={{ margin: 0 }}>
@@ -23,9 +24,11 @@ export function BoardFigure({ index, spec, sources, board }: Props) {
         {tag}
       </span>
       <div className="figure-head">
-        <h2 id={`${spec.id}-name`}>{spec.name}</h2>
-        <span className="kind">
-          {source ? (source.available ? source.description : `${source.description}. ${source.reason}.`) : KIND_LABEL[spec.kind]}
+        <h2 id={`${spec.id}-name`} title={spec.name}>
+          {spec.name}
+        </h2>
+        <span className="kind" title={kindText}>
+          {kindText}
         </span>
       </div>
       <DeadlineBar board={board} />
@@ -35,11 +38,31 @@ export function BoardFigure({ index, spec, sources, board }: Props) {
   );
 }
 
+// Every board is drawn at the same cell size, the largest that fits all of them,
+// so the figures come out the same width and height whatever their text.
+const fits = new Map<string, number>();
+const fitListeners = new Set<() => void>();
+function reportFit(agentId: string, cell: number | null) {
+  if (cell === null) fits.delete(agentId);
+  else if (fits.get(agentId) !== cell) fits.set(agentId, cell);
+  else return;
+  for (const l of fitListeners) l();
+}
+function subscribeFits(l: () => void) {
+  fitListeners.add(l);
+  return () => fitListeners.delete(l);
+}
+function sharedCell(): number | null {
+  return fits.size ? Math.min(...fits.values()) : null;
+}
+
 function BoardCanvas({ agentId }: { agentId: string }) {
   const { store } = useArena();
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [cell, setCell] = useState(24);
+  const [ownFit, setOwnFit] = useState(24);
+  const shared = useSyncExternalStore(subscribeFits, sharedCell);
+  const cell = Math.min(ownFit, shared ?? ownFit);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -52,16 +75,28 @@ function BoardCanvas({ agentId }: { agentId: string }) {
       const byHeight = fullFrame
         ? Math.floor((el.clientHeight - 2) / VISIBLE_HEIGHT)
         : Math.floor((window.innerHeight - 260) / VISIBLE_HEIGHT);
-      setCell(Math.max(8, Math.min(byWidth, byHeight, fullFrame ? 48 : 32)));
+      const next = Math.max(8, Math.min(byWidth, byHeight, fullFrame ? 48 : 32));
+      setOwnFit(next);
+      reportFit(agentId, next);
     };
-    const ro = new ResizeObserver(fit);
+    // Resizing the canvas can resize the wrapper; refitting on the next frame keeps
+    // that out of the observer's own callback.
+    let frame = 0;
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    };
+    fit();
+    const ro = new ResizeObserver(schedule);
     ro.observe(el);
-    window.addEventListener("resize", fit);
+    window.addEventListener("resize", schedule);
     return () => {
+      cancelAnimationFrame(frame);
       ro.disconnect();
-      window.removeEventListener("resize", fit);
+      window.removeEventListener("resize", schedule);
+      reportFit(agentId, null);
     };
-  }, []);
+  }, [agentId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -180,10 +215,4 @@ function Stats({ board }: { board: BoardState | undefined }) {
       ))}
     </dl>
   );
-}
-
-function fmtCost(usd: number): string {
-  if (usd === 0) return "$0";
-  if (usd < 0.01) return `$${usd.toFixed(4)}`;
-  return `$${usd.toFixed(2)}`;
 }

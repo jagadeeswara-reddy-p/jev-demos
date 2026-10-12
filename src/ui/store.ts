@@ -57,6 +57,8 @@ export interface BoardState {
   flash: { rows: number[]; wall: number } | null;
   stats: BoardStats;
   linesAt: { at: number; lines: number }[];
+  /** Landed pieces and lines after every lock, for the results screen's replayed race. */
+  progress: { at: number; landed: number; lines: number }[];
   outAt: number | null;
   outLevel: number | null;
   survived: boolean;
@@ -171,6 +173,7 @@ export class ArenaStore {
           flash: null,
           stats: emptyStats(),
           linesAt: [{ at: 0, lines: 0 }],
+          progress: [{ at: 0, landed: 0, lines: 0 }],
           outAt: null,
           outLevel: null,
           survived: false,
@@ -284,6 +287,7 @@ export class ArenaStore {
           b.flash = { rows: e.rows, wall: performance.now() };
           if (e.rows.length === 4) this.log(e.at, b.spec.name, "cleared four lines at once", "normal");
         }
+        b.progress.push({ at: e.at, landed: b.stats.landed, lines: b.stats.lines });
         break;
       }
 
@@ -393,4 +397,10 @@ export function fmtClock(ms: number): string {
 /** Share of graded answers that matched the heuristic's top pick, e.g. "72%". */
 export function fmtBest(st: BoardStats): string {
   return st.graded === 0 ? "–" : `${Math.round((100 * st.best) / st.graded)}%`;
+}
+
+export function fmtCost(usd: number): string {
+  if (usd === 0) return "$0";
+  if (usd < 0.01) return `$${usd.toFixed(4)}`;
+  return `$${usd.toFixed(2)}`;
 }

@@ -30,6 +30,13 @@ export const SCENARIOS: Scenario[] = [
     live: true,
   },
   {
+    id: "preview-six",
+    label: "Preview: six models (mocked)",
+    note: "Mocked stand-ins for the planned line-up: Jev, GPT-6.1 Sol, Claude Opus 5.5, Laya, Cloudflare Clef and Google's EmbeddingGemma 2. For checking the six-board layout and the results screen.",
+    mode: "realtime",
+    sources: ["jev", "preview-gpt", "preview-opus", "preview-laya", "preview-cloudflare", "preview-google"],
+  },
+  {
     id: "jev-vs-llm",
     label: "Mock: Jev vs fast LLM",
     note: "Mocked models, so it runs at any speed: one System One model against one chat model.",

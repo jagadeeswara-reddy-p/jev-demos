@@ -342,6 +342,33 @@ input.field {
   min-width: 0;
 }
 
+/* Fixed-height text so every figure leaves its board the same room: the name on
+   one line, the description on two (full text on hover). */
+.figure-head h2 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.figure-head .kind {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  min-height: calc(2 * 1.5em);
+  line-height: 1.5;
+}
+
+.deadline-text > span,
+.stats dd {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
 .figure-head {
   display: grid;
   gap: 2px;
@@ -731,6 +758,13 @@ input.field {
     max-width: none;
   }
 
+  /* Only the board gives up height, so the stats and the box's bottom edge stay in view. */
+  .figure-head,
+  .deadline,
+  .stats {
+    flex: none;
+  }
+
   .figure-head {
     margin-bottom: 6px;
   }
@@ -774,4 +808,536 @@ input.field {
     gap: 12px 16px;
     padding-bottom: 14px;
   }
+}
+
+/* ---------- fight: boards only, two rows of three, live standings on top ---------- */
+
+.page.stage {
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 28px;
+  flex: none;
+}
+
+.stage-title {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: var(--step-3);
+  line-height: 1;
+  color: var(--ink);
+}
+
+.stage .readout {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  gap: 6px 24px;
+}
+
+.stage .readout .level {
+  font-size: var(--step-2);
+}
+
+/* One slot per model; slots slide sideways when the order changes. */
+.score-strip {
+  position: relative;
+  flex: none;
+  height: 66px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ink-faint);
+  border-bottom: 1px solid var(--ink-faint);
+}
+
+.score-slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% / var(--slots));
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.score-slot + .score-slot::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  border-left: 1px solid var(--ink-faint);
+}
+
+.score-rank {
+  font-family: var(--font-pixel);
+  font-size: var(--step-3);
+  line-height: 1;
+  color: var(--ink);
+  min-width: 1.4em;
+  text-align: center;
+  padding: 4px 0;
+}
+
+.score-slot[data-leader="true"] .score-rank {
+  background: var(--ink);
+  color: var(--sheet);
+}
+
+.score-slot[data-out="true"] {
+  opacity: 0.55;
+}
+
+.score-body {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.score-name {
+  font-family: var(--font-pixel);
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+
+.score-metric {
+  font-family: var(--font-mono);
+  font-size: var(--step-1);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-sub {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.score-name,
+.score-metric,
+.score-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stage .boards {
+  display: grid;
+  gap: 18px;
+  padding-left: 0;
+  flex: 1;
+  min-height: 0;
+}
+
+.stage .fig-tag {
+  display: none;
+}
+
+/* Each card: name across the top, the board on the left, the clock and numbers beside it. */
+.stage .boards > .figure {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "head head"
+    "board deadline"
+    "board stats";
+  column-gap: 20px;
+  min-height: 0;
+  max-width: none;
+}
+
+.stage .figure-head {
+  grid-area: head;
+  margin-bottom: 10px;
+}
+
+.stage .deadline {
+  grid-area: deadline;
+  margin-bottom: 14px;
+}
+
+.stage .board-wrap {
+  grid-area: board;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stage .stats {
+  grid-area: stats;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 0;
+  border-top: 0;
+}
+
+/* ---------- results: revealed in beats after the fight ---------- */
+
+.page.results {
+  max-width: 1640px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+.reveal {
+  animation: reveal 700ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
+}
+
+.grow {
+  transform-origin: left center;
+  animation: grow 900ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
+}
+
+.results-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 40px;
+  padding-bottom: 18px;
+  border-bottom: 1px dashed var(--ink-faint);
+}
+
+.results-kicker {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.results-title {
+  margin: 8px 0 6px;
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 0.95;
+  color: var(--ink);
+}
+
+.results-rule {
+  margin: 0;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 20px;
+}
+
+.results-card {
+  border: 1px solid var(--ink-faint);
+  padding: 22px 24px;
+  min-width: 0;
+}
+
+.race {
+  position: relative;
+  margin-bottom: 22px;
+}
+
+.race-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 44px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 170px) minmax(0, 1fr) 120px;
+  align-items: center;
+  gap: 12px;
+  transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.race-rank {
+  font-family: var(--font-pixel);
+  font-size: var(--step-1);
+  color: var(--ink);
+  text-align: center;
+  padding: 3px 0;
+}
+
+.race-row[data-winner="true"] .race-rank {
+  background: var(--ink);
+  color: var(--sheet);
+}
+
+.race-name {
+  font-family: var(--font-pixel);
+  font-size: var(--step-0);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.race-track {
+  height: 16px;
+  border: 1px solid var(--ink-soft);
+}
+
+.race-fill {
+  display: block;
+  height: 100%;
+  background: var(--ink-soft);
+}
+
+.race-row[data-winner="true"] .race-fill {
+  background: var(--ink);
+}
+
+.race-value {
+  font-family: var(--font-mono);
+  font-size: var(--step-0);
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.race-clock {
+  position: absolute;
+  right: 0;
+  bottom: -22px;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.scatter {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.scatter-tick {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.scatter-label {
+  font-family: var(--font-pixel);
+  font-size: 13px;
+  fill: var(--ink);
+}
+
+.scatter-zone {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  fill: var(--muted);
+}
+
+.scatter-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop 500ms cubic-bezier(0.2, 0.8, 0.2, 1.4) var(--delay, 0ms) both;
+}
+
+.results-minis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.results-card.mini {
+  padding: 16px 18px;
+}
+
+.mini-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+
+.mini-better {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.mini-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 9px;
+}
+
+.mini-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name value"
+    "track track";
+  gap: 3px 8px;
+}
+
+.mini-name {
+  grid-area: name;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-value {
+  grid-area: value;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-track {
+  grid-area: track;
+  height: 8px;
+}
+
+.mini-fill {
+  display: block;
+  height: 100%;
+  background: var(--ink-soft);
+}
+
+.mini-list li[data-top="true"] .mini-fill {
+  background: var(--ink);
+}
+
+.mini-list li[data-top="true"] .mini-value,
+.mini-list li[data-top="true"] .mini-name {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.metric-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: var(--step-0);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-table th,
+.metric-table td {
+  padding: 8px 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.metric-table thead th {
+  vertical-align: bottom;
+  font-family: var(--font-pixel);
+  font-weight: 400;
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink-soft);
+}
+
+.metric-table tbody th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.metric-table tbody tr + tr {
+  border-top: 1px dashed var(--ink-faint);
+}
+
+.metric-table td[data-top="true"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.metric-table td[data-top="true"]::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: var(--ink);
+}
+
+.mt-rank {
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--muted);
+}
+
+.mt-kind {
+  display: block;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.mt-outcome {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--muted);
+}
+
+@media (max-width: 1100px) {
+  .results-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .results-minis {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+
+.page.results > * {
+  flex: none;
 }
