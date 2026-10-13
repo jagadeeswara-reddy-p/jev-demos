@@ -123,7 +123,7 @@ profiles. 5 real-time runs: four on seed 1 and one on seed 2; one played to the 
 ## Contents
 
 1. [Quick start](#quick-start)
-2. [Configuration (`.env`)](#configuration-env)
+2. [Models and configuration](#models-and-configuration)
 3. [How a run works](#how-a-run-works)
 4. [What the models are asked](#what-the-models-are-asked)
 5. [How each answer is judged](#how-each-answer-is-judged)
@@ -144,96 +144,94 @@ page and the API.
 
 ```sh
 bun install
-cp .env.example .env   # add your keys (see below)
-bun run smoke          # one real decision from each live model, to check keys and URLs
+cp .env.example .env   # add the keys for the models you want (see below)
 bun dev                # http://localhost:5317
 ```
 
-When the server starts it prints the line-up and whether each live model is ready:
+When the server starts it prints the line-up and whether each model is ready:
 
 ```
 Deadline Tetris on http://localhost:5317/
-  Line-up  live-jev, live-llm
-  Jev      ready
-  dev-model-alpha ready
+  Line-up  live-jev, bedrock-gpt, bedrock-opus
+  Jev                ready
+  Laya               off (Set LAYA_BASE_URL in .env)
+  gpt-6.1-sol        ready
 ```
 
-Open the page, pick **Live models: real time** or **Live models: frozen clock** in Line-up, and press **Start live run**.
+Open the page, press the **Models** button in the top bar, tick up to six models
+for the line-up (press **Test** on any of them to send one real move), and press
+**Start live run**. No keys yet? The **Line-up** menu has mock line-ups that run
+entirely in the browser.
 
 ---
 
-## Configuration (`.env`)
+## Models and configuration
 
-Bun loads `.env` automatically. **Keys stay on the server.** The browser only
-learns each model's display name and whether it is available. `.env` is in
-`.gitignore`; `.env.example` lists every setting.
+Every model on a board goes through one of three **adapters**, chosen by the API it speaks:
+
+| Adapter | API | For | Offered in the page |
+|---|---|---|---|
+| **Completion** | OpenAI-compatible Chat Completions, `POST {baseUrl}/chat/completions` | chat models: OpenAI, OpenRouter, Groq, Together, vLLM, Ollama, Gemini's OpenAI endpoint, gateways | yes |
+| **Decision** | the Decisions API, `POST {baseUrl}/v1/systemone` | models that score options: Jev, Laya, Cloudflare Clef, EmbeddingGemma (via `deploy/gemma-serve`) | yes |
+| **Bedrock** | AWS Bedrock's Converse API (signed AWS requests) | chat models on Bedrock | no; `models.json` only |
+
+Models come from two files:
+
+- **`models.json`** (committed): the built-in models. Keys and addresses are
+  `${ENV_VAR}` placeholders filled from `.env`, so the file holds no secrets. A
+  model whose variables aren't set shows as unavailable, with the reason.
+- **`models.local.json`** (git-ignored, mode 600): models added in the page,
+  with their keys, and the line-up you picked. It is plain JSON and can be
+  edited by hand.
+
+**Adding a model in the page:** **Models** → **Add model**, pick Completion or
+Decision, and give a name, the API address, the model name and a key. **More
+settings** has prices (for the cost column), a timeout, a full request address
+(for APIs with an unusual path, like Cloudflare's), extra request fields, and
+per-adapter options. Saving runs one test move straight away.
+
+The full reference (every setting, both wire formats, how to write a new
+adapter) is in **[docs/models.md](docs/models.md)**.
+
+### Built-in models
+
+| Id | Model | Adapter | Needs in `.env` |
+|---|---|---|---|
+| `live-jev` | Jev (`jev-latest`), TypeSafe | Decision | `TYPESAFE_API_KEY` |
+| `live-clef` | Cloudflare Clef, Workers AI | Decision | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
+| `live-laya` | Laya `typed-decisions`, self-hosted ([Running Laya](#running-laya-self-hosted)) | Decision | `LAYA_BASE_URL` (`LAYA_API_KEY` if set on the server) |
+| `live-gemma` | EmbeddingGemma 2 typed-decision, self-hosted (`deploy/gemma-serve`) | Decision | `GEMMA_BASE_URL` (`GEMMA_API_KEY` if set) |
+| `live-llm` | any OpenAI-compatible chat model | Completion | `LLM_MODEL`, `LLM_API_KEY` (`LLM_BASE_URL`, `LLM_LABEL` optional) |
+| `bedrock-gpt` | GPT-6.1 Sol | Bedrock | AWS credentials |
+| `bedrock-opus` | Claude Opus 5.5 | Bedrock | AWS credentials |
+| `bedrock-haiku` | Claude Haiku 5.5 | Bedrock | AWS credentials |
+
+Mock sources (simulated in the browser, no API calls) can also be in a line-up:
+`jev`, `llm-fast`, `llm-frontier`, `llm-flaky`, `heuristic`, `random`, `no-input`.
+
+### Other settings (`.env`)
 
 | Setting | What it does | Default |
 |---|---|---|
 | `PORT` | Port for the page and API | `5317` |
-| `LINEUP` | Boards in the live line-up, left to right, as source ids (see below). Up to 6. | `live-jev,live-llm` |
-| `TYPESAFE_BASE_URL` | TypeSafe API base URL | `https://api.typesafe.ai` |
-| `TYPESAFE_API_KEY` | Jev key | — |
-| `TYPESAFE_MODEL` | Jev model id | `jev-latest` |
-| `TYPESAFE_LABEL` | Name shown on Jev's board | `Jev` |
-| `TYPESAFE_TIMEOUT_MS` | Give up on a Jev call after this long | `30000` |
-| `TYPESAFE_INPUT_PRICE_PER_M`, `TYPESAFE_OUTPUT_PRICE_PER_M` | USD per million tokens, for the cost column | `0.042`, `0` |
-| `LAYA_BASE_URL` | Where `laya-serve` runs (see [Running Laya](#running-laya-self-hosted)). Laya is unavailable until this is set. | — |
-| `LAYA_API_KEY` | Only if `laya-serve` was started with `LAYA_API_KEY` | none |
-| `LAYA_MODEL` | Laya checkpoint: `typed-decisions`, `english` or `multilingual` | `typed-decisions` |
-| `LAYA_LABEL`, `LAYA_HOST_NOTE` | Name on the board, and where it runs (shown in the description) | `Laya`, `self-hosted` |
-| `LAYA_MAX_LEN`, `LAYA_HEAD_MAX_LEN` | Token budgets sent with each request (whole input, and the option list's share) | `4096`, `2048` |
-| `LAYA_TIMEOUT_MS` | Give up on a Laya call after this long | `30000` |
-| `LAYA_INPUT_PRICE_PER_M`, `LAYA_OUTPUT_PRICE_PER_M` | Self-hosted, so $0 by default | `0`, `0` |
-| `LLM_PROVIDER` | `openai` (any OpenAI-compatible `/chat/completions` endpoint) or `anthropic` | `openai` |
-| `LLM_BASE_URL` | API base URL, e.g. a gateway | OpenAI or Anthropic default |
-| `LLM_API_KEY` | Key for the language model | — |
-| `LLM_MODEL` | Model id, e.g. `dev-model-alpha` | — |
-| `LLM_LABEL` | Name shown on the board | the value of `LLM_MODEL` |
-| `LLM_JSON_MODE` | `schema` (strict JSON schema), `object` (JSON mode) or `none`. Use `object` if the provider rejects schemas. | `schema` |
-| `LLM_EXTRA_BODY` | JSON merged into every request, e.g. `{"reasoning_effort":"low"}` | — |
-| `LLM_MAX_TOKENS` | Output token cap | provider default |
-| `LLM_TIMEOUT_MS` | Give up on an LLM call after this long | `60000` |
-| `LLM_INPUT_PRICE_PER_M`, `LLM_OUTPUT_PRICE_PER_M` | USD per million tokens, for the cost column | `0`, `0` |
-| `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` (or `AWS_PROFILE`) | AWS credentials for Bedrock. Temporary session credentials expire and must be refreshed. | `us-east-1` |
-| `BEDROCK_MODELS` | Any number of Bedrock models as `key=model-or-inference-profile-id`, comma-separated. Each becomes a source `bedrock-<key>`. | — |
-| `BEDROCK_<KEY>_LABEL` | Name shown on that model's board | the model id without the region and provider prefix, e.g. `gpt-6.1-sol` |
-| `BEDROCK_<KEY>_INPUT_PRICE_PER_M`, `BEDROCK_<KEY>_OUTPUT_PRICE_PER_M` | USD per million tokens for that model | `0`, `0` |
-| `BEDROCK_<KEY>_CACHE_READ_PRICE_PER_M`, `BEDROCK_<KEY>_CACHE_WRITE_PRICE_PER_M` | Prompt-cache prices for that model | the input price |
-| `BEDROCK_<KEY>_EXTRA` | JSON sent as the Converse API's `additionalModelRequestFields`, for provider settings such as `{"reasoning_effort":"low"}`. Shown in the board's description. Field names are the provider's own; this one is untested on GPT-6.1 Sol so far | none |
-| `BEDROCK_<KEY>_TOOL_CHOICE` | `tool` forces the `choose_placement` tool call; `auto` offers it without forcing, for models that reject a forced tool (Claude Opus 5.5 on Bedrock does). A plain-text `{"choice": ...}` answer is then accepted too; an off-list id is still invalid | `tool` |
-| `BEDROCK_MAX_TOKENS`, `BEDROCK_TIMEOUT_MS` | Output token cap and timeout for Bedrock calls | `1024`, `60000` |
+| `LINEUP` | The line-up until one is picked in the page, as model ids, left to right. Up to 6. | `live-jev,live-llm` |
+| `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` (or `AWS_PROFILE`) | Credentials for the Bedrock adapter. Temporary session credentials expire and must be refreshed. | `us-east-1` |
+| `MODELS_FILE`, `LOCAL_MODELS_FILE` | Where the two model files are | `models.json`, `models.local.json` |
+| `RUNS_DIR` | Where live runs are saved | `runs` |
 
-**Changing the line-up.** Boards can't be added or removed in the page; the
-line-up is set on the server. Edit `LINEUP` and restart `bun dev`. Source ids:
+**Keys stay on the server.** The page only learns each model's name, settings
+without the key, and whether it can run. `.env` is read once at startup:
+**restart `bun dev` after editing it.**
 
-- `live-jev`: Jev through the TypeSafe API
-- `live-laya`: Laya through your own `laya-serve`
-- `live-llm`: the language model configured above
-- `bedrock-<key>`: each model listed in `BEDROCK_MODELS`
-- mock sources (simulated, no API calls): `jev`, `llm-fast`, `llm-frontier`, `llm-flaky`, `heuristic`, `random`, `no-input`
-
-For example, `LINEUP=live-jev,live-llm,heuristic` adds a hand-written bot as a third board, for reference.
-
-Current set-up: Jev against the two large models on AWS Bedrock, OpenAI's
-GPT-6.1 Sol and Anthropic's Claude Opus 5.5. Haiku 5.5 (used in Round 2) stays
-configured as `bedrock-haiku`, so it can go back in the line-up:
-
-```
-LINEUP=live-jev,bedrock-gpt,bedrock-opus
-BEDROCK_MODELS=gpt=us.openai.gpt-6.1-sol,opus=us.anthropic.claude-opus-5-5,haiku=us.anthropic.claude-haiku-5-5
-```
-
-Prices used (USD per million tokens, regional `us.` inference profiles):
+Prices in `models.json` (USD per million tokens, regional `us.` inference profiles for Bedrock):
 
 | Model | Input | Output | Cache read | Cache write | Source |
 |---|---|---|---|---|---|
 | Jev (`jev-latest`) | 0.042 | 0 | — | — | TypeSafe |
+| Cloudflare Clef | 0.24 | 0 | — | — | Workers AI pricing (`clef-flash`: 0.09) |
 | gpt-6.1-sol | 2.20 | 11.00 | 0.11 | 2.75 | third-party Bedrock listings (OpenAI's $2 / $10 plus Bedrock's 10% regional premium) |
 | claude-haiku-5-5 | 0.11 | 0.55 | 0.011 | 0.1375 | AWS Price List API |
 | claude-opus-5-5 | 4.40 | 22.00 | 0.22 | 5.50 | AWS Price List API (cache write: the listed global $5.00 plus the 10% regional premium) |
-
-> `.env` is read once at startup. **Restart `bun dev` after editing it.**
 
 ---
 
@@ -366,22 +364,29 @@ is not the comparison this project is about.
 
 ### 3. Sending it
 
-| | Jev and Laya (`server/sources/jev.ts`) | Language model (`server/sources/llm.ts`) |
+| | Decision adapter (`server/adapters/decision.ts`) | Completion adapter (`server/adapters/completion.ts`) |
 |---|---|---|
-| Request | `POST {TYPESAFE_BASE_URL}/v1/systemone` (Laya: `{LAYA_BASE_URL}/v1/systemone`) | `POST {LLM_BASE_URL}/chat/completions` (or Anthropic `/v1/messages`) |
+| Request | `POST {baseUrl}/v1/systemone` | `POST {baseUrl}/chat/completions` |
 | Board text | the `state` field | the user message |
 | Options | a `choice` question with one entry per option (`option_N` → description) | listed as `option_N: description` lines after the board |
-| Answer | `choice`, a probability for every option, and a `confidence` | strict JSON `{"choice":"option_N"}`; the schema only allows the offered ids (Anthropic: a forced tool call) |
+| Answer | `choice`, a probability for every option, and a `confidence` | strict JSON `{"choice":"option_N"}`; the schema only allows the offered ids |
 
-**Laya** gets byte-for-byte the same request as Jev, since `laya-serve` speaks
-the same protocol. Two fields are added: `max_len` and `head_max_len`. Laya's
-default token budget for the option list is 192–256 tokens, and the full option
-list is about 1,100, so without them most options would be cut off. If a request
-still doesn't fit, `laya-serve` says so; the server prints a warning and
-`bun run smoke` shows it.
+Every decision model gets byte-for-byte the same question. Two kinds of
+per-model setting change how it is sent, never what it says:
 
-**AWS Bedrock models** (`server/sources/bedrock.ts`) get the same system and
-user text as the language model above. They go through Bedrock's Converse API,
+- **Extra request fields.** Laya's default token budget for the option list is
+  192–256 tokens and the full list is about 1,100, so its entry in `models.json`
+  raises `max_len` and `head_max_len`. If a request still doesn't fit, the
+  server says so and the Test button shows it.
+- **Option-order rotations.** Some decision models prefer options listed early
+  ([Laya documents this](https://github.com/NandhaKishorM/laya#option-order)).
+  With `rotations: N` the same question is asked N times in one request, each
+  copy with the options shifted (`option_order`), and the probabilities are
+  averaged. The model must accept `option_order`: laya-serve and gemma-serve do;
+  Cloudflare Clef rejects it.
+
+**AWS Bedrock models** (`server/adapters/bedrock.ts`) get the same system and
+user text as the completion adapter. They go through Bedrock's Converse API,
 which uses one request shape for every provider, and answer with a forced
 `choose_placement` tool call whose `choice` is limited to the offered ids.
 Bedrock caches OpenAI prompts automatically and reports cache reads and writes
@@ -429,25 +434,37 @@ stored on its `decision` event as `bestRank` (1 = the heuristic's top pick).
 
 ## Reading the screen
 
-The title and summary run across the top. Below them, the figures are on the
-left and the settings and log are on the right. **On screens wider than 1100 px
-the whole page fits in one window, with no page scroll.** The boards grow or shrink to fill
-the height left over, and the log scrolls inside its own panel. On narrower
-screens the page scrolls and the right column moves under the boards.
+The page has three screens, and each fits one window without scrolling.
 
-**Right column**
-- **Level readout**: current level, how fast pieces fall ("a row every …"), game time, clock, goal and seed.
-- **Settings**: Line-up, Clock, Goal (Survive or 40 lines), Speed, Seed (↻ picks a random one), Theme (System / Light / Dark, saved in this browser), and the buttons **Start run**, **Replay**, **Export log** and **Load log**. Space pauses or resumes a mock run or replay.
-- **Log**: misses, failures and milestones, newest first.
-
-**Left column**
-- **Survival (FIG_001)**: one line per board on the shared game clock. Ticks are line clears; × marks where a board topped out and a square marks a board that survived or finished the sprint. Each row ends with its pieces landed, lines and best-move share. When the run ends it becomes **Results**, ranked by the run's win rule (most pieces landed, or first to 40 lines in a sprint). It keeps the same height before, during and after a run.
-- **Boards (FIG_002 onward)**, each with:
-  - **Deadline bar**: time spent thinking against the time left before the piece locks. Hatched means the deadline passed.
-  - **The board**. In the gutter: the next 3 pieces, and labels with arrows pointing at:
+**Setup and fight** share one layout:
+- **Top bar.** Before a run it holds the settings: Line-up (the live models, or
+  a mock line-up), Clock (Real time or Frozen), Goal (Survive or 40 lines) and
+  Seed (the dice picks a random one). Then come icon buttons for Results,
+  Replay, Export log, Load log, **Models** (pick the line-up, test and add
+  models) and Theme, and **Start**. During a run the bar shows the level, how
+  fast pieces fall, game time, clock, goal and seed, plus Pause and Stop. Space
+  pauses or resumes a mock run or replay. Adding `?speed=4` to the address
+  fast-forwards mock runs and replays.
+- **Standings strip**: one slot per model, sliding into rank order as the run goes.
+- **Boards**, in up to two rows of three. Each card has:
+  - **The board**. In the gutter are the next 3 pieces, plus labels with arrows pointing at:
     - **solid outline + "OPT N, xx% chosen"**: where the model put the last piece;
     - **dashed outlines + "OPT N, xx%"**: the two strongest alternatives the model considered.
-  - **Stats**: **Landed / pieces** (pieces placed where the model chose, in time, out of all that locked), Lines, **Best moves** (see [move quality](#move-quality-best-moves)), Decision p50/p95 (median and 95th-percentile answer time), Too late, Bad answers, Cost.
+  - **Deadline bar**: time spent thinking against the time left before the piece locks. Hatched means the deadline passed.
+  - **Stats**:
+    - **Landed X of Y**: pieces placed where the model chose, in time, out of all that locked.
+    - **Lines.**
+    - **Best moves**: see [move quality](#move-quality-best-moves).
+    - **Decision p50 / p95**: median and 95th-percentile answer time.
+    - **Too late**, **Bad answers** and **Cost**.
+
+**Results** appears when a run ends. Its header names the winner by the run's
+win rule. Below it:
+- the game replayed as a race;
+- pieces landed (or lines) over game time;
+- **smart versus fast**: best moves against time per decision;
+- time per decision (median and p95);
+- a table with every number.
 
 **Are the outlines real?**
 - **Live Jev**: yes. The chosen spot is Jev's `choice`, and the dashed outlines and percentages are Jev's own probabilities from the API (top 2 alternatives at 1% or more).
@@ -482,19 +499,31 @@ Then in `.env`:
 ```
 LAYA_BASE_URL=http://localhost:8000
 LAYA_HOST_NOTE=self-hosted, CPU
-LINEUP=live-jev,bedrock-gpt,bedrock-claude,live-laya
 ```
 
-Restart `bun dev`, and check with `bun run smoke`.
+Restart `bun dev`, then tick Laya in the Models panel and press **Test**.
+
+**A short-lived GPU box on AWS:** `deploy/ec2/launch.sh` starts a `g4dn.xlarge`
+(T4) that serves Laya on port 8000 and EmbeddingGemma 2 on port 8001, opens the
+ports to your IP only, writes `LAYA_*` and `GEMMA_*` into `.env`, and deletes
+itself after two hours (`SHUTDOWN_MINUTES`). `deploy/ec2/teardown.sh` removes it
+sooner. Laya takes about ten minutes to build on first boot.
 
 Things to know before reading its numbers:
 - **Hardware is part of its latency.** Jev runs on TypeSafe's servers, Laya on
   whatever you give it. On a CPU, expect hundreds of milliseconds or more per
   decision; on a T4-class GPU, tens. Say which in `LAYA_HOST_NOTE`, so it's on the board.
 - **The question is bigger than Laya is tuned for.** Its docs suggest fewer than
-  20 options per choice and a 512–1,024-token context. A Tetris piece has up to
-  34 options and about 1,100 tokens of option text. Laya gets the same options
-  as everyone else; changing the game for one model would break the comparison.
+  20 options per choice, and the `typed-decisions` checkpoint was trained on
+  1,024-token inputs from four business workflows (customer service, invoices,
+  security incidents, agent traces). A Tetris piece has up to 34 options and the
+  request is about 1,600 tokens. Laya gets the same options as everyone else;
+  changing the game for one model would break the comparison.
+- **Without rotations it mostly picks the first options.** In four six-model
+  runs on 2026-10-12 (seed 1, T4, no rotations) Laya chose option 1 or 2 in 56% of
+  its moves (Jev: 18%), stacked the left wall and topped out after 16 pieces every
+  time. That matches the position bias its README measures, which is why its
+  entry uses `rotations: 4`.
 
 ---
 
@@ -543,7 +572,11 @@ and Jev's confidence. Options: `--since <UTC time>`, `--min-decisions <n>`,
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/sources` | every source with its name, kind, and whether it's available (never keys) |
-| GET | `/api/lineup` | the live line-up from `LINEUP` |
+| GET | `/api/models` | every configured model: settings without the key, `hasKey`, availability |
+| POST | `/api/models` | add a model (body: its settings); 400 with the field name if one is wrong |
+| PUT / DELETE | `/api/models/:id` | change or remove a model added in the page (built-in ones live in `models.json`) |
+| POST | `/api/models/:id/test` | one real decision (first piece of seed 1): status, choice, latency, tokens |
+| GET / PUT | `/api/lineup` | the live line-up, `{ "sources": [...] }`; PUT saves it to `models.local.json` |
 | POST | `/api/runs` | start a live run (body: run config); returns its id |
 | GET | `/api/runs` | saved runs, newest first |
 | GET | `/api/runs/:id/events` | server-sent event stream; catches up from the start, then goes live; resumes after a reconnect |
@@ -569,24 +602,30 @@ The page's **Export log** produces the same format, so any log can be loaded and
 ## Project layout
 
 ```
-server/                 Bun server: page + API, live runs, settings
+models.json             built-in models (committed; keys as ${ENV} placeholders)
+server/                 Bun server: page + API, live runs
   index.ts              routes
-  config.ts             reads .env
+  config.ts             reads .env (port, files, default line-up)
   runs.ts               live runs on the wall clock, SSE, saving logs
-  sources/              decision sources: jev.ts (Jev and Laya), llm.ts (OpenAI-compatible / Anthropic),
-                        bedrock.ts (AWS Bedrock), live.ts (timing, errors), registry.ts
+  sources.ts            every source a board can use: configured models and mocks
+  sample.ts             one test decision outside a run (Test button, smoke script)
+  adapters/             one file per wire format: completion.ts, decision.ts, bedrock.ts;
+                        shared.ts (timing, errors, prices, the chat prompt), types.ts (the Adapter interface)
+  models/               the model list: types.ts, validate.ts, env.ts (${ENV} placeholders), store.ts
+  routes/models.ts      /api/models and /api/lineup
 src/engine/             game rules: pieces, board, gravity, landing spots, the hand-written evaluator
 src/arena/              the shared core
   simulation.ts         one run: clock, levels, deadlines, decisions, drops, events, grading
   ranking.ts            who wins: the survival and sprint rules
-  prompt.ts             the text both models receive
+  prompt.ts             the text every model receives
   types.ts              config, events, decision sources, DEFAULT_CONFIG
   serverBackend.ts      browser ↔ server (live runs)
   replayBackend.ts      replays and JSONL import/export
 src/mock/               mock profiles and the in-browser mock backend
-src/ui/                 React + canvas UI, theme, store
-scripts/                stats.ts, smoke.ts, probe-bedrock.ts, fake-providers.ts, Playwright helpers (*.mjs)
-docs/media/             demo recording (MP4) and preview (GIF)
+src/ui/                 React + canvas UI, theme, store; ModelsPanel.tsx and ModelForm.tsx
+deploy/                 ec2/ (short-lived GPU box for Laya and Gemma), gemma-serve/ (Decisions API for EmbeddingGemma 2)
+scripts/                stats.ts, smoke.ts, fake-providers.ts, Playwright helpers (*.mjs)
+docs/                   models.md (adapters and model settings), media/ (demo recording)
 runs/                   saved live runs (git-ignored)
 ```
 
@@ -595,23 +634,18 @@ runs/                   saved live runs (git-ignored)
 ## Testing and tools
 
 ```sh
-bun run stats               # statistics from saved runs (see "Results so far")
-bun test                    # engine and simulation tests
+bun test                    # engine, simulation, adapters, model store and API tests
 CALIBRATE=1 bun test        # also print how each mock profile fares
 bun run typecheck
-bun run smoke               # one real decision from every configured live model
-bun scripts/probe-bedrock.ts <model-id>   # raw Bedrock usage and answer for the real prompt
-bun run fake-providers      # stand-in TypeSafe / OpenAI / Anthropic APIs on :5400
+bun run stats               # statistics from saved runs (see "Results so far")
+bun run smoke               # one real decision from every model that can run
+bun run smoke live-laya -n 5   # chosen models, five times each, with the median round trip
+bun run fake-providers      # stand-in Decisions and Chat Completions APIs on :5400
 ```
 
-**Rehearsing without keys or cost:** start `bun run fake-providers`, then run the
-server pointed at it:
-
-```sh
-TYPESAFE_BASE_URL=http://localhost:5400 TYPESAFE_API_KEY=fake \
-LAYA_BASE_URL=http://localhost:5400 \
-LLM_BASE_URL=http://localhost:5400/v1 LLM_API_KEY=fake LLM_MODEL=fake bun dev
-```
+**Rehearsing without keys or cost:** start `bun run fake-providers`, then in the
+page's Models panel add a Decision model at `http://localhost:5400` and a
+Completion model at `http://localhost:5400/v1` (any model name and key).
 
 Playwright screenshot helpers live in `scripts/*.mjs`. Run them while `bun dev`
 is up, with `CHROME_PATH=/usr/bin/google-chrome bun scripts/live.mjs <out-dir>`.
@@ -629,6 +663,7 @@ is up, with `CHROME_PATH=/usr/bin/google-chrome bun scripts/live.mjs <out-dir>`.
 - **Speed and survival are linked.** A faster model places more pieces per minute, so with the same placement quality its stack also rises faster. That's why the winner is decided by pieces landed (or, in a sprint, by reaching 40 lines), not by time survived.
 - **Costs are recorded when each answer arrives.** Runs made before a model's prices were set keep $0 for that model.
 - **GPT-6.1 Sol's price isn't in AWS's price list.** It comes from third-party Bedrock listings; Claude Haiku 5.5's comes from the AWS Price List API.
-- **Claude Opus 5.5 can't be forced to use the answer tool on Bedrock**, so it runs with `BEDROCK_OPUS_TOOL_CHOICE=auto`: the same tool is offered, and it may answer in text instead. The answer must still name an offered option.
+- **Claude Opus 5.5 can't be forced to use the answer tool on Bedrock**, so its entry has `"toolChoice": "auto"`: the same tool is offered, and it may answer in text instead. The answer must still name an offered option.
 - **Bedrock session credentials expire.** When they do, live Bedrock boards fail with errors: refresh the `AWS_*` values in `.env` and restart.
+- **Rotations cost time.** Each rotation is another copy of the question for the model to score, so a decision model with `rotations: 4` does about four times the work per move.
 - **Runs started through the API** (`POST /api/runs`) don't appear in a page that's already open. Watch them by replaying their log afterwards.

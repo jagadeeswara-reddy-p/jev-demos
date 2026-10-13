@@ -8,7 +8,7 @@ export interface Scenario {
   note: string;
   mode: ClockMode;
   sources: string[];
-  /** Live line-ups take their boards from the server's LINEUP setting instead of `sources`. */
+  /** Live line-ups take their boards from the server's line-up (Models panel, or LINEUP in .env) instead of `sources`. */
   live?: boolean;
 }
 

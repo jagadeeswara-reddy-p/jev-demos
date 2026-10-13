@@ -4,7 +4,7 @@ import type { FileSink } from "bun";
 import { ArenaSimulation } from "../src/arena/simulation";
 import { DEFAULT_CONFIG, type ArenaEvent, type RunConfig } from "../src/arena/types";
 import { config } from "./config";
-import { createSource, listSources } from "./sources/registry";
+import { createSource, listSources } from "./sources";
 
 // A live run on the server. The game clock is the server's wall clock at 1×,
 // so a model's real response time is exactly the time it spends thinking in

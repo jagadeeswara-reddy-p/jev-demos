@@ -1,9 +1,11 @@
-// Stand-in for the TypeSafe, OpenAI-compatible and Anthropic APIs, speaking the
-// same wire formats, so the live path can be tested without keys or cost.
+// Stand-in for a Decisions API and an OpenAI-compatible Chat Completions API,
+// speaking the same wire formats, so the live path can be tried without keys or cost.
 //
 //   bun scripts/fake-providers.ts            # listens on :5400
-//   TYPESAFE_BASE_URL=http://localhost:5400 TYPESAFE_API_KEY=fake \
 //   LLM_BASE_URL=http://localhost:5400/v1 LLM_API_KEY=fake LLM_MODEL=fake bun dev
+//
+// Or add models in the page's Models panel: a Decision model at http://localhost:5400
+// and a Completion model at http://localhost:5400/v1 (any model name, any key).
 //
 // It scores each option from the feature text in its description, so its picks
 // are sensible but not perfect. Delays: FAKE_JEV_MS (default 260), FAKE_LLM_MS (default 750).
@@ -56,15 +58,17 @@ Bun.serve({
   routes: {
     "/v1/systemone": {
       POST: async (req) => {
-        const body = (await req.json()) as { questions: { placement: { criteria: Record<string, string> } } };
+        type Question = { criteria: Record<string, string>; option_order?: number[] };
+        const body = (await req.json()) as { questions: Record<string, Question> };
         await sleep(jevMs);
-        const { choice, probabilities, probs } = decide(body.questions.placement.criteria, 2.5);
-        const confidence = Math.max(...probs);
-        return Response.json({
-          model: "jev-fake",
-          answers: { placement: { type: "choice", choice, probabilities, confidence } },
-          usage: { input_tokens: tokens(body), output_tokens: 0 },
-        });
+        // Every question is answered, so rotated copies (option_order) work too; order doesn't matter here.
+        const answers = Object.fromEntries(
+          Object.entries(body.questions).map(([id, q]) => {
+            const { choice, probabilities, probs } = decide(q.criteria, 2.5);
+            return [id, { type: "choice", choice, probabilities, confidence: Math.max(...probs) }];
+          }),
+        );
+        return Response.json({ model: "decision-fake", answers, usage: { input_tokens: tokens(body), output_tokens: 0 } });
       },
     },
     "/v1/chat/completions": {
@@ -78,19 +82,8 @@ Bun.serve({
         });
       },
     },
-    "/v1/messages": {
-      POST: async (req) => {
-        const body = (await req.json()) as { messages: { content: string }[] };
-        await sleep(llmMs);
-        const { choice } = decide(optionsFromPrompt(body.messages.at(-1)!.content), 2.5);
-        return Response.json({
-          content: [{ type: "tool_use", id: "fake", name: "choose_placement", input: { choice } }],
-          usage: { input_tokens: tokens(body), output_tokens: 20 },
-        });
-      },
-    },
   },
   fetch: () => new Response("Not found", { status: 404 }),
 });
 
-console.log(`Fake providers on http://localhost:${port} (Jev ~${jevMs} ms, LLM ~${llmMs} ms)`);
+console.log(`Fake providers on http://localhost:${port} (decisions ~${jevMs} ms, completions ~${llmMs} ms)`);

@@ -11,6 +11,7 @@ import { SCENARIOS } from "./scenarios";
 import { ScoreStrip } from "./ScoreStrip";
 import { ArenaStore, fmtClock, fmtMs, type ArenaState } from "./store";
 import { Icon } from "./Icon";
+import { ModelsPanel } from "./ModelsPanel";
 import { ThemeToggle } from "./ThemeToggle";
 
 const MOCK_DEFAULT = SCENARIOS.find((s) => s.id === "jev-vs-llm")!;
@@ -83,8 +84,9 @@ function Page({
 }) {
   const state = useArenaState();
   const [sources, setSources] = useState<SourceInfo[]>(MOCK_SOURCES);
-  // The live line-up is set on the server (LINEUP in .env), not edited in the page.
+  // The live line-up is kept on the server (picked in the Models panel, LINEUP in .env until then).
   const [lineup, setLineup] = useState<string[] | null>(null);
+  const [modelsOpen, setModelsOpen] = useState(false);
   const [scenarioId, setScenarioId] = useState(MOCK_DEFAULT.id);
   const [agents, setAgents] = useState<AgentSpec[]>(() => specsFor(MOCK_SOURCES, MOCK_DEFAULT.sources));
   const [mode, setMode] = useState<ClockMode>(MOCK_DEFAULT.mode);
@@ -98,19 +100,25 @@ function Page({
   const fileRef = useRef<HTMLInputElement>(null);
 
   // The server adds the live models (and says whether their keys are set).
-  // Start on the live line-up when it's usable, otherwise stay on the mock one.
-  useEffect(() => {
-    void fetchServerSetup().then((setup) => {
+  // On load, start on the live line-up when it's usable, otherwise stay on the mock one.
+  // After a change in the Models panel, show the live line-up as it now stands.
+  const loadSetup = (afterEdit: boolean) =>
+    fetchServerSetup().then((setup) => {
       if (!setup) return;
       setSources(setup.sources);
       setLineup(setup.lineup);
-      if (setup.lineup.every((id) => setup.sources.find((s) => s.id === id)?.available)) {
-        const live = SCENARIOS.find((s) => s.id === "live")!;
+      const usable = setup.lineup.length > 0 && setup.lineup.every((id) => setup.sources.find((s) => s.id === id)?.available);
+      if (afterEdit || usable) {
+        const live = SCENARIOS.find((s) => s.id === (afterEdit && scenarioId === "live-frozen" ? "live-frozen" : "live"))!;
         setScenarioId(live.id);
         setMode(live.mode);
         setAgents(specsFor(setup.sources, setup.lineup));
+        setEditing(true);
       }
     });
+
+  useEffect(() => {
+    void loadSetup(false);
   }, []);
 
   const scenario = SCENARIOS.find((s) => s.id === scenarioId)!;
@@ -349,6 +357,11 @@ function Page({
               <button type="button" className="icon-btn" onClick={() => fileRef.current?.click()} aria-label="Load a run log" title="Load log">
                 <Icon name="upload" />
               </button>
+              {lineup && (
+                <button type="button" className="icon-btn" onClick={() => setModelsOpen(true)} aria-label="Models and line-up" title="Models">
+                  <Icon name="models" />
+                </button>
+              )}
               <ThemeToggle />
               <input
                 ref={fileRef}
@@ -369,6 +382,7 @@ function Page({
         )}
       </header>
       {note && <p className="bar-note">{note}</p>}
+      {lineup && <ModelsPanel open={modelsOpen} lineup={lineup} onClose={() => setModelsOpen(false)} onChanged={() => void loadSetup(true)} />}
       <ScoreStrip agents={shown} rules={rules} />
       <div className="boards" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }}>
         {boardFigures}

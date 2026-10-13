@@ -6,3 +6,4 @@ dist
 !.env.example
 runs/
 .DS_Store
+models.local.json

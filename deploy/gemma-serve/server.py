@@ -6,7 +6,7 @@ and Laya serve, so the arena talks to it with the same adapter.
 
     GEMMA_API_KEY=... uvicorn server:app --host 0.0.0.0 --port 8001
 
-Request:  {"model": "...", "state": str | dict, "questions": {id: {type, instructions, criteria}}}
+Request:  {"model": "...", "state": str | dict, "questions": {id: {type, instructions, criteria, option_order?}}}
 Response: {"model": "...", "answers": {id: {type, choice, probabilities, confidence}},
            "usage": {"input_tokens": n, "output_tokens": 0}}
 """
@@ -40,6 +40,21 @@ class Request(BaseModel):
     questions: dict[str, dict]
 
 
+def presented(question: dict) -> dict:
+    """Applies `option_order` (slot s shows option option_order[s]) by reordering the criteria,
+    as laya-serve does, so the arena can rotate options to cancel a position bias."""
+    order = question.get("option_order")
+    q = {k: v for k, v in question.items() if k != "option_order"}
+    criteria = q.get("criteria")
+    if order is None or not isinstance(criteria, dict):
+        return q
+    items = list(criteria.items())
+    if sorted(order) != list(range(len(items))):
+        raise HTTPException(status_code=422, detail="option_order must be a permutation of the option indices")
+    q["criteria"] = dict(items[i] for i in order)
+    return q
+
+
 def check_key(authorization: str | None = Header(default=None)):
     if API_KEY and authorization != f"Bearer {API_KEY}":
         raise HTTPException(status_code=401, detail="Missing or wrong bearer token")
@@ -56,7 +71,7 @@ def systemone(req: Request):
     state = req.state if isinstance(req.state, dict) else {"state": req.state}
     started = time.perf_counter()
     with torch.inference_mode():
-        answers = model.decide(state, req.questions)
+        answers = model.decide(state, {qid: presented(q) for qid, q in req.questions.items()})
     elapsed_ms = (time.perf_counter() - started) * 1000
 
     out = {}

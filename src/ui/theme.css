@@ -130,37 +130,6 @@ input {
   padding: 40px var(--gutter) 64px;
 }
 
-.masthead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px 48px;
-}
-
-.masthead h1 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 500;
-  font-size: clamp(2.25rem, 6.4vw, 5rem);
-  line-height: 0.9;
-  letter-spacing: 0.02em;
-  color: var(--ink);
-}
-
-.masthead p {
-  margin: 0 0 0 auto;
-  max-width: 27rem;
-  text-align: right;
-  font-size: var(--step-2);
-  line-height: 1.45;
-}
-
-.masthead p strong {
-  font-weight: 500;
-}
-
 /* The pixel-square rule under the masthead, like the reference's dotted divider. */
 .rule {
   height: 6px;
@@ -191,19 +160,6 @@ input {
 }
 
 /* ---------- controls ---------- */
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 16px 28px;
-  padding-bottom: 20px;
-}
-
-.control {
-  display: grid;
-  gap: 6px;
-}
 
 .segmented {
   display: inline-flex;
@@ -288,14 +244,6 @@ input.field {
   gap: 8px;
 }
 
-.scenario-note {
-  flex-basis: 100%;
-  margin: -4px 0 0;
-  color: var(--muted);
-  font-size: var(--step-0);
-  font-style: italic;
-}
-
 /* ---------- clock readout ---------- */
 
 .readout {
@@ -370,7 +318,6 @@ input.field {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 
 .figure-head {
   display: grid;
@@ -513,89 +460,11 @@ input.field {
   align-items: start;
 }
 
-.arena-main {
-  display: grid;
-  gap: 40px;
-  min-width: 0;
-  padding-left: 22px;
-}
-
-.arena-side .readout {
-  padding: 0 0 28px;
-  border-top: 0;
-  border-bottom: 1px dashed var(--ink-faint);
-  gap: 6px 20px;
-}
-
-.arena-main .boards {
-  padding-left: 0;
-}
-
 /* Settings on top, the log filling the rest; the whole column stays in view. */
-.arena-side {
-  position: sticky;
-  top: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  max-height: calc(100vh - 48px);
-  min-width: 0;
-}
-
-.arena-side .controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px dashed var(--ink-faint);
-}
-
-.arena-side .controls > .control:first-child,
-.arena-side .controls > .btn-row,
-.arena-side .controls > .scenario-note {
-  grid-column: 1 / -1;
-}
-
-.arena-side .controls .field {
-  width: 100%;
-}
-
-.arena-side .controls input.field {
-  width: 8ch;
-}
-
-.arena-side .scenario-note {
-  margin: 0;
-}
-
-.arena-side > section:last-child {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-
-.arena-side .log {
-  flex: 1;
-  min-height: 160px;
-  max-height: none;
-  font-size: var(--step-0);
-}
 
 @media (max-width: 1100px) {
   .arena {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .arena-side {
-    position: static;
-    max-height: none;
-    padding-left: 22px;
-  }
-  .arena-side .controls {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-  .arena-side .log {
-    max-height: 480px;
   }
 }
 
@@ -613,13 +482,6 @@ input.field {
   color: var(--muted);
   font-size: var(--step-0);
   max-width: 60ch;
-}
-
-.survival svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
 }
 
 .log {
@@ -674,13 +536,7 @@ input.field {
   .page {
     padding-top: 24px;
   }
-  .masthead p {
-    text-align: left;
-    font-size: var(--step-1);
-  }
-  .boards,
-  .arena-main,
-  .arena-side {
+  .boards {
     padding-left: 0;
   }
   .fig-tag {
@@ -712,14 +568,6 @@ input.field {
     overflow: hidden;
   }
 
-  .masthead h1 {
-    font-size: clamp(2rem, 3.4vw, 3.25rem);
-  }
-
-  .masthead p {
-    font-size: var(--step-1);
-  }
-
   .rule {
     flex: none;
     margin: 14px 0 18px;
@@ -729,30 +577,6 @@ input.field {
     flex: 1;
     min-height: 0;
     align-items: stretch;
-  }
-
-  .arena-main {
-    min-height: 0;
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 20px;
-  }
-
-  .survival .section-title {
-    margin-bottom: 6px;
-  }
-
-  .survival .section-note {
-    display: none;
-  }
-
-  .survival svg {
-    max-height: 22vh;
-  }
-
-  .arena-main .boards {
-    min-height: 0;
-    flex-wrap: nowrap;
-    gap: 32px;
   }
 
   .boards > .figure {
@@ -794,24 +618,6 @@ input.field {
 
   .stats dd {
     font-size: var(--step-0);
-  }
-
-  .arena-side {
-    position: static;
-    height: 100%;
-    max-height: none;
-    min-height: 0;
-    overflow: hidden;
-    gap: 18px;
-  }
-
-  .arena-side .readout {
-    padding-bottom: 14px;
-  }
-
-  .arena-side .controls {
-    gap: 12px 16px;
-    padding-bottom: 14px;
   }
 }
 
@@ -1061,7 +867,6 @@ input.field {
   border-top: 1px solid var(--divider);
 }
 
-
 .stage .figure-head {
   grid-area: head;
   margin-bottom: 12px;
@@ -1118,11 +923,6 @@ input.field {
 
 .reveal {
   animation: reveal 700ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
-}
-
-.grow {
-  transform-origin: left center;
-  animation: grow 900ms cubic-bezier(0.2, 0.8, 0.2, 1) var(--delay, 0ms) both;
 }
 
 .results-head {
@@ -1242,36 +1042,6 @@ input.field {
   display: block;
   width: 100%;
   height: auto;
-}
-
-.scatter-tick {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  fill: var(--muted);
-}
-
-.scatter-label {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 13px;
-  fill: var(--ink);
-}
-
-.scatter-zone {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 14px;
-  fill: var(--muted);
-}
-
-.scatter-dot {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: pop 500ms cubic-bezier(0.2, 0.8, 0.2, 1.4) var(--delay, 0ms) both;
-}
-
-.table-scroll {
-  overflow-x: auto;
 }
 
 .metric-table {
@@ -1581,5 +1351,287 @@ input.field {
 
   .results-table {
     overflow-x: auto;
+  }
+}
+
+/* ---------- models panel ---------- */
+
+/* A sheet pinned to the right edge, over the boards. */
+.drawer {
+  margin: 0 0 0 auto;
+  width: min(520px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 20px 24px 24px;
+  border: 0;
+  border-left: 1px solid var(--divider);
+  background: var(--sheet);
+  color: var(--text);
+  overflow-y: auto;
+}
+
+.drawer::backdrop {
+  background: color-mix(in srgb, var(--paper) 55%, transparent);
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.drawer-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: var(--step-3);
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.drawer-subtitle {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: var(--step-2);
+  color: var(--ink);
+}
+
+.drawer .icon-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  flex: none;
+}
+
+.drawer-note {
+  margin: 0 0 12px;
+  font-size: var(--step-0);
+  color: var(--muted);
+}
+
+.model-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--divider);
+}
+
+.model-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--divider);
+}
+
+.model-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+  cursor: pointer;
+}
+
+.model-pick input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+
+/* Which board the model takes, once picked. */
+.model-slot {
+  width: 1.5ch;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--ink);
+}
+
+.model-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.model-adapter {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.model-desc,
+.model-test {
+  margin: 2px 0 0;
+  font-size: var(--step-0);
+  line-height: 1.4;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.model-row[data-off] .model-name {
+  color: var(--muted);
+}
+
+.model-test {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--ink);
+}
+
+.model-test[data-status="error"],
+.model-test[data-status="invalid"],
+.form-error {
+  color: var(--series-2);
+}
+
+.model-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.btn-small {
+  min-height: 32px;
+  padding: 4px 10px;
+}
+
+.drawer-foot {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.drawer-foot .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.drawer-foot .btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- add / change a model ---------- */
+
+.model-form {
+  display: grid;
+  gap: 14px;
+}
+
+.form-field {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.form-label {
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--muted);
+}
+
+.model-form input.field,
+.model-form select.field,
+.model-form textarea.field {
+  width: 100%;
+}
+
+.model-form .field[aria-invalid="true"] {
+  border-color: var(--series-2);
+  outline: 1px solid var(--series-2);
+}
+
+.model-form .segmented {
+  justify-self: start;
+}
+
+.form-code {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-hint {
+  margin: 0;
+  font-size: var(--step-0);
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.form-hint code {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+}
+
+.form-more {
+  border-top: 1px solid var(--divider);
+  padding-top: 10px;
+}
+
+.form-more summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+
+.form-more[open] > summary {
+  margin-bottom: 14px;
+}
+
+.form-more > :not(summary) + :not(summary) {
+  margin-top: 14px;
+}
+
+.form-error {
+  margin: 0;
+  font-size: var(--step-0);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .drawer {
+    padding: 16px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .model-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .model-actions {
+    grid-column: 2;
   }
 }
