@@ -2,7 +2,7 @@ import type { AgentSpec, DecisionSource, RunConfig, SourceInfo } from "../../src
 import { MOCK_SOURCES, isMockSource, mockSourceFor } from "../../src/mock/mockSource";
 import { config } from "../config";
 import { bedrockSource } from "./bedrock";
-import { jevSource, layaSource } from "./jev";
+import { clefSource, gemmaSource, jevSource, layaSource } from "./jev";
 import { llmSource } from "./llm";
 
 // Every decision source the server can offer: the mocks, plus the live models
@@ -11,11 +11,16 @@ import { llmSource } from "./llm";
 export const LIVE_JEV = "live-jev";
 export const LIVE_LLM = "live-llm";
 export const LIVE_LAYA = "live-laya";
+export const LIVE_CLEF = "live-clef";
+export const LIVE_GEMMA = "live-gemma";
 const BEDROCK_PREFIX = "bedrock-";
 
 export function listSources(): SourceInfo[] {
   const jev = config.jev;
   const laya = config.laya;
+  const clef = config.clef;
+  const gemma = config.gemma;
+  const clefMissing = !clef.accountId ? "Set CLOUDFLARE_ACCOUNT_ID in .env" : !clef.apiToken ? "Set CLOUDFLARE_API_TOKEN in .env" : undefined;
   const llm = config.llm;
   const llmMissing = !llm.apiKey ? "Set LLM_API_KEY in .env" : !llm.model ? "Set LLM_MODEL in .env" : undefined;
   return [
@@ -36,6 +41,24 @@ export function listSources(): SourceInfo[] {
       live: true,
       available: Boolean(laya.baseUrl),
       reason: laya.baseUrl ? undefined : "Set LAYA_BASE_URL in .env and start laya-serve",
+    },
+    {
+      id: LIVE_GEMMA,
+      label: gemma.label,
+      kind: "system-one",
+      description: `Open-weight decision model ${gemma.model}, ${gemma.host}`,
+      live: true,
+      available: Boolean(gemma.baseUrl),
+      reason: gemma.baseUrl ? undefined : "Set GEMMA_BASE_URL in .env and start deploy/gemma-serve",
+    },
+    {
+      id: LIVE_CLEF,
+      label: clef.label,
+      kind: "system-one",
+      description: `Open-weight decision model @cf/cloudflare/${clef.model}, through Cloudflare Workers AI`,
+      live: true,
+      available: !clefMissing,
+      reason: clefMissing,
     },
     {
       id: LIVE_LLM,
@@ -71,6 +94,8 @@ export function createSource(run: RunConfig, spec: AgentSpec): DecisionSource {
   if (isMockSource(spec.sourceId)) return mockSourceFor(run, spec);
   if (spec.sourceId === LIVE_JEV) return jevSource();
   if (spec.sourceId === LIVE_LAYA) return layaSource();
+  if (spec.sourceId === LIVE_CLEF) return clefSource();
+  if (spec.sourceId === LIVE_GEMMA) return gemmaSource();
   if (spec.sourceId === LIVE_LLM) return llmSource();
   const bedrock = config.bedrock.models.find((m) => `${BEDROCK_PREFIX}${m.key}` === spec.sourceId);
   if (bedrock) return bedrockSource(bedrock);

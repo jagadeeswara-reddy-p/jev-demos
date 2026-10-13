@@ -24,12 +24,9 @@ export function BoardFigure({ index, spec, sources, board }: Props) {
         {tag}
       </span>
       <div className="figure-head">
-        <h2 id={`${spec.id}-name`} title={spec.name}>
+        <h2 id={`${spec.id}-name`} title={kindText}>
           {spec.name}
         </h2>
-        <span className="kind" title={kindText}>
-          {kindText}
-        </span>
       </div>
       <DeadlineBar board={board} />
       <BoardCanvas agentId={spec.id} />
@@ -200,7 +197,7 @@ function Stats({ board }: { board: BoardState | undefined }) {
   const p50 = st ? percentile(st.latencies, 50) : null;
   const p95 = st ? percentile(st.latencies, 95) : null;
   const items: [string, string, boolean?][] = [
-    ["Landed / pieces", `${st?.landed ?? 0} / ${st?.pieces ?? 0}`, true],
+    ["Landed", `${st?.landed ?? 0} of ${st?.pieces ?? 0}`, true],
     ["Lines", String(st?.lines ?? 0), true],
     ["Best moves", st ? fmtBest(st) : "–"],
     ["Decision p50", p50 === null ? "–" : fmtMs(p50)],

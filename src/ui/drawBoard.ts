@@ -6,8 +6,10 @@ import { fmtSeconds, type BoardState } from "./store";
 // ramp, dashed outlines for the options a model weighed, and callout labels
 // with arrows in the gutter, like the parts labels in a manual illustration.
 
-export const GUTTER_CELLS = 5;
-export const GAP_CELLS = 0.8;
+// The gutter holds the next pieces (under 2 cells wide) and the option labels
+// ("94% chosen" ends about 3.3 cells in), so 3.6 cells is enough.
+export const GUTTER_CELLS = 3.6;
+export const GAP_CELLS = 0.6;
 export const WIDTH_CELLS = WIDTH + GAP_CELLS + GUTTER_CELLS;
 
 interface Theme {

@@ -6,7 +6,9 @@ import { cost, httpError, liveSource } from "./live";
 // System One models over the TypeSafe `/v1/systemone` wire protocol: one Choice
 // question whose options are the landing spots. Jev is TypeSafe's hosted API
 // (docs: https://docs.typesafe.ai/api.md); Laya's open-source `laya-serve`
-// speaks the same protocol, so both boards share this adapter and the same request.
+// speaks the same protocol, and so does Cloudflare's Clef on Workers AI (at its own
+// address, with the body wrapped in `{ result }`), so all three share this adapter
+// and the same request.
 // Response: answers.placement = { choice, probabilities, confidence }.
 
 interface ChoiceAnswer {
@@ -20,6 +22,8 @@ export interface SystemOneEndpoint {
   /** Named in error messages, e.g. "TypeSafe". */
   service: string;
   baseUrl: string;
+  /** The full request address, when it isn't `${baseUrl}/v1/systemone` (Cloudflare). */
+  url?: string;
   /** Sent as a bearer token when set (a local laya-serve usually has none). */
   apiKey: string;
   model: string;
@@ -34,7 +38,7 @@ const warnedTruncation = new Set<string>();
 
 export function systemOneSource(c: SystemOneEndpoint): DecisionSource {
   return liveSource(async (req, signal) => {
-    const res = await fetch(`${c.baseUrl}/v1/systemone`, {
+    const res = await fetch(c.url ?? `${c.baseUrl}/v1/systemone`, {
       method: "POST",
       headers: { ...(c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {}), "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -49,12 +53,23 @@ export function systemOneSource(c: SystemOneEndpoint): DecisionSource {
     });
     if (!res.ok) return httpError(c.service, res);
 
-    const body = (await res.json()) as {
+    type Body = {
       answers?: { placement?: ChoiceAnswer };
-      usage?: { input_tokens?: number; output_tokens?: number; truncated?: boolean; state_tokens_dropped?: number; truncated_questions?: string[] };
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        truncated?: boolean;
+        state_tokens_dropped?: number;
+        truncated_questions?: string[];
+      };
     };
-    const inputTokens = body.usage?.input_tokens ?? 0;
-    const outputTokens = body.usage?.output_tokens ?? 0;
+    // Cloudflare wraps every response as { result, success, errors }.
+    const raw = (await res.json()) as Body & { result?: Body };
+    const body: Body = raw.result ?? raw;
+    const inputTokens = body.usage?.input_tokens ?? body.usage?.prompt_tokens ?? 0;
+    const outputTokens = body.usage?.output_tokens ?? body.usage?.completion_tokens ?? 0;
     const usage = { inputTokens, outputTokens, costUsd: cost(inputTokens, outputTokens, c.inputPricePerM, c.outputPricePerM) };
     // laya-serve says when part of the board or the option list didn't fit its token budget.
     const truncated = body.usage?.truncated || Boolean(body.usage?.truncated_questions?.length);
@@ -82,6 +97,24 @@ export function systemOneSource(c: SystemOneEndpoint): DecisionSource {
 
 export function jevSource(): DecisionSource {
   return systemOneSource({ service: "TypeSafe", ...config.jev });
+}
+
+export function clefSource(): DecisionSource {
+  const c = config.clef;
+  return systemOneSource({
+    service: "Cloudflare",
+    baseUrl: "https://api.cloudflare.com",
+    url: `https://api.cloudflare.com/client/v4/accounts/${c.accountId}/ai/run/@cf/cloudflare/clef`,
+    apiKey: c.apiToken,
+    model: c.model,
+    timeoutMs: c.timeoutMs,
+    inputPricePerM: c.inputPricePerM,
+    outputPricePerM: c.outputPricePerM,
+  });
+}
+
+export function gemmaSource(): DecisionSource {
+  return systemOneSource({ service: "EmbeddingGemma", ...config.gemma });
 }
 
 export function layaSource(): DecisionSource {

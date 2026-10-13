@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   LabelList,
   Line,
   LineChart,
@@ -20,16 +21,16 @@ import { standing } from "./ScoreStrip";
 import { fmtClock, fmtCost, fmtMs, percentile, type BoardState } from "./store";
 
 // The screen after a fight, sized to one window with no scrolling so it can be
-// recorded as is. It reveals in beats: the winner, the race replayed, the game
-// over time, smart against fast, then four measures as bar charts and one row
-// of numbers per model. Each model keeps one colour and one marker throughout.
+// recorded as is. Four charts and one table, revealed in beats: the race
+// replayed, smart against fast, the game over time, time per decision, then
+// one row of numbers per model. Each model keeps one colour and marker throughout.
 
 const KIND = { "system-one": "System One", llm: "Language model", baseline: "Baseline" } satisfies Record<AgentKind, string>;
 const SHAPES = ["circle", "square", "diamond", "triangle", "star", "cross"] as const;
 type Shape = (typeof SHAPES)[number];
 
 const RACE_MS = 5000;
-const BEAT = { race: 300, time: 700, scatter: 1100, bars: 1700, table: 2400 };
+const BEAT = { race: 300, scatter: 700, time: 1200, bars: 1700, table: 2300 };
 
 interface Row {
   b: BoardState;
@@ -120,36 +121,8 @@ export function ResultsScreen({ boards, config, rules, endAt, mocked, onBack, on
         <SmartFast rows={rows} />
       </Card>
 
-      <Card area="b1" title="Time per decision" note="p50 and p95, lower is better." at={BEAT.bars}>
-        <Bars rows={rows} series={[{ key: "p50", label: "p50", get: (r) => r.p50 }, { key: "p95", label: "p95", get: (r) => r.p95, faint: true }]} fmt={fmtMs} />
-      </Card>
-
-      <Card area="b2" title="Move quality" note="Best moves and pieces placed in time." at={BEAT.bars + 150}>
-        <Bars
-          rows={rows}
-          series={[
-            { key: "best", label: "best", get: (r) => (r.best === null ? null : r.best * 100) },
-            { key: "inTime", label: "in time", get: (r) => (r.inTime === null ? null : r.inTime * 100), faint: true },
-          ]}
-          fmt={pct}
-          max={100}
-        />
-      </Card>
-
-      <Card area="b3" title="Mistakes" note="Too late plus bad answers, lower is better." at={BEAT.bars + 300}>
-        <Bars
-          rows={rows}
-          series={[
-            { key: "late", label: "too late", get: (r) => r.late },
-            { key: "bad", label: "bad", get: (r) => r.bad, faint: true },
-          ]}
-          fmt={int}
-          stacked
-        />
-      </Card>
-
-      <Card area="b4" title="Cost" note="Total for the run, lower is better." at={BEAT.bars + 450}>
-        <Bars rows={rows} series={[{ key: "cost", label: "cost", get: (r) => r.cost }]} fmt={fmtCost} />
+      <Card area="speed" title="Time per decision" note="Median time to answer, with the slowest 5% (p95) after it. Lower is better." at={BEAT.bars}>
+        <SpeedBars rows={rows} />
       </Card>
 
       <section className="results-card results-table reveal" style={{ ...delay(BEAT.table), gridArea: "table" }} aria-label="Every number">
@@ -270,8 +243,8 @@ function SmartFast({ rows }: { rows: Row[] }) {
           label={{ value: "fast and smart", position: "insideTopLeft", style: { ...AXIS, fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 13 } }}
         />
         <XAxis dataKey="p50" type="number" scale="log" domain={[lo, hi]} ticks={ticks} tickFormatter={fmtMs} tick={AXIS} stroke="var(--ink-soft)" allowDataOverflow />
-        <YAxis dataKey="best" type="number" domain={[yMin, 100]} tickFormatter={(v: number) => `${v}%`} tick={AXIS} stroke="var(--ink-soft)" width={48} allowDataOverflow />
-        <ZAxis range={[140, 140]} />
+        <YAxis dataKey="best" type="number" domain={[yMin, 102]} ticks={Array.from({ length: Math.round((100 - yMin) / 5) + 1 }, (_, k) => yMin + k * 5).filter((_, k, all) => all.length <= 7 || k % 2 === 0)} tickFormatter={(v: number) => `${v}%`} tick={AXIS} stroke="var(--ink-soft)" width={48} allowDataOverflow />
+        <ZAxis range={[220, 220]} />
         {pts.map((r) => (
           <Scatter
             key={r.key}
@@ -288,55 +261,36 @@ function SmartFast({ rows }: { rows: Row[] }) {
   );
 }
 
-interface Series {
-  key: string;
-  label: string;
-  get: (r: Row) => number | null;
-  faint?: boolean;
-}
-
-/** Horizontal bars, one group per model in rank order, with each value printed at the bar's end. */
-function Bars({ rows, series, fmt, max, stacked }: { rows: Row[]; series: Series[]; fmt: (v: number) => string; max?: number; stacked?: boolean }) {
-  const data = rows.map((r) => {
-    const d: Record<string, string | number | null> = { name: r.name };
-    for (const s of series) d[s.key] = s.get(r);
-    return d;
-  });
+/** One bar per model, in rank order, in the model's colour; the label gives p50 and p95. */
+function SpeedBars({ rows }: { rows: Row[] }) {
+  const data = rows.map((r) => ({
+    name: r.name,
+    p50: r.p50 ?? 0,
+    color: r.color,
+    label: r.p50 === null ? "no answers" : `${fmtMs(r.p50)}   p95 ${r.p95 === null ? "–" : fmtMs(r.p95)}`,
+  }));
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} layout="vertical" margin={{ top: 0, right: 70, bottom: 0, left: 0 }} barCategoryGap="22%" barGap={1}>
-        <XAxis type="number" hide domain={[0, max ?? "auto"]} />
-        <YAxis type="category" dataKey="name" width={118} tick={{ ...AXIS, fill: "var(--text)" }} tickLine={false} axisLine={{ stroke: "var(--ink-soft)" }} interval={0} />
-        {series.map((s, i) => (
-          <Bar
-            key={s.key}
-            dataKey={s.key}
-            stackId={stacked ? "a" : undefined}
-            fill={s.faint ? "var(--ink-soft)" : "var(--ink)"}
-            fillOpacity={s.faint ? 0.45 : 1}
-            isAnimationActive={animate}
-            animationBegin={BEAT.bars + 300 + i * 200}
-            animationDuration={900}
-          >
-            {(!stacked || i === series.length - 1) && (
-              <LabelList
-                position="right"
-                content={(p) => {
-                  const { x = 0, y = 0, width = 0, height = 0, index = 0 } = p as { x?: number; y?: number; width?: number; height?: number; index?: number };
-                  const values = series.map((ss) => data[index][ss.key] as number | null);
-                  const text = stacked ? fmt(values.reduce<number>((a, v) => a + (v ?? 0), 0)) : values[i] === null ? "–" : fmt(values[i]!);
-                  return (
-                    <text x={Number(x) + Number(width) + 5} y={Number(y) + Number(height) / 2 + 4} style={{ ...AXIS, fill: s.faint ? "var(--muted)" : "var(--text)" }}>
-                      {series.length > 1 && !stacked ? `${text} ${s.label}` : text}
-                    </text>
-                  );
-                }}
-              />
-            )}
-          </Bar>
-        ))}
+      <BarChart data={data} layout="vertical" margin={{ top: 0, right: 150, bottom: 0, left: 0 }} barCategoryGap="28%">
+        <XAxis type="number" hide domain={[0, "auto"]} />
+        <YAxis type="category" dataKey="name" width={150} tick={<NameTick />} tickLine={false} axisLine={{ stroke: "var(--ink-soft)" }} interval={0} />
+        <Bar dataKey="p50" isAnimationActive={animate} animationBegin={BEAT.bars + 300} animationDuration={900}>
+          {data.map((d) => (
+            <Cell key={d.name} fill={d.color} />
+          ))}
+          <LabelList dataKey="label" position="right" style={{ ...AXIS, fill: "var(--text)", fontSize: 12 }} />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
+  );
+}
+
+/** Model names on one line, never wrapped, in the display face. */
+function NameTick(props: { x?: number; y?: number; payload?: { value: string } }) {
+  return (
+    <text x={(props.x ?? 0) - 8} y={(props.y ?? 0) + 4} textAnchor="end" className="name-tick">
+      {props.payload?.value}
+    </text>
   );
 }
 
@@ -357,9 +311,12 @@ function SummaryTable({ rows, sprint, startDelay }: { rows: Row[]; sprint: boole
     { label: "Cost", value: (r) => r.cost, fmt: fmtCost, better: "low" },
     { label: "Per landed", value: (r) => r.costPerLanded, fmt: fmtCost, better: "low" },
   ];
+  // Mark a column's best only when it stands out: not when half the field ties for it.
   const tops = cols.map((c) => {
     const known = rows.map(c.value).filter((v): v is number => v !== null);
-    return c.better && known.length > 1 ? (c.better === "high" ? Math.max(...known) : Math.min(...known)) : null;
+    if (!c.better || known.length < 2) return null;
+    const top = c.better === "high" ? Math.max(...known) : Math.min(...known);
+    return known.filter((v) => v === top).length * 2 <= known.length ? top : null;
   });
   return (
     <table className="metric-table">

@@ -10,6 +10,8 @@
     "screenshots": "bun scripts/screenshots.mjs",
     "fake-providers": "bun scripts/fake-providers.ts",
     "smoke": "bun scripts/smoke.ts",
+    "smoke:clef": "bun scripts/smoke-clef.ts",
+    "smoke:live": "bun scripts/smoke-live.ts",
     "stats": "bun scripts/stats.ts"
   },
   "dependencies": {

@@ -121,6 +121,40 @@ export const config = {
     outputPricePerM: num("LAYA_OUTPUT_PRICE_PER_M", 0),
   },
 
+  /**
+   * EmbeddingGemma 2 fine-tuned for typed decisions (mrm8488, Apache-2.0),
+   * served by deploy/gemma-serve on the same protocol. Unavailable until
+   * GEMMA_BASE_URL is set.
+   */
+  gemma: {
+    baseUrl: (env.GEMMA_BASE_URL ?? "").replace(/\/$/, ""),
+    apiKey: env.GEMMA_API_KEY ?? "",
+    model: env.GEMMA_MODEL || "mrm8488/embeddinggemma-2-ft-typed-decision",
+    label: env.GEMMA_LABEL || "EmbeddingGemma 2",
+    host: env.GEMMA_HOST_NOTE || "self-hosted",
+    timeoutMs: num("GEMMA_TIMEOUT_MS", 30_000),
+    inputPricePerM: num("GEMMA_INPUT_PRICE_PER_M", 0),
+    outputPricePerM: num("GEMMA_OUTPUT_PRICE_PER_M", 0),
+  },
+
+  /**
+   * Cloudflare Clef, the open-weight decision model on Workers AI. Its request
+   * body matches the TypeSafe protocol (model, state, typed questions); only the
+   * address and the `{ result }` envelope differ. Unavailable until both
+   * CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are set.
+   */
+  clef: {
+    accountId: env.CLOUDFLARE_ACCOUNT_ID ?? "",
+    apiToken: env.CLOUDFLARE_API_TOKEN ?? "",
+    /** "clef" (27B) or "clef-flash" (9B). */
+    model: env.CLEF_MODEL || "clef",
+    label: env.CLEF_LABEL || (env.CLEF_MODEL === "clef-flash" ? "Cloudflare Clef-flash" : "Cloudflare Clef"),
+    timeoutMs: num("CLEF_TIMEOUT_MS", 30_000),
+    /** Workers AI list prices; output tokens aren't charged. */
+    inputPricePerM: num("CLEF_INPUT_PRICE_PER_M", env.CLEF_MODEL === "clef-flash" ? 0.09 : 0.24),
+    outputPricePerM: num("CLEF_OUTPUT_PRICE_PER_M", 0),
+  },
+
   bedrock: {
     region: env.AWS_REGION ?? env.AWS_DEFAULT_REGION ?? "us-east-1",
     /** The AWS SDK reads the usual AWS_* variables (or a profile) itself. */
