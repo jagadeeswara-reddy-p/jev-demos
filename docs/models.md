@@ -69,6 +69,7 @@ be changed or removed from the page; models added in the page can.
 | `apiKey` | completion, decision | Sent as `Authorization: Bearer <key>`. Leave it out for servers without auth. | none |
 | `timeoutMs` | all | Give up on a call after this long; the answer counts as an error. | 60000 (completion, bedrock), 30000 (decision) |
 | `prices` | all | `{ "inputPerM", "outputPerM" }` in USD per million tokens, for the cost column. Bedrock also takes `cacheReadPerM` and `cacheWritePerM` (default: the input price). | free |
+| `healthCheck` | completion, decision | A path on `baseUrl` that answers 200 when the server is up, e.g. `/health`. The server pings it (2 s timeout, cached 10 s) before listing models, before a run and before a Test move, and shows the model as unavailable when it doesn't answer. Set it for self-hosted models. | none |
 | `extraBody` | all | JSON object merged into every request body (bedrock: sent as `additionalModelRequestFields`). For provider options such as `{"reasoning_effort": "low"}` or Laya's token budgets. | none |
 | `jsonMode` | completion | How the answer is constrained: `schema` (strict JSON schema), `object` (JSON mode) or `none` (plain text containing the JSON). | `schema` |
 | `maxTokens` | completion, bedrock | Reply token limit. | provider default (bedrock: 1024) |

@@ -17,7 +17,7 @@ export const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/;
 export const MAX_ROTATIONS = 64;
 
 const ADAPTERS: AdapterName[] = ["completion", "decision", "bedrock"];
-const COMMON = ["id", "label", "adapter", "description", "baseUrl", "url", "model", "apiKey", "timeoutMs", "prices", "extraBody"];
+const COMMON = ["id", "label", "adapter", "description", "baseUrl", "url", "model", "apiKey", "timeoutMs", "prices", "extraBody", "healthCheck"];
 const ONLY: Record<AdapterName, string[]> = {
   completion: ["jsonMode", "maxTokens"],
   decision: ["rotations"],
@@ -61,6 +61,11 @@ export function validateModel(input: unknown, options: ValidateOptions = {}): Mo
   const apiKey = text(input, "apiKey", { max: 4000 });
   if (apiKey) model.apiKey = apiKey;
 
+  const healthCheck = text(input, "healthCheck", { max: 200 });
+  if (healthCheck) {
+    if (!healthCheck.startsWith("/")) throw new ModelError("healthCheck", 'must be a path on the API address, such as "/health"');
+    model.healthCheck = healthCheck;
+  }
   if (input.timeoutMs !== undefined) model.timeoutMs = integer(input, "timeoutMs", 1_000, 600_000);
   if (input.prices !== undefined) model.prices = prices(input.prices, a);
   if (input.extraBody !== undefined) {
