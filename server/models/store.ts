@@ -1,4 +1,5 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { MAX_BOARDS } from "../../src/arena/types";
 import { ADAPTERS } from "../adapters";
 import { fillEnv, type Env } from "./env";
 import type { ModelConfig, ModelInfo } from "./types";
@@ -13,7 +14,7 @@ import { ModelError, slugify, validateModel } from "./validate";
 // Built-in models are read-only here. Keys never leave this module except to
 // the adapters: what the page gets (ModelInfo) only says whether a key is set.
 
-export const MAX_LINEUP = 6;
+export const MAX_LINEUP = MAX_BOARDS;
 
 export interface StoreOptions {
   presetsPath: string;

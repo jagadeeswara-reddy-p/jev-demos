@@ -14,6 +14,8 @@ function num(name: string, fallback: number): number {
 
 export const config = {
   port: num("PORT", 5317),
+  /** 127.0.0.1 keeps the page (which can run models on your keys) off the network; set HOST=0.0.0.0 to share it. */
+  host: env.HOST || "127.0.0.1",
   runsDir: env.RUNS_DIR ?? "runs",
   production: env.NODE_ENV === "production",
   /** Built-in models (committed). */

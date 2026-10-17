@@ -153,6 +153,9 @@ export function ModelForm({ model, onSaved, onCancel }: Props) {
         autoComplete: "off",
         placeholder: model?.settings.hasKey ? "Saved. Leave blank to keep it." : "Optional for local servers",
       })}
+      <p className="form-hint">
+        Saved in models.local.json on this machine and never shown again. To keep it in .env instead, type <code>{"${YOUR_VAR}"}</code>.
+      </p>
 
       <details className="form-more">
         <summary>More settings</summary>

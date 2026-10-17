@@ -17,6 +17,7 @@ import { listSources, models } from "./sources";
 
 const server = Bun.serve({
   port: config.port,
+  hostname: config.host,
   // Event streams stay open for minutes; the clock heartbeat keeps them busy.
   idleTimeout: 255,
   development: !config.production && { hmr: true, console: true },

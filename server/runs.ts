@@ -2,7 +2,7 @@ import { mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { FileSink } from "bun";
 import { ArenaSimulation } from "../src/arena/simulation";
-import { DEFAULT_CONFIG, type ArenaEvent, type RunConfig } from "../src/arena/types";
+import { DEFAULT_CONFIG, MAX_BOARDS, type ArenaEvent, type RunConfig } from "../src/arena/types";
 import { config } from "./config";
 import { createSource, listSources } from "./sources";
 
@@ -13,7 +13,6 @@ import { createSource, listSources } from "./sources";
 
 const TICK_MS = 10;
 const CLOCK_MS = 250;
-const MAX_BOARDS = 6;
 const KEEP_FINISHED_MS = 10 * 60_000;
 
 const encoder = new TextEncoder();

@@ -210,5 +210,8 @@ export const DEFAULT_CONFIG: Omit<RunConfig, "agents" | "seed" | "mode"> = {
   targetLines: 0,
 };
 
+/** Most boards in one run (two rows of three on screen). */
+export const MAX_BOARDS = 6;
+
 /** The line target offered in the page for sprint mode. */
 export const SPRINT_LINES = 40;

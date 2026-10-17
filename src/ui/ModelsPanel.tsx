@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { MAX_BOARDS } from "../arena/types";
 import { Icon } from "./Icon";
 import { ModelForm } from "./ModelForm";
 import { ApiError, deleteModel, listModels, saveLineup, testModel, type ModelInfo, type TestResult } from "./modelsApi";
@@ -7,7 +8,7 @@ import { ApiError, deleteModel, listModels, saveLineup, testModel, type ModelInf
 // (boards follow the order they were ticked in), test any model with one real
 // decision, and add, change or remove the models added here.
 
-const MAX_LINEUP = 6;
+const MAX_LINEUP = MAX_BOARDS;
 const ADAPTER_NAMES = { completion: "Completion", decision: "Decision", bedrock: "Bedrock" } as const;
 
 type TestState = { pending: true } | { pending: false; result?: TestResult; error?: string };
