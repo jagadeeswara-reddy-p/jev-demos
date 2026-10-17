@@ -2,7 +2,7 @@ import index from "../index.html";
 import { config } from "./config";
 import { modelRoutes } from "./routes/models";
 import { createRun, getRun, isRunId, listRuns, logPath, validateConfig } from "./runs";
-import { listSources, models } from "./sources";
+import { health, listSources, models, refreshHealth } from "./sources";
 
 // One Bun process serves the React app (bundled from index.html, hot reloaded
 // in development) and the arena API.
@@ -27,14 +27,22 @@ const server = Bun.serve({
 
     "/api/health": () => Response.json({ ok: true }),
 
-    "/api/sources": () => Response.json(listSources()),
+    "/api/sources": async () => {
+      await refreshHealth();
+      return Response.json(listSources());
+    },
 
-    ...modelRoutes(models),
+    ...modelRoutes(models, undefined, {
+      refresh: refreshHealth,
+      apply: (info) => health.apply(info),
+      problem: (id) => health.problem(id),
+    }),
 
     "/api/runs": {
       GET: () => Response.json(listRuns()),
       POST: async (req) => {
         try {
+          await refreshHealth(); // a self-hosted model that went away can't start a run
           const run = createRun(validateConfig(await req.json()));
           return Response.json({ id: run.id, config: run.config }, { status: 201 });
         } catch (err) {
@@ -74,6 +82,7 @@ const server = Bun.serve({
   },
 });
 
+await refreshHealth();
 const live = listSources().filter((s) => s.live);
 console.log(`Deadline Tetris on ${server.url}`);
 console.log(`  Line-up  ${models.lineup().join(", ")}`);

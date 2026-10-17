@@ -35,6 +35,10 @@ deploy/ec2/teardown.sh      # when you're done
 - Strands Decider needs an Ampere or newer GPU (bf16 and Triton kernels). For Laya
   alone, `INSTANCE_TYPE=g4dn.xlarge` (T4, $0.526/hour) works.
 - Strands Decider's server has no authentication; the firewall rule is what protects it.
+- When the box is gone (deleted on its timer or by `teardown.sh`), Laya and Strands
+  show as unavailable ("Not responding at …") within a couple of seconds: their
+  `models.json` entries set `healthCheck: "/health"`, so the server pings them
+  instead of letting every move wait out the 30-second timeout.
 
 ## On your own machine
 

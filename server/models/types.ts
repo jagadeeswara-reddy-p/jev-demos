@@ -34,6 +34,12 @@ export interface ModelConfig {
   apiKey?: string;
   timeoutMs?: number;
   prices?: Prices;
+  /**
+   * A path on baseUrl that answers 200 when the server is up, e.g. "/health". Set it for
+   * self-hosted models: the server pings it and shows the model as unavailable when it
+   * doesn't answer, instead of letting every move wait out the timeout.
+   */
+  healthCheck?: string;
   /** Merged into every request body (bedrock: the Converse API's additionalModelRequestFields). */
   extraBody?: Record<string, unknown>;
 

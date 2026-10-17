@@ -29,6 +29,7 @@
       "baseUrl": "${LAYA_BASE_URL}",
       "model": "typed-decisions",
       "apiKey": "${LAYA_API_KEY:-}",
+      "healthCheck": "/health",
       "rotations": 4,
       "extraBody": { "max_len": 4096, "head_max_len": 2048 }
     },
@@ -38,6 +39,7 @@
       "adapter": "decision",
       "description": "Open-weight decision model AWS Strands Decider 2B (strands-decider-2B-qwen3.5-v1-2610), ${STRANDS_HOST_NOTE:-self-hosted}",
       "baseUrl": "${STRANDS_BASE_URL}",
+      "healthCheck": "/health",
       "model": "strands-decider-2B-qwen3.5-v1-2610"
     },
     {
