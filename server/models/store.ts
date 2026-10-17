@@ -67,6 +67,13 @@ export class ModelStore {
     return fillEnv(raw, this.opts.env).value;
   }
 
+  /** Every model that can run, placeholders filled (for health checks). */
+  runnable(): ModelConfig[] {
+    return this.all()
+      .filter((m) => !this.unavailable(m))
+      .map((m) => fillEnv(m, this.opts.env).value);
+  }
+
   /** Adds a model from the page. The id comes from the label unless given. */
   add(input: unknown): ModelInfo {
     const draft = isObject(input) ? { ...input } : input;

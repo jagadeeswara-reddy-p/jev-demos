@@ -10,6 +10,8 @@ import { modelRoutes } from "./models";
 let dir: string;
 let routes: ReturnType<typeof modelRoutes>;
 let tested: ModelConfig[];
+let store: ModelStore;
+let fakeTest: (m: ModelConfig) => Promise<TestResult>;
 
 const custom = { label: "Local Qwen", adapter: "completion", baseUrl: "http://localhost:8000/v1", model: "qwen", apiKey: "sk-secret" };
 
@@ -19,7 +21,7 @@ beforeEach(() => {
     join(dir, "models.json"),
     JSON.stringify({ models: [{ id: "laya", label: "Laya", adapter: "decision", baseUrl: "${LAYA_BASE_URL}", model: "typed-decisions" }] }),
   );
-  const store = new ModelStore({
+  store = new ModelStore({
     presetsPath: join(dir, "models.json"),
     localPath: join(dir, "models.local.json"),
     env: {},
@@ -27,7 +29,7 @@ beforeEach(() => {
     otherSources: ["random"],
   });
   tested = [];
-  const fakeTest = async (m: ModelConfig): Promise<TestResult> => {
+  fakeTest = async (m: ModelConfig): Promise<TestResult> => {
     tested.push(m);
     return { status: "ok", choice: "option_1", latencyMs: 5, options: 34 };
   };
@@ -78,6 +80,20 @@ describe("model routes", () => {
     const res = await routes["/api/models/:id/test"].POST(json("POST", undefined, { id: "local-qwen" }));
     expect(await res.json()).toMatchObject({ status: "ok", choice: "option_1", latencyMs: 5 });
     expect(tested[0].apiKey).toBe("sk-secret");
+  });
+
+  test("a model whose server stopped answering is shown as unavailable and can't be tested", async () => {
+    await routes["/api/models"].POST(json("POST", custom));
+    const dead = modelRoutes(store, fakeTest, {
+      refresh: async () => {},
+      apply: (i) => (i.id === "local-qwen" ? { ...i, available: false, reason: "Not responding at localhost:8000" } : i),
+      problem: (id) => (id === "local-qwen" ? "Not responding at localhost:8000" : undefined),
+    });
+    const list = await (await dead["/api/models"].GET()).json();
+    expect(list.find((m: { id: string }) => m.id === "local-qwen")).toMatchObject({ available: false, reason: "Not responding at localhost:8000" });
+    const res = await dead["/api/models/:id/test"].POST(json("POST", undefined, { id: "local-qwen" }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain("Not responding");
   });
 
   test("testing a model that can't run is a 409, an unknown one a 404", async () => {

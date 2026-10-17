@@ -53,6 +53,11 @@ describe("validateModel", () => {
     expect(() => validateModel({ ...completion, temprature: 1 })).toThrow("temprature: is not a model setting");
   });
 
+  test("takes a health check path, and only a path", () => {
+    expect(validateModel({ ...completion, healthCheck: "/health" }).healthCheck).toBe("/health");
+    expect(fieldOf(() => validateModel({ ...completion, healthCheck: "health" }))).toBe("healthCheck");
+  });
+
   test("accepts a full url instead of a base url", () => {
     const m = validateModel({ ...completion, adapter: "decision", baseUrl: undefined, url: "https://x.org/run/clef", rotations: 4 });
     expect(m.url).toBe("https://x.org/run/clef");
