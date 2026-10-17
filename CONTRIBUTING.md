@@ -14,7 +14,7 @@ bun dev                 # http://localhost:5317
 ```
 
 No keys? The mock line-ups run in the browser, and `bun run fake-providers`
-stands in for a Decisions API and a Chat Completions API (see the README, "Testing and tools").
+stands in for a Decisions API and a Chat Completions API (see [docs/development.md](docs/development.md#testing-and-tools)).
 
 ## Before sending a change
 
