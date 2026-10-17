@@ -1,15 +1,5 @@
-import {
-  HEIGHT,
-  HIDDEN_ROWS,
-  WIDTH,
-  clearRows,
-  emptyBoard,
-  fits,
-  fullRows,
-  place,
-  type Board,
-} from "./board";
-import { pieceCells, spawnX, type Cell, type PieceType } from "./pieces";
+import { type Board, clearRows, emptyBoard, fits, fullRows, HEIGHT, HIDDEN_ROWS, place, WIDTH } from "./board";
+import { type Cell, type PieceType, pieceCells, spawnX } from "./pieces";
 import { BagRandomizer } from "./rng";
 
 export interface ActivePiece {
@@ -41,7 +31,7 @@ export const MAX_LEVEL = 20;
 // Guideline (Tetris Worlds) speed curve: seconds per row = (0.8 - (L-1) * 0.007)^(L-1).
 export function gravityMsPerRow(level: number): number {
   const l = Math.min(Math.max(level, 1), MAX_LEVEL);
-  return 1000 * Math.pow(0.8 - (l - 1) * 0.007, l - 1);
+  return 1000 * (0.8 - (l - 1) * 0.007) ** (l - 1);
 }
 
 export class TetrisGame {
@@ -59,7 +49,10 @@ export class TetrisGame {
   /** Set while the piece falls to a spot it was steered to; it locks the moment it lands. */
   private dropping: { byDecision: boolean } | null = null;
 
-  constructor(seed: number, private previewCount = 3) {
+  constructor(
+    seed: number,
+    private previewCount = 3,
+  ) {
     this.bag = new BagRandomizer(seed);
     for (let i = 0; i < previewCount + 1; i++) this.queue.push(this.bag.next());
   }
@@ -103,12 +96,7 @@ export class TetrisGame {
    * falls at `dropMsPerRow` (never slower than gravity) and locks as it lands;
    * 0 drops it instantly.
    */
-  advance(
-    dtMs: number,
-    gravityMs: number,
-    lockDelayMs: number,
-    dropMsPerRow = 0,
-  ): { moved: boolean; lock: LockResult | null } {
+  advance(dtMs: number, gravityMs: number, lockDelayMs: number, dropMsPerRow = 0): { moved: boolean; lock: LockResult | null } {
     const a = this.active;
     if (!a) return { moved: false, lock: null };
     if (this.dropping) return this.advanceDrop(dtMs, dropMsPerRow > 0 ? Math.min(dropMsPerRow, gravityMs) : 0);
@@ -184,7 +172,7 @@ export class TetrisGame {
       }
     }
     out.sort((p, q) => p.x - q.x || p.rot - q.rot);
-    out.forEach((c, i) => (c.id = `option_${i + 1}`));
+    for (const [i, c] of out.entries()) c.id = `option_${i + 1}`;
     return out;
   }
 

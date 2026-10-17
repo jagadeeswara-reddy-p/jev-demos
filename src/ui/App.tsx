@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ReplayBackend, fromJsonl, toJsonl } from "../arena/replayBackend";
-import { ServerBackend, fetchServerSetup } from "../arena/serverBackend";
-import { DEFAULT_CONFIG, SPRINT_LINES, type AgentSpec, type ArenaBackend, type ClockMode, type SourceInfo } from "../arena/types";
+import { fromJsonl, ReplayBackend, toJsonl } from "../arena/replayBackend";
+import { fetchServerSetup, ServerBackend } from "../arena/serverBackend";
+import { type AgentSpec, type ArenaBackend, type ClockMode, DEFAULT_CONFIG, type SourceInfo, SPRINT_LINES } from "../arena/types";
 import { MockBackend } from "../mock/mockBackend";
 import { MOCK_SOURCES } from "../mock/mockSource";
 import { BoardFigure } from "./BoardFigure";
 import { ArenaContext, useArenaState } from "./hooks";
-import { ResultsScreen } from "./ResultsScreen";
-import { SCENARIOS } from "./scenarios";
-import { ScoreStrip } from "./ScoreStrip";
-import { ArenaStore, fmtClock, fmtMs, type ArenaState } from "./store";
 import { Icon } from "./Icon";
 import { ModelsPanel } from "./ModelsPanel";
+import { ResultsScreen } from "./ResultsScreen";
+import { ScoreStrip } from "./ScoreStrip";
+import { SCENARIOS } from "./scenarios";
+import { type ArenaState, ArenaStore, fmtClock, fmtMs } from "./store";
 import { ThemeToggle } from "./ThemeToggle";
 
 const MOCK_DEFAULT = SCENARIOS.find((s) => s.id === "jev-vs-llm")!;
@@ -73,15 +73,7 @@ export function App() {
   );
 }
 
-function Page({
-  store,
-  use,
-  backendRef,
-}: {
-  store: ArenaStore;
-  use: (b: ArenaBackend) => void;
-  backendRef: React.MutableRefObject<ArenaBackend>;
-}) {
+function Page({ store, use, backendRef }: { store: ArenaStore; use: (b: ArenaBackend) => void; backendRef: React.MutableRefObject<ArenaBackend> }) {
   const state = useArenaState();
   const [sources, setSources] = useState<SourceInfo[]>(MOCK_SOURCES);
   // The live line-up is kept on the server (picked in the Models panel, LINEUP in .env until then).
@@ -117,6 +109,7 @@ function Page({
       }
     });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load the server setup once, on first render
   useEffect(() => {
     void loadSetup(false);
   }, []);
@@ -130,10 +123,7 @@ function Page({
   // A live run is in progress: real response times, so no speed-up and no pause.
   const liveRunning = active && backendRef.current instanceof ServerBackend;
   // The rules on screen: the run's own once it has started (old logs predate sprint mode), otherwise the settings.
-  const rules =
-    editing || !state.config
-      ? { mode, targetLines }
-      : { mode: state.config.mode, targetLines: state.config.targetLines ?? 0 };
+  const rules = editing || !state.config ? { mode, targetLines } : { mode: state.config.mode, targetLines: state.config.targetLines ?? 0 };
   const blocked = agents.map((a) => sourceOf(sources, a.sourceId)).find((s) => !s.available);
 
   const pickScenario = (id: string) => {
@@ -147,7 +137,12 @@ function Page({
   const startRun = () => {
     setError(null);
     const live = isLive(agents);
-    const backend = live ? new ServerBackend((msg) => (setError(msg), store.setStatus("idle"))) : new MockBackend();
+    const backend = live
+      ? new ServerBackend((msg) => {
+          setError(msg);
+          store.setStatus("idle");
+        })
+      : new MockBackend();
     use(backend);
     backend.setSpeed(live ? 1 : SPEED);
     store.reset();
@@ -276,7 +271,8 @@ function Page({
           </>
         ) : (
           <>
-            <div className="bar-settings" aria-label="Run settings">
+            {/* biome-ignore lint/a11y/useSemanticElements: the settings sit in the top bar as one labelled group; a fieldset would add its own box */}
+            <div className="bar-settings" role="group" aria-label="Run settings">
               <label className="bar-field">
                 <span className="bar-label">Line-up</span>
                 <select className="field" value={scenarioId} onChange={(e) => pickScenario(e.target.value)} title={scenario.note}>
@@ -291,9 +287,18 @@ function Page({
                 <span className="bar-label" id="clock-label">
                   Clock
                 </span>
+                {/* biome-ignore lint/a11y/useSemanticElements: a segmented control is a row of toggle buttons; a fieldset would draw its own box */}
                 <div className="segmented" role="group" aria-labelledby="clock-label">
                   {(["realtime", "frozen"] as const).map((m) => (
-                    <button key={m} type="button" aria-pressed={mode === m} onClick={() => (setMode(m), setEditing(true))}>
+                    <button
+                      key={m}
+                      type="button"
+                      aria-pressed={mode === m}
+                      onClick={() => {
+                        setMode(m);
+                        setEditing(true);
+                      }}
+                    >
                       {m === "realtime" ? "Real time" : "Frozen"}
                     </button>
                   ))}
@@ -303,6 +308,7 @@ function Page({
                 <span className="bar-label" id="goal-label">
                   Goal
                 </span>
+                {/* biome-ignore lint/a11y/useSemanticElements: a segmented control is a row of toggle buttons; a fieldset would draw its own box */}
                 <div className="segmented" role="group" aria-labelledby="goal-label">
                   {[0, SPRINT_LINES].map((n) => (
                     <button
@@ -310,7 +316,10 @@ function Page({
                       type="button"
                       aria-pressed={targetLines === n}
                       title={n ? `Race to clear ${n} lines` : "Play until every board tops out"}
-                      onClick={() => (setTargetLines(n), setEditing(true))}
+                      onClick={() => {
+                        setTargetLines(n);
+                        setEditing(true);
+                      }}
                     >
                       {n ? `${n} lines` : "Survive"}
                     </button>
@@ -328,12 +337,18 @@ function Page({
                     type="number"
                     min={0}
                     value={seed}
-                    onChange={(e) => (setSeed(Math.max(0, Number(e.target.value) || 0)), setEditing(true))}
+                    onChange={(e) => {
+                      setSeed(Math.max(0, Number(e.target.value) || 0));
+                      setEditing(true);
+                    }}
                   />
                   <button
                     type="button"
                     className="icon-btn"
-                    onClick={() => (setSeed(Math.floor(Math.random() * 100_000)), setEditing(true))}
+                    onClick={() => {
+                      setSeed(Math.floor(Math.random() * 100_000));
+                      setEditing(true);
+                    }}
                     aria-label="Pick a random seed"
                     title="Random seed"
                   >
@@ -348,10 +363,24 @@ function Page({
                   <Icon name="chart" />
                 </button>
               )}
-              <button type="button" className="icon-btn" onClick={() => replay()} disabled={!hasRecording} aria-label="Replay the last run" title="Replay">
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => replay()}
+                disabled={!hasRecording}
+                aria-label="Replay the last run"
+                title="Replay"
+              >
                 <Icon name="replay" />
               </button>
-              <button type="button" className="icon-btn" onClick={exportLog} disabled={!hasRecording} aria-label="Export the run log" title="Export log">
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={exportLog}
+                disabled={!hasRecording}
+                aria-label="Export the run log"
+                title="Export log"
+              >
                 <Icon name="download" />
               </button>
               <button type="button" className="icon-btn" onClick={() => fileRef.current?.click()} aria-label="Load a run log" title="Load log">
@@ -384,7 +413,10 @@ function Page({
       {note && <p className="bar-note">{note}</p>}
       {lineup && <ModelsPanel open={modelsOpen} lineup={lineup} onClose={() => setModelsOpen(false)} onChanged={() => void loadSetup(true)} />}
       <ScoreStrip agents={shown} rules={rules} />
-      <div className="boards" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }}>
+      <div
+        className="boards"
+        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rowCount}, minmax(0, 1fr))` }}
+      >
         {boardFigures}
       </div>
     </main>

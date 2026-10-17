@@ -55,11 +55,7 @@ describe("liveSource", () => {
   });
 
   test("gives up after the timeout", async () => {
-    const { answer } = await ask(
-      (_req, signal) =>
-        new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason))),
-      30,
-    );
+    const { answer } = await ask((_req, signal) => new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason))), 30);
     expect(answer).toEqual({ status: "error", detail: "No response within 30 ms" });
   });
 });

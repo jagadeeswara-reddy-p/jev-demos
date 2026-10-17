@@ -1,7 +1,7 @@
 import index from "../index.html";
 import { config } from "./config";
-import { createRun, getRun, isRunId, listRuns, logPath, validateConfig } from "./runs";
 import { modelRoutes } from "./routes/models";
+import { createRun, getRun, isRunId, listRuns, logPath, validateConfig } from "./runs";
 import { listSources, models } from "./sources";
 
 // One Bun process serves the React app (bundled from index.html, hot reloaded

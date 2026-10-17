@@ -2,7 +2,7 @@ import { mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { FileSink } from "bun";
 import { ArenaSimulation } from "../src/arena/simulation";
-import { DEFAULT_CONFIG, MAX_BOARDS, type ArenaEvent, type RunConfig } from "../src/arena/types";
+import { type ArenaEvent, DEFAULT_CONFIG, MAX_BOARDS, type RunConfig } from "../src/arena/types";
 import { config } from "./config";
 import { createSource, listSources } from "./sources";
 
@@ -87,7 +87,7 @@ export class LiveRun {
   private push(events: ArenaEvent[]) {
     for (const e of events) {
       this.events.push(e);
-      this.log.write(JSON.stringify(e) + "\n");
+      this.log.write(`${JSON.stringify(e)}\n`);
       this.send(frame(this.events.length - 1, e));
     }
   }

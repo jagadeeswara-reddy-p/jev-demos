@@ -19,11 +19,12 @@ stands in for a Decisions API and a Chat Completions API (see the README, "Testi
 ## Before sending a change
 
 ```sh
+bun run lint        # Biome: formatting and lint (bun run format fixes what it can)
 bun run typecheck
 bun test
 ```
 
-Both run in CI on every pull request.
+All three run in CI on every pull request.
 
 ## Where things go
 

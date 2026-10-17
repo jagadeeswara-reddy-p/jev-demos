@@ -34,7 +34,10 @@ describe("completionBody", () => {
   test("follows jsonMode, maxTokens and extraBody", () => {
     expect((completionBody({ ...base, jsonMode: "object" }, req) as any).response_format).toEqual({ type: "json_object" });
     expect(completionBody({ ...base, jsonMode: "none" }, req)).not.toHaveProperty("response_format");
-    expect(completionBody({ ...base, maxTokens: 64, extraBody: { reasoning_effort: "low" } }, req)).toMatchObject({ max_tokens: 64, reasoning_effort: "low" });
+    expect(completionBody({ ...base, maxTokens: 64, extraBody: { reasoning_effort: "low" } }, req)).toMatchObject({
+      max_tokens: 64,
+      reasoning_effort: "low",
+    });
   });
 });
 

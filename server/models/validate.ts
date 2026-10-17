@@ -129,7 +129,7 @@ function oneOf<T extends string>(o: Record<string, unknown>, field: string, valu
 }
 
 function prices(v: unknown, adapter: AdapterName): Prices {
-  if (!isObject(v)) throw new ModelError("prices", "must be an object such as {\"inputPerM\": 0.5, \"outputPerM\": 1.5}");
+  if (!isObject(v)) throw new ModelError("prices", 'must be an object such as {"inputPerM": 0.5, "outputPerM": 1.5}');
   const keys = adapter === "bedrock" ? ["inputPerM", "outputPerM", "cacheReadPerM", "cacheWritePerM"] : ["inputPerM", "outputPerM"];
   for (const key of Object.keys(v)) if (!keys.includes(key)) throw new ModelError(`prices.${key}`, "is not a price setting");
   const out: Prices = { inputPerM: 0, outputPerM: 0 };

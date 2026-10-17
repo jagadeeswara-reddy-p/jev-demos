@@ -1,4 +1,4 @@
-import { TASK, optionDescriptions, stateText } from "../../src/arena/prompt";
+import { optionDescriptions, stateText, TASK } from "../../src/arena/prompt";
 import type { DecisionAnswer, DecisionRequest, DecisionSource, DecisionUsage } from "../../src/arena/types";
 import type { Prices } from "../models/types";
 
@@ -10,10 +10,7 @@ import type { Prices } from "../models/types";
  * server's wall clock from just before the request to just after the response
  * is parsed, so it includes the network round trip, as a real game loop would see it.
  */
-export function liveSource(
-  call: (req: DecisionRequest, signal: AbortSignal) => Promise<DecisionAnswer>,
-  timeoutMs: number,
-): DecisionSource {
+export function liveSource(call: (req: DecisionRequest, signal: AbortSignal) => Promise<DecisionAnswer>, timeoutMs: number): DecisionSource {
   return {
     request(req, deliver, ctx) {
       const started = performance.now();
@@ -70,7 +67,10 @@ export function choiceSchema(req: DecisionRequest) {
 
 /** Strict: the answer must be JSON naming an option. No guessing from free text. */
 export function parseChoice(text: string, usage: DecisionUsage): DecisionAnswer {
-  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
   try {
     const parsed = JSON.parse(cleaned) as { choice?: unknown };
     if (typeof parsed.choice === "string") return { status: "ok", choice: parsed.choice, usage };

@@ -1,4 +1,4 @@
-import { HIDDEN_ROWS, HEIGHT, VISIBLE_HEIGHT, WIDTH, clearRows, decodeBoard, fullRows, place, type Board } from "../engine/board";
+import { type Board, clearRows, decodeBoard, fullRows, HEIGHT, HIDDEN_ROWS, place, VISIBLE_HEIGHT, WIDTH } from "../engine/board";
 import type { CandidateView, DecisionRequest } from "./types";
 
 // What every model is shown for one piece. Jev and the LLM get the same state
@@ -70,7 +70,11 @@ export function describeCandidate(f: CandidateFeatures, c: CandidateView): strin
   const cols = f.columns[0] === f.columns[1] ? `column ${f.columns[0]}` : `columns ${f.columns[0]}-${f.columns[1]}`;
   const lines = f.linesCleared === 0 ? "clears no lines" : `clears ${f.linesCleared} line${f.linesCleared > 1 ? "s" : ""}`;
   const holesText =
-    f.holesAdded > 0 ? `creates ${f.holesAdded} hole${f.holesAdded > 1 ? "s" : ""}` : f.holesAdded < 0 ? `opens ${-f.holesAdded} hole${f.holesAdded < -1 ? "s" : ""}` : "creates no holes";
+    f.holesAdded > 0
+      ? `creates ${f.holesAdded} hole${f.holesAdded > 1 ? "s" : ""}`
+      : f.holesAdded < 0
+        ? `opens ${-f.holesAdded} hole${f.holesAdded < -1 ? "s" : ""}`
+        : "creates no holes";
   return `Rotation ${c.rot}, ${cols}, lands ${f.landsAt} row${f.landsAt > 1 ? "s" : ""} above the floor; ${lines}, ${holesText}; stack height after: ${f.stackHeight}, bumpiness after: ${f.bumpiness}.`;
 }
 

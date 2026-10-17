@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { compareStandings, winRule } from "../src/arena/ranking";
 import { rankOptions } from "../src/arena/simulation";
 import type { ArenaEvent, ArenaEventOf, RunConfig } from "../src/arena/types";
-import { decodeBoard, emptyBoard, type Board } from "../src/engine/board";
+import { type Board, decodeBoard, emptyBoard } from "../src/engine/board";
 import type { PieceType } from "../src/engine/pieces";
 
 type Decision = ArenaEventOf<"decision">;
@@ -92,7 +92,10 @@ async function analyse(path: string): Promise<RunStats | null> {
     .map((l) => JSON.parse(l) as ArenaEvent);
   const start = events[0];
   if (start?.t !== "run_started") return null;
-  const id = path.split("/").pop()!.replace(/\.jsonl$/, "");
+  const id = path
+    .split("/")
+    .pop()!
+    .replace(/\.jsonl$/, "");
   const config = start.config;
   const last = events.at(-1)!;
 
@@ -252,9 +255,7 @@ function table(headers: string[], rows: (string | number)[][]): string {
 
 // Run ids are UTC ISO timestamps with ":" and "." replaced by "-", so they sort and compare as text.
 const sinceKey = since?.replace(/[:.]/g, "-");
-const runs = (await Promise.all(files.map(analyse)))
-  .filter((r): r is RunStats => r !== null)
-  .filter((r) => !sinceKey || r.id >= sinceKey);
+const runs = (await Promise.all(files.map(analyse))).filter((r): r is RunStats => r !== null).filter((r) => !sinceKey || r.id >= sinceKey);
 
 if (runs.length === 0) {
   console.log("No runs match.");
@@ -263,7 +264,9 @@ if (runs.length === 0) {
 
 const out: string[] = [];
 out.push(`# Run statistics\n`);
-out.push(`${runs.length} run(s): ${runs.filter((r) => r.end === "all_out").length} played to the end, ${runs.filter((r) => r.end === "stopped").length} stopped early, ${runs.filter((r) => r.end === "cut off").length} cut off.\n`);
+out.push(
+  `${runs.length} run(s): ${runs.filter((r) => r.end === "all_out").length} played to the end, ${runs.filter((r) => r.end === "stopped").length} stopped early, ${runs.filter((r) => r.end === "cut off").length} cut off.\n`,
+);
 
 out.push(`## Per run\n`);
 out.push(
@@ -293,10 +296,11 @@ out.push(
 
 // Pool by source and clock mode.
 const groups = new Map<string, AgentStats[]>();
-for (const r of runs) for (const a of r.agents) {
-  const key = `${a.name}\u0000${a.sourceId}\u0000${format(r)}`;
-  groups.set(key, [...(groups.get(key) ?? []), a]);
-}
+for (const r of runs)
+  for (const a of r.agents) {
+    const key = `${a.name}\u0000${a.sourceId}\u0000${format(r)}`;
+    groups.set(key, [...(groups.get(key) ?? []), a]);
+  }
 
 out.push(`\n## Per model, all selected runs pooled\n`);
 const pooled = [...groups.entries()].map(([key, list]) => {
@@ -317,7 +321,22 @@ const pooled = [...groups.entries()].map(([key, list]) => {
   const tokensIn = list.reduce((n, a) => n + a.inputTokens, 0);
   const tokensOut = list.reduce((n, a) => n + a.outputTokens, 0);
   return {
-    name, sourceId, mode, runs: list.length, wins, landed, total, pieces, tooLate, lines, status, lat, margin, cost, tokensIn, tokensOut,
+    name,
+    sourceId,
+    mode,
+    runs: list.length,
+    wins,
+    landed,
+    total,
+    pieces,
+    tooLate,
+    lines,
+    status,
+    lat,
+    margin,
+    cost,
+    tokensIn,
+    tokensOut,
     confidence: mean(list.flatMap((a) => a.confidence)),
     chosenP: mean(list.flatMap((a) => a.chosenP)),
     toppedOut: list.filter((a) => a.outcome === "topped out").map((a) => a.outAt!),
@@ -368,7 +387,18 @@ out.push("");
 out.push(
   table(
     ["Model", "Format", "Runs", "Decisions", "p50", "p90", "p95", "Mean", "Min", "Max"],
-    pooled.map((g) => [g.name, g.mode, g.runs, g.total, ms(pct(g.lat, 50)), ms(pct(g.lat, 90)), ms(pct(g.lat, 95)), ms(mean(g.lat)), ms(pct(g.lat, 0)), ms(pct(g.lat, 100))]),
+    pooled.map((g) => [
+      g.name,
+      g.mode,
+      g.runs,
+      g.total,
+      ms(pct(g.lat, 50)),
+      ms(pct(g.lat, 90)),
+      ms(pct(g.lat, 95)),
+      ms(mean(g.lat)),
+      ms(pct(g.lat, 0)),
+      ms(pct(g.lat, 100)),
+    ]),
   ),
 );
 out.push("");
@@ -394,7 +424,19 @@ out.push(
 out.push("");
 out.push(
   table(
-    ["Model", "Format", "Tokens in / decision", "Tokens out / decision", "Cost total", "Cost / decision", "Mean confidence", "Mean p(chosen)", "Topped out", "Mean time to top out", "Max level"],
+    [
+      "Model",
+      "Format",
+      "Tokens in / decision",
+      "Tokens out / decision",
+      "Cost total",
+      "Cost / decision",
+      "Mean confidence",
+      "Mean p(chosen)",
+      "Topped out",
+      "Mean time to top out",
+      "Max level",
+    ],
     pooled.map((g) => [
       g.name,
       g.mode,
@@ -413,9 +455,13 @@ out.push(
 
 out.push(`\n## Notes\n`);
 out.push(`- **Winner**: ${winRule({ mode: "realtime", targetLines: 0 })} Ties go to more lines, then longer survival.`);
-out.push(`- **Sprint runs** (format shows the line target): ${winRule({ mode: "realtime", targetLines: 40 })} On the frozen clock, fewest pieces wins instead of time.`);
+out.push(
+  `- **Sprint runs** (format shows the line target): ${winRule({ mode: "realtime", targetLines: 40 })} On the frozen clock, fewest pieces wins instead of time.`,
+);
 out.push(`- **Landed**: pieces the model put where it chose, in time.`);
-out.push(`- **Best moves / in top 3**: how often the model's answer was the reference heuristic's top pick, or among its top three. Late answers are graded too, so this measures move quality apart from speed.`);
+out.push(
+  `- **Best moves / in top 3**: how often the model's answer was the reference heuristic's top pick, or among its top three. Late answers are graded too, so this measures move quality apart from speed.`,
+);
 out.push(`- **Too late**: pieces that locked before an answer arrived (or, on the frozen clock, after a timeout or a bad answer).`);
 out.push(`- **Late**: answers that arrived after their piece had already locked.`);
 out.push(`- **Latency** counts every answer that came back (in time, late or invalid); failed requests are excluded.`);
@@ -430,8 +476,22 @@ if (jsonOut) {
     jsonOut,
     JSON.stringify(
       {
-        runs: runs.map((r) => ({ ...r, agents: r.agents.map(({ latencies, marginMs, confidence, chosenP, ...a }) => ({ ...a, p50Ms: pct(latencies, 50), p95Ms: pct(latencies, 95) })) })),
-        pooled: pooled.map(({ lat, margin, ...g }) => ({ ...g, p50Ms: pct(lat, 50), p90Ms: pct(lat, 90), p95Ms: pct(lat, 95), meanMs: mean(lat), medianMarginMs: pct(margin, 50) })),
+        runs: runs.map((r) => ({
+          ...r,
+          agents: r.agents.map(({ latencies, marginMs, confidence, chosenP, ...a }) => ({
+            ...a,
+            p50Ms: pct(latencies, 50),
+            p95Ms: pct(latencies, 95),
+          })),
+        })),
+        pooled: pooled.map(({ lat, margin, ...g }) => ({
+          ...g,
+          p50Ms: pct(lat, 50),
+          p90Ms: pct(lat, 90),
+          p95Ms: pct(lat, 95),
+          meanMs: mean(lat),
+          medianMarginMs: pct(margin, 50),
+        })),
       },
       null,
       2,

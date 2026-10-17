@@ -1,7 +1,7 @@
 import type { DecisionRequest } from "../../src/arena/types";
 import type { ModelConfig } from "../models/types";
+import { bearer, choiceSchema, httpError, parseChoice, SYSTEM, usageOf, userText } from "./shared";
 import type { Adapter } from "./types";
-import { SYSTEM, bearer, choiceSchema, httpError, parseChoice, userText, usageOf } from "./shared";
 
 // Completion adapter: any OpenAI-compatible Chat Completions API (OpenAI,
 // OpenRouter, Groq, Together, vLLM, Ollama, Gemini's OpenAI endpoint, ...).

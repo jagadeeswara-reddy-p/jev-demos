@@ -1,17 +1,9 @@
-import { encodeBoard, type Board } from "../engine/board";
-import { MAX_LEVEL, TetrisGame, gravityMsPerRow, type Candidate, type LockResult } from "../engine/game";
+import { type Board, encodeBoard } from "../engine/board";
+import { type Candidate, gravityMsPerRow, type LockResult, MAX_LEVEL, TetrisGame } from "../engine/game";
 import { evaluatePlacement } from "../engine/heuristic";
 import type { PieceType } from "../engine/pieces";
 import { deriveSeed } from "../engine/rng";
-import type {
-  AgentSpec,
-  ArenaEvent,
-  DecisionAnswer,
-  DecisionSource,
-  DecisionStatus,
-  DecisionUsage,
-  RunConfig,
-} from "./types";
+import type { AgentSpec, ArenaEvent, DecisionAnswer, DecisionSource, DecisionStatus, DecisionUsage, RunConfig } from "./types";
 
 // One arena run on simulated time. The game rules are deterministic; where the
 // answers come from is up to each board's DecisionSource. Mock sources answer
@@ -252,8 +244,7 @@ export class ArenaSimulation {
     const game = p.game;
     p.candidates = game.candidates();
     p.requestedAt = this.t;
-    const deadlineMs =
-      this.config.mode === "frozen" ? this.config.frozenTimeoutMs : game.msUntilLock(this.gravityMs, this.config.lockDelayMs);
+    const deadlineMs = this.config.mode === "frozen" ? this.config.frozenTimeoutMs : game.msUntilLock(this.gravityMs, this.config.lockDelayMs);
     out.push({
       t: "spawn",
       at: this.t,

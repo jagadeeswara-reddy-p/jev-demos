@@ -1,4 +1,4 @@
-import { HEIGHT, WIDTH, clearRows, fullRows, place, type Board } from "./board";
+import { type Board, clearRows, fullRows, HEIGHT, place, WIDTH } from "./board";
 import type { Candidate } from "./game";
 import type { PieceType } from "./pieces";
 
@@ -12,8 +12,7 @@ const W = {
   wells: -3.3855972247263626,
 };
 
-const filled = (b: Board, x: number, y: number) =>
-  x < 0 || x >= WIDTH || y >= HEIGHT || (y >= 0 && b[y * WIDTH + x] !== ".");
+const filled = (b: Board, x: number, y: number) => x < 0 || x >= WIDTH || y >= HEIGHT || (y >= 0 && b[y * WIDTH + x] !== ".");
 
 /** Scores the board that would result from placing `type` at `candidate`. Higher is better. */
 export function evaluatePlacement(board: Board, type: PieceType, candidate: Candidate): number {

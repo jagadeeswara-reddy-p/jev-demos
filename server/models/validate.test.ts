@@ -65,7 +65,14 @@ describe("validateModel", () => {
   });
 
   test("offers bedrock only when allowed", () => {
-    const bedrock = { id: "b", label: "B", adapter: "bedrock", model: "us.openai.gpt", toolChoice: "auto", prices: { inputPerM: 1, cacheReadPerM: 0.1 } };
+    const bedrock = {
+      id: "b",
+      label: "B",
+      adapter: "bedrock",
+      model: "us.openai.gpt",
+      toolChoice: "auto",
+      prices: { inputPerM: 1, cacheReadPerM: 0.1 },
+    };
     expect(fieldOf(() => validateModel(bedrock))).toBe("adapter");
     const m = validateModel(bedrock, { allowBedrock: true });
     expect(m.toolChoice).toBe("auto");

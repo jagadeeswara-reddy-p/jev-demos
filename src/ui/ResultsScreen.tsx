@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -15,10 +15,10 @@ import {
   YAxis,
   ZAxis,
 } from "recharts";
-import { compareStandings, winRule, type RankRules } from "../arena/ranking";
+import { compareStandings, type RankRules, winRule } from "../arena/ranking";
 import type { AgentKind, RunConfig } from "../arena/types";
 import { standing } from "./ScoreStrip";
-import { fmtClock, fmtCost, fmtMs, percentile, type BoardState } from "./store";
+import { type BoardState, fmtClock, fmtCost, fmtMs, percentile } from "./store";
 
 // The screen after a fight, sized to one window with no scrolling so it can be
 // recorded as is. Four charts and one table, revealed in beats: the race
@@ -80,7 +80,8 @@ export function ResultsScreen({ boards, config, rules, endAt, mocked, onBack, on
       <header className="results-head reveal" style={delay(0)}>
         <div>
           <p className="results-kicker">
-            {config.mode === "realtime" ? "Real-time clock" : "Frozen clock"}, {sprint ? `race to ${rules.targetLines} lines` : "survive"}, seed {config.seed}, {fmtClock(endAt)} of game time
+            {config.mode === "realtime" ? "Real-time clock" : "Frozen clock"}, {sprint ? `race to ${rules.targetLines} lines` : "survive"}, seed{" "}
+            {config.seed}, {fmtClock(endAt)} of game time
             {mocked ? ". Preview with mocked models." : "."}
           </p>
           <h1 className="results-title">{winner ? `${winner.name} wins` : "No result"}</h1>
@@ -113,7 +114,12 @@ export function ResultsScreen({ boards, config, rules, endAt, mocked, onBack, on
         <Race rows={rows} metric={metric} endAt={endAt} startDelay={BEAT.race + 400} />
       </Card>
 
-      <Card area="time" title="Over the game" note={sprint ? "Lines cleared against game time." : "Pieces landed against game time. A line goes flat when its board tops out."} at={BEAT.time}>
+      <Card
+        area="time"
+        title="Over the game"
+        note={sprint ? "Lines cleared against game time." : "Pieces landed against game time. A line goes flat when its board tops out."}
+        at={BEAT.time}
+      >
         <OverTime rows={rows} metric={metric} endAt={endAt} />
       </Card>
 
@@ -151,15 +157,18 @@ function Race({ rows, metric, endAt, startDelay }: { rows: Row[]; metric: "lande
   const max = Math.max(1, ...rows.map((r) => r[metric]));
   const done = t >= 1;
   // While playing, order by the value so far; at the end, by the official ranking.
-  const order = rows
-    .map((r, i) => ({ r, v: values[i] }))
-    .sort((a, b) => (done ? a.r.rank - b.r.rank : b.v - a.v || a.r.rank - b.r.rank));
+  const order = rows.map((r, i) => ({ r, v: values[i] })).sort((a, b) => (done ? a.r.rank - b.r.rank : b.v - a.v || a.r.rank - b.r.rank));
   const place = new Map(order.map((o, k) => [o.r.key, k]));
 
   return (
     <div className="race" style={{ ["--n" as string]: rows.length }} role="img" aria-label={`Final ranking: ${rows.map((r) => r.name).join(", ")}`}>
       {rows.map((r, i) => (
-        <div key={r.key} className="race-row" data-winner={done && r.rank === 1 ? "true" : undefined} style={{ transform: `translateY(${(place.get(r.key) ?? i) * 100}%)` }}>
+        <div
+          key={r.key}
+          className="race-row"
+          data-winner={done && r.rank === 1 ? "true" : undefined}
+          style={{ transform: `translateY(${(place.get(r.key) ?? i) * 100}%)` }}
+        >
           <span className="race-rank">{done ? r.rank : (place.get(r.key) ?? i) + 1}</span>
           <span className="race-name">{r.name}</span>
           <span className="race-track">
@@ -240,10 +249,36 @@ function SmartFast({ rows }: { rows: Row[] }) {
           fill="var(--ink-faint)"
           fillOpacity={0.35}
           stroke="none"
-          label={{ value: "fast and smart", position: "insideTopLeft", style: { ...AXIS, fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 13 } }}
+          label={{
+            value: "fast and smart",
+            position: "insideTopLeft",
+            style: { ...AXIS, fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 13 },
+          }}
         />
-        <XAxis dataKey="p50" type="number" scale="log" domain={[lo, hi]} ticks={ticks} tickFormatter={fmtMs} tick={AXIS} stroke="var(--ink-soft)" allowDataOverflow />
-        <YAxis dataKey="best" type="number" domain={[yMin, 102]} ticks={Array.from({ length: Math.round((100 - yMin) / 5) + 1 }, (_, k) => yMin + k * 5).filter((_, k, all) => all.length <= 7 || k % 2 === 0)} tickFormatter={(v: number) => `${v}%`} tick={AXIS} stroke="var(--ink-soft)" width={48} allowDataOverflow />
+        <XAxis
+          dataKey="p50"
+          type="number"
+          scale="log"
+          domain={[lo, hi]}
+          ticks={ticks}
+          tickFormatter={fmtMs}
+          tick={AXIS}
+          stroke="var(--ink-soft)"
+          allowDataOverflow
+        />
+        <YAxis
+          dataKey="best"
+          type="number"
+          domain={[yMin, 102]}
+          ticks={Array.from({ length: Math.round((100 - yMin) / 5) + 1 }, (_, k) => yMin + k * 5).filter(
+            (_, k, all) => all.length <= 7 || k % 2 === 0,
+          )}
+          tickFormatter={(v: number) => `${v}%`}
+          tick={AXIS}
+          stroke="var(--ink-soft)"
+          width={48}
+          allowDataOverflow
+        />
         <ZAxis range={[220, 220]} />
         {pts.map((r) => (
           <Scatter
@@ -273,7 +308,15 @@ function SpeedBars({ rows }: { rows: Row[] }) {
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} layout="vertical" margin={{ top: 0, right: 150, bottom: 0, left: 0 }} barCategoryGap="28%">
         <XAxis type="number" hide domain={[0, "auto"]} />
-        <YAxis type="category" dataKey="name" width={150} tick={<NameTick />} tickLine={false} axisLine={{ stroke: "var(--ink-soft)" }} interval={0} />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={150}
+          tick={<NameTick />}
+          tickLine={false}
+          axisLine={{ stroke: "var(--ink-soft)" }}
+          interval={0}
+        />
         <Bar dataKey="p50" isAnimationActive={animate} animationBegin={BEAT.bars + 300} animationDuration={900}>
           {data.map((d) => (
             <Cell key={d.name} fill={d.color} />
@@ -409,7 +452,13 @@ function toRows(boards: BoardState[], rules: RankRules): Row[] {
         cost: st.costUsd,
         costPerLanded: st.landed ? st.costUsd / st.landed : null,
         tokens: st.inputTokens + st.outputTokens,
-        outcome: b.reachedGoal ? `${rules.targetLines} lines at ${fmtClock(b.outAt ?? 0)}` : b.survived ? "survived" : b.outAt !== null ? `out at ${fmtClock(b.outAt)}` : "still playing",
+        outcome: b.reachedGoal
+          ? `${rules.targetLines} lines at ${fmtClock(b.outAt ?? 0)}`
+          : b.survived
+            ? "survived"
+            : b.outAt !== null
+              ? `out at ${fmtClock(b.outAt)}`
+              : "still playing",
       };
     });
 }
@@ -431,7 +480,7 @@ function useProgress(startDelay: number, duration: number): number {
     const start = performance.now() + startDelay;
     const step = (now: number) => {
       const raw = Math.min(1, Math.max(0, (now - start) / duration));
-      setT(1 - Math.pow(1 - raw, 3));
+      setT(1 - (1 - raw) ** 3);
       if (raw < 1) frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);

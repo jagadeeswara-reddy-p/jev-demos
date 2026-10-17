@@ -5,13 +5,69 @@ export const PIECE_TYPES: readonly PieceType[] = ["I", "J", "L", "O", "S", "T", 
 
 // Spawn orientation of each piece inside its SRS bounding box (y grows downward).
 const SPAWN: Record<PieceType, { size: number; cells: Cell[] }> = {
-  I: { size: 4, cells: [[0, 1], [1, 1], [2, 1], [3, 1]] },
-  O: { size: 2, cells: [[0, 0], [1, 0], [0, 1], [1, 1]] },
-  T: { size: 3, cells: [[1, 0], [0, 1], [1, 1], [2, 1]] },
-  S: { size: 3, cells: [[1, 0], [2, 0], [0, 1], [1, 1]] },
-  Z: { size: 3, cells: [[0, 0], [1, 0], [1, 1], [2, 1]] },
-  J: { size: 3, cells: [[0, 0], [0, 1], [1, 1], [2, 1]] },
-  L: { size: 3, cells: [[2, 0], [0, 1], [1, 1], [2, 1]] },
+  I: {
+    size: 4,
+    cells: [
+      [0, 1],
+      [1, 1],
+      [2, 1],
+      [3, 1],
+    ],
+  },
+  O: {
+    size: 2,
+    cells: [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ],
+  },
+  T: {
+    size: 3,
+    cells: [
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [2, 1],
+    ],
+  },
+  S: {
+    size: 3,
+    cells: [
+      [1, 0],
+      [2, 0],
+      [0, 1],
+      [1, 1],
+    ],
+  },
+  Z: {
+    size: 3,
+    cells: [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [2, 1],
+    ],
+  },
+  J: {
+    size: 3,
+    cells: [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+      [2, 1],
+    ],
+  },
+  L: {
+    size: 3,
+    cells: [
+      [2, 0],
+      [0, 1],
+      [1, 1],
+      [2, 1],
+    ],
+  },
 };
 
 function rotateCw(cells: Cell[], size: number): Cell[] {

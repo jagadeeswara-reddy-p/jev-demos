@@ -7,7 +7,11 @@ const order = (boards: Standing[], mode: "realtime" | "frozen", targetLines: num
 
 describe("compareStandings", () => {
   it("ranks by pieces landed, then lines, then time survived", () => {
-    const boards = [board({ landed: 50, lines: 9, outAt: 80 }), board({ landed: 60, lines: 5, outAt: 40 }), board({ landed: 50, lines: 9, outAt: 90 })];
+    const boards = [
+      board({ landed: 50, lines: 9, outAt: 80 }),
+      board({ landed: 60, lines: 5, outAt: 40 }),
+      board({ landed: 50, lines: 9, outAt: 90 }),
+    ];
     expect(order(boards, "realtime", 0)).toEqual([1, 2, 0]);
   });
 

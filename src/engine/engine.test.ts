@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { HEIGHT, WIDTH, emptyBoard, fullRows } from "./board";
-import { TetrisGame, gravityMsPerRow } from "./game";
+import { emptyBoard, fullRows, HEIGHT, WIDTH } from "./board";
+import { gravityMsPerRow, TetrisGame } from "./game";
 import { evaluatePlacement, softmax } from "./heuristic";
 import { PIECE_TYPES, SHAPES } from "./pieces";
 import { BagRandomizer } from "./rng";

@@ -1,11 +1,5 @@
-import type {
-  AgentSpec,
-  ArenaEvent,
-  CandidateView,
-  DecisionStatus,
-  RunConfig,
-} from "../arena/types";
-import { decodeBoard, emptyBoard, type Board } from "../engine/board";
+import type { AgentSpec, ArenaEvent, CandidateView, DecisionStatus, RunConfig } from "../arena/types";
+import { type Board, decodeBoard, emptyBoard } from "../engine/board";
 import type { Cell, PieceType } from "../engine/pieces";
 
 // Folds the event stream into what the screen needs. State is mutated in place
@@ -239,7 +233,7 @@ export class ArenaStore {
             pieceId: e.pieceId,
             status: e.status,
             latencyMs: e.latencyMs,
-            deadlineMs: b.thinking?.pieceId === e.pieceId ? b.thinking.deadlineMs : b.last?.deadlineMs ?? 0,
+            deadlineMs: b.thinking?.pieceId === e.pieceId ? b.thinking.deadlineMs : (b.last?.deadlineMs ?? 0),
             at: e.at,
           };
         }
@@ -327,7 +321,12 @@ export class ArenaStore {
         s.status = "finished";
         s.endAt = e.at;
         s.finishReason = e.reason;
-        this.log(e.at, null, { all_out: "Run finished: every board is done", time_limit: "Run finished: time limit reached", stopped: "Run stopped" }[e.reason], "strong");
+        this.log(
+          e.at,
+          null,
+          { all_out: "Run finished: every board is done", time_limit: "Run finished: time limit reached", stopped: "Run stopped" }[e.reason],
+          "strong",
+        );
         break;
     }
     this.changed();
@@ -369,7 +368,7 @@ function annotate(
     .sort((a, b) => b.p - a.p)
     .slice(0, 2)
     .filter((a) => a.p >= 0.01);
-  return { pieceId, chosen, alternatives, chosenP: choice ? probabilities[choice] ?? null : null };
+  return { pieceId, chosen, alternatives, chosenP: choice ? (probabilities[choice] ?? null) : null };
 }
 
 export function percentile(values: number[], p: number): number | null {

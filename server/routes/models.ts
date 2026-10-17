@@ -1,7 +1,7 @@
 import type { ModelStore } from "../models/store";
 import type { ModelConfig } from "../models/types";
 import { ModelError } from "../models/validate";
-import { testModel, type TestResult } from "../sample";
+import { type TestResult, testModel } from "../sample";
 
 // The models panel's API. Keys go in (POST/PUT bodies) but never come back out.
 //
@@ -23,7 +23,11 @@ export function modelRoutes(store: ModelStore, test: (m: ModelConfig) => Promise
     },
     "/api/models/:id": {
       PUT: (req: Req) => guard(async () => Response.json(store.update(req.params.id, await body(req)))),
-      DELETE: (req: Req) => guard(async () => (store.remove(req.params.id), new Response(null, { status: 204 }))),
+      DELETE: (req: Req) =>
+        guard(async () => {
+          store.remove(req.params.id);
+          return new Response(null, { status: 204 });
+        }),
     },
     "/api/models/:id/test": {
       POST: (req: Req) =>

@@ -1,5 +1,5 @@
 import type { AgentSpec, DecisionSource, RunConfig, SourceInfo } from "../src/arena/types";
-import { MOCK_SOURCES, isMockSource, mockSourceFor } from "../src/mock/mockSource";
+import { isMockSource, MOCK_SOURCES, mockSourceFor } from "../src/mock/mockSource";
 import { sourceFor } from "./adapters";
 import { config } from "./config";
 import { ModelStore } from "./models/store";
@@ -16,7 +16,9 @@ export const models = new ModelStore({
 });
 
 export function listSources(): SourceInfo[] {
-  const live = models.list().map(({ id, label, kind, description, live, available, reason }) => ({ id, label, kind, description, live, available, reason }));
+  const live = models
+    .list()
+    .map(({ id, label, kind, description, live, available, reason }) => ({ id, label, kind, description, live, available, reason }));
   return [...live, ...MOCK_SOURCES];
 }
 

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { VISIBLE_HEIGHT } from "../engine/board";
-import { WIDTH_CELLS, drawBoard } from "./drawBoard";
-import { useArena, useFrame } from "./hooks";
-import { fmtBest, fmtCost, fmtMs, percentile, type BoardState, type ShownStatus } from "./store";
 import type { AgentSpec, SourceInfo } from "../arena/types";
+import { VISIBLE_HEIGHT } from "../engine/board";
+import { drawBoard, WIDTH_CELLS } from "./drawBoard";
+import { useArena, useFrame } from "./hooks";
+import { type BoardState, fmtBest, fmtCost, fmtMs, percentile, type ShownStatus } from "./store";
 
 const KIND_LABEL = { "system-one": "System One model", llm: "Language model", baseline: "Baseline" } as const;
 
@@ -72,9 +72,7 @@ function BoardCanvas({ agentId }: { agentId: string }) {
     const fit = () => {
       const fullFrame = window.matchMedia("(min-width: 1101px)").matches;
       const byWidth = Math.floor((card ? card.clientWidth * 0.62 : el.clientWidth) / WIDTH_CELLS);
-      const byHeight = fullFrame
-        ? Math.floor((el.clientHeight - 2) / VISIBLE_HEIGHT)
-        : Math.floor((window.innerHeight - 260) / VISIBLE_HEIGHT);
+      const byHeight = fullFrame ? Math.floor((el.clientHeight - 2) / VISIBLE_HEIGHT) : Math.floor((window.innerHeight - 260) / VISIBLE_HEIGHT);
       const next = Math.max(8, Math.min(byWidth, byHeight, fullFrame ? 48 : 32));
       setOwnFit(next);
       reportFit(agentId, next);
@@ -114,7 +112,12 @@ function BoardCanvas({ agentId }: { agentId: string }) {
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
     const s = store.state;
-    drawBoard(ctx, cell, s.boards.find((b) => b.spec.id === agentId), s.endAt);
+    drawBoard(
+      ctx,
+      cell,
+      s.boards.find((b) => b.spec.id === agentId),
+      s.endAt,
+    );
   });
 
   return (

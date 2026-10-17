@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { MAX_BOARDS } from "../../src/arena/types";
 import { ADAPTERS } from "../adapters";
-import { fillEnv, type Env } from "./env";
+import { type Env, fillEnv } from "./env";
 import type { ModelConfig, ModelInfo } from "./types";
 import { ModelError, slugify, validateModel } from "./validate";
 

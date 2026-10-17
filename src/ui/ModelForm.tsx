@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ApiError, saveModel, type ModelInfo } from "./modelsApi";
+import { ApiError, type ModelInfo, saveModel } from "./modelsApi";
 
 // Adding or changing a model in the page. Two adapters are offered; which one
 // to pick depends only on the API the model speaks.
@@ -80,7 +80,7 @@ function settingsOf(d: Draft): Record<string, unknown> {
     try {
       out.extraBody = JSON.parse(d.extraBody);
     } catch {
-      throw new ApiError("extraBody: must be a JSON object, such as {\"temperature\": 0}", "extraBody");
+      throw new ApiError('extraBody: must be a JSON object, such as {"temperature": 0}', "extraBody");
     }
   }
   return out;
@@ -99,7 +99,8 @@ export function ModelForm({ model, onSaved, onCancel }: Props) {
   const [saving, setSaving] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const adapter = ADAPTERS.find((a) => a.id === d.adapter)!;
-  const set = (key: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setD({ ...d, [key]: e.target.value });
+  const set = (key: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setD({ ...d, [key]: e.target.value });
 
   // Put the cursor where the server found the problem.
   useEffect(() => {
@@ -135,6 +136,7 @@ export function ModelForm({ model, onSaved, onCancel }: Props) {
 
       <fieldset className="form-field">
         <legend className="form-label">Adapter</legend>
+        {/* biome-ignore lint/a11y/useSemanticElements: a segmented control is a row of toggle buttons inside the form's fieldset */}
         <div className="segmented" role="group">
           {ADAPTERS.map((a) => (
             <button key={a.id} type="button" aria-pressed={d.adapter === a.id} onClick={() => setD({ ...d, adapter: a.id })}>
@@ -186,8 +188,8 @@ export function ModelForm({ model, onSaved, onCancel }: Props) {
           </label>
         ) : (
           <p className="form-hint">
-            Rotations ask the same question with the options shifted and average the answers, which cancels a preference for options listed
-            first. The server must accept <code>option_order</code>.
+            Rotations ask the same question with the options shifted and average the answers, which cancels a preference for options listed first. The
+            server must accept <code>option_order</code>.
           </p>
         )}
         <label className="form-field">

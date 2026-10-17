@@ -20,7 +20,17 @@ export type IconName = keyof typeof PATHS;
 
 export function Icon({ name }: { name: IconName }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d={PATHS[name]} fill={name === "system" ? "none" : undefined} />
       {name === "system" && <path d="M10 3.5a6.5 6.5 0 1 0 0 13z" fill="currentColor" stroke="none" />}
     </svg>

@@ -36,7 +36,7 @@ export class ReplayBackend extends ClockedBackend {
 }
 
 export function toJsonl(events: ArenaEvent[]): string {
-  return events.map((e) => JSON.stringify(e)).join("\n") + "\n";
+  return `${events.map((e) => JSON.stringify(e)).join("\n")}\n`;
 }
 
 export function fromJsonl(text: string): ArenaEvent[] {

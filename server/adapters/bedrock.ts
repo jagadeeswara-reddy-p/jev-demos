@@ -1,8 +1,8 @@
 import { BedrockRuntimeClient, ConverseCommand, type ConverseCommandInput, type ConverseCommandOutput } from "@aws-sdk/client-bedrock-runtime";
 import type { DecisionAnswer, DecisionRequest } from "../../src/arena/types";
 import type { ModelConfig } from "../models/types";
+import { choiceSchema, parseChoice, SYSTEM, userText } from "./shared";
 import type { Adapter } from "./types";
-import { SYSTEM, choiceSchema, parseChoice, userText } from "./shared";
 
 // Bedrock adapter: chat models on AWS Bedrock (OpenAI, Anthropic, ...) through
 // the Converse API. Same prompt as the completion adapter; the answer comes back
@@ -39,7 +39,10 @@ export function readConverse(model: ModelConfig, res: Partial<Pick<ConverseComma
   const cacheWrite = res.usage?.cacheWriteInputTokens ?? 0;
   const outputTokens = res.usage?.outputTokens ?? 0;
   const costUsd =
-    (plain * p.inputPerM + cacheRead * (p.cacheReadPerM ?? p.inputPerM) + cacheWrite * (p.cacheWritePerM ?? p.inputPerM) + outputTokens * p.outputPerM) /
+    (plain * p.inputPerM +
+      cacheRead * (p.cacheReadPerM ?? p.inputPerM) +
+      cacheWrite * (p.cacheWritePerM ?? p.inputPerM) +
+      outputTokens * p.outputPerM) /
     1_000_000;
   const usage = { inputTokens: plain + cacheRead + cacheWrite, outputTokens, costUsd };
   const content = res.output?.message?.content ?? [];
@@ -65,7 +68,10 @@ export const bedrockAdapter: Adapter = {
   async decide(model, req, signal) {
     const r = region();
     let client = clients.get(r);
-    if (!client) clients.set(r, (client = new BedrockRuntimeClient({ region: r })));
+    if (!client) {
+      client = new BedrockRuntimeClient({ region: r });
+      clients.set(r, client);
+    }
     const res = await client.send(new ConverseCommand(converseInput(model, req)), { abortSignal: signal });
     return readConverse(model, res);
   },

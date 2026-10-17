@@ -1,8 +1,8 @@
-import { TASK, optionDescriptions, stateText } from "../../src/arena/prompt";
+import { optionDescriptions, stateText, TASK } from "../../src/arena/prompt";
 import type { DecisionAnswer, DecisionRequest } from "../../src/arena/types";
 import type { ModelConfig } from "../models/types";
-import type { Adapter } from "./types";
 import { bearer, httpError, usageOf } from "./shared";
+import type { Adapter } from "./types";
 
 // Decision adapter: models that score a fixed set of options instead of writing
 // text, over the Decisions API (TypeSafe's /v1/systemone). Jev, Laya's
@@ -52,7 +52,9 @@ export function decisionBody(model: ModelConfig, req: DecisionRequest): Record<s
   const questions =
     rotations <= 1
       ? { placement: question }
-      : Object.fromEntries(rotationOrders(req.candidates.length, rotations).map((order, r) => [`placement_${r}`, { ...question, option_order: order }]));
+      : Object.fromEntries(
+          rotationOrders(req.candidates.length, rotations).map((order, r) => [`placement_${r}`, { ...question, option_order: order }]),
+        );
   return { model: model.model, state: stateText(req), questions, ...model.extraBody };
 }
 

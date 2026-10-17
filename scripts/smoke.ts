@@ -35,7 +35,9 @@ for (const id of ids) {
           .map(([k, p]) => `${k} ${(p * 100).toFixed(1)}%`)
           .join(", ")
       : "";
-    console.log(`${info.label.padEnd(18)} ${r.status.padEnd(7)} ${String(r.latencyMs).padStart(6)} ms  ${r.choice ?? ""}${top ? `  (top: ${top})` : ""}`);
+    console.log(
+      `${info.label.padEnd(18)} ${r.status.padEnd(7)} ${String(r.latencyMs).padStart(6)} ms  ${r.choice ?? ""}${top ? `  (top: ${top})` : ""}`,
+    );
     if (r.detail) console.log(`${"".padEnd(19)}${r.detail}`);
     if (r.usage) console.log(`${"".padEnd(19)}tokens in ${r.usage.inputTokens}, out ${r.usage.outputTokens}, $${r.usage.costUsd.toPrecision(2)}`);
   }

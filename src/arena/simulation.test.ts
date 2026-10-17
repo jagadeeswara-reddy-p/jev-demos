@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { MOCK_PROFILES } from "../mock/profiles";
 import { mockSourceFor } from "../mock/mockSource";
+import { MOCK_PROFILES } from "../mock/profiles";
 import { ArenaSimulation } from "./simulation";
-import { DEFAULT_CONFIG, type ArenaEvent, type ClockMode, type DecisionSource, type RunConfig } from "./types";
+import { type ArenaEvent, type ClockMode, DEFAULT_CONFIG, type DecisionSource, type RunConfig } from "./types";
 
 function config(sources: string[], mode: ClockMode = "realtime", seed = 1): RunConfig {
   return {
@@ -23,9 +23,7 @@ function runToEnd(cfg: RunConfig, sources?: DecisionSource[]): ArenaEvent[] {
 
 function summary(events: ArenaEvent[], agentId: string) {
   const out = events.find((e) => e.t === "topout" && e.agentId === agentId);
-  const lines = events
-    .filter((e) => e.t === "lock" && e.agentId === agentId)
-    .reduce((n, e) => n + (e.t === "lock" ? e.rows.length : 0), 0);
+  const lines = events.filter((e) => e.t === "lock" && e.agentId === agentId).reduce((n, e) => n + (e.t === "lock" ? e.rows.length : 0), 0);
   const late = events.filter((e) => e.t === "decision" && e.agentId === agentId && e.status === "late").length;
   return { outAt: out?.at ?? Infinity, level: out && out.t === "topout" ? out.level : null, lines, late };
 }
@@ -40,8 +38,7 @@ describe("ArenaSimulation", () => {
 
   it("gives every board the same pieces", () => {
     const events = runToEnd(config(["jev", "random"]));
-    const spawns = (id: string) =>
-      events.filter((e) => e.t === "spawn" && e.agentId === id).map((e) => (e.t === "spawn" ? e.type : ""));
+    const spawns = (id: string) => events.filter((e) => e.t === "spawn" && e.agentId === id).map((e) => (e.t === "spawn" ? e.type : ""));
     const a = spawns("a0");
     const b = spawns("a1");
     const n = Math.min(a.length, b.length);
@@ -91,7 +88,7 @@ describe("ArenaSimulation", () => {
     const sim = new ArenaSimulation(cfg, [live]);
     const events = sim.start();
     while (!sim.finished) {
-      queue.splice(0).forEach((f) => f());
+      for (const f of queue.splice(0)) f();
       events.push(...sim.step(20));
     }
     const ok = events.filter((e) => e.t === "decision" && e.status === "ok");

@@ -14,15 +14,16 @@
 //   same pick      for each board, how often the model picked its most common answer
 //                  across the orders (100% = the order made no difference)
 //   best move      share of picks that were the reference heuristic's top option
+
+import { decisionBody, readDecision } from "../server/adapters/decision";
+import { bearer } from "../server/adapters/shared";
+import type { ModelConfig } from "../server/models/types";
+import { models } from "../server/sources";
 import type { DecisionRequest } from "../src/arena/types";
 import { encodeBoard } from "../src/engine/board";
 import { TetrisGame } from "../src/engine/game";
 import { evaluatePlacement } from "../src/engine/heuristic";
 import { createRng } from "../src/engine/rng";
-import { decisionBody, readDecision } from "../server/adapters/decision";
-import { bearer } from "../server/adapters/shared";
-import type { ModelConfig } from "../server/models/types";
-import { models } from "../server/sources";
 
 const args = process.argv.slice(2);
 const flag = (name: string, fallback: number) => {

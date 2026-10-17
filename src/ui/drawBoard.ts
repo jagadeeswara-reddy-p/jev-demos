@@ -1,6 +1,6 @@
 import { HIDDEN_ROWS, VISIBLE_HEIGHT, WIDTH } from "../engine/board";
-import { SHAPES, type Cell, type PieceType } from "../engine/pieces";
-import { fmtSeconds, type BoardState } from "./store";
+import { type Cell, type PieceType, SHAPES } from "../engine/pieces";
+import { type BoardState, fmtSeconds } from "./store";
 
 // Draws one board as a technical figure: dot grid, line-art blocks in the ink
 // ramp, dashed outlines for the options a model weighed, and callout labels
@@ -215,8 +215,8 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
     const detail = b.reachedGoal
       ? `${b.stats.lines} lines in ${b.stats.pieces} pieces, ${fmtSeconds(b.outAt)}`
       : b.survived
-      ? `${b.stats.pieces} pieces, level ${b.outLevel}`
-      : `at ${fmtSeconds(b.outAt)}, level ${b.outLevel}`;
+        ? `${b.stats.pieces} pieces, level ${b.outLevel}`
+        : `at ${fmtSeconds(b.outAt)}, level ${b.outLevel}`;
     ctx.fillText(detail, W / 2, sy + cell * 1.55);
     ctx.textAlign = "left";
   } else if (finishedAt !== null) {
@@ -255,10 +255,22 @@ function outline(ctx: CanvasRenderingContext2D, cells: readonly Cell[], cell: nu
     const t = vy * cell;
     const r = l + cell;
     const bm = t + cell;
-    if (!set.has(`${x},${y - 1}`)) (ctx.moveTo(l, t), ctx.lineTo(r, t));
-    if (!set.has(`${x},${y + 1}`)) (ctx.moveTo(l, bm), ctx.lineTo(r, bm));
-    if (!set.has(`${x - 1},${y}`)) (ctx.moveTo(l, t), ctx.lineTo(l, bm));
-    if (!set.has(`${x + 1},${y}`)) (ctx.moveTo(r, t), ctx.lineTo(r, bm));
+    if (!set.has(`${x},${y - 1}`)) {
+      ctx.moveTo(l, t);
+      ctx.lineTo(r, t);
+    }
+    if (!set.has(`${x},${y + 1}`)) {
+      ctx.moveTo(l, bm);
+      ctx.lineTo(r, bm);
+    }
+    if (!set.has(`${x - 1},${y}`)) {
+      ctx.moveTo(l, t);
+      ctx.lineTo(l, bm);
+    }
+    if (!set.has(`${x + 1},${y}`)) {
+      ctx.moveTo(r, t);
+      ctx.lineTo(r, bm);
+    }
   }
   ctx.stroke();
   ctx.setLineDash([]);

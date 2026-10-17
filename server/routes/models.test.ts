@@ -27,14 +27,20 @@ beforeEach(() => {
     otherSources: ["random"],
   });
   tested = [];
-  const fakeTest = async (m: ModelConfig): Promise<TestResult> => (tested.push(m), { status: "ok", choice: "option_1", latencyMs: 5, options: 34 });
+  const fakeTest = async (m: ModelConfig): Promise<TestResult> => {
+    tested.push(m);
+    return { status: "ok", choice: "option_1", latencyMs: 5, options: 34 };
+  };
   routes = modelRoutes(store, fakeTest);
 });
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 const json = (method: string, body?: unknown, params: Record<string, string> = {}) =>
-  Object.assign(new Request("http://x/api", { method, body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body) }), { params });
+  Object.assign(
+    new Request("http://x/api", { method, body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body) }),
+    { params },
+  );
 
 describe("model routes", () => {
   test("add, list, change and remove a model; the key never comes back", async () => {

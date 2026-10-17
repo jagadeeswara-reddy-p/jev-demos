@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MAX_BOARDS } from "../arena/types";
 import { Icon } from "./Icon";
 import { ModelForm } from "./ModelForm";
-import { ApiError, deleteModel, listModels, saveLineup, testModel, type ModelInfo, type TestResult } from "./modelsApi";
+import { ApiError, deleteModel, listModels, type ModelInfo, saveLineup, type TestResult, testModel } from "./modelsApi";
 
 // Every configured model in one list: tick up to six for the live line-up
 // (boards follow the order they were ticked in), test any model with one real
@@ -33,6 +33,7 @@ export function ModelsPanel({ open, lineup, onClose, onChanged }: Props) {
       .then(setModels)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reacts to the panel opening or closing, not to every render
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -139,7 +140,13 @@ export function ModelsPanel({ open, lineup, onClose, onChanged }: Props) {
                       </button>
                       {!m.builtIn && (
                         <>
-                          <button type="button" className="icon-btn" onClick={() => setView({ form: true, model: m })} aria-label={`Change ${m.label}`} title="Change">
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={() => setView({ form: true, model: m })}
+                            aria-label={`Change ${m.label}`}
+                            title="Change"
+                          >
                             <Icon name="edit" />
                           </button>
                           <button type="button" className="icon-btn" onClick={() => void remove(m)} aria-label={`Remove ${m.label}`} title="Remove">
@@ -157,7 +164,9 @@ export function ModelsPanel({ open, lineup, onClose, onChanged }: Props) {
             <button type="button" className="btn primary" onClick={() => setView({ form: true })}>
               <Icon name="plus" /> Add model
             </button>
-            <p className="form-hint">Built-in models are set in models.json and their keys in .env. Models added here are saved to models.local.json.</p>
+            <p className="form-hint">
+              Built-in models are set in models.json and their keys in .env. Models added here are saved to models.local.json.
+            </p>
           </div>
         </>
       )}
@@ -167,7 +176,12 @@ export function ModelsPanel({ open, lineup, onClose, onChanged }: Props) {
 
 function TestLine({ test }: { test: TestState }) {
   if (test.pending) return <p className="model-test">Asking for one move…</p>;
-  if (test.error) return <p className="model-test" data-status="error">{test.error}</p>;
+  if (test.error)
+    return (
+      <p className="model-test" data-status="error">
+        {test.error}
+      </p>
+    );
   const r = test.result!;
   const text =
     r.status === "ok"

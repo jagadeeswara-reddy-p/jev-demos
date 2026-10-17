@@ -49,7 +49,10 @@ describe("readConverse", () => {
   });
 
   test("cache prices default to the input price", () => {
-    const a = readConverse({ ...model, prices: { inputPerM: 1, outputPerM: 0 } }, { usage: { inputTokens: 0, cacheReadInputTokens: 1_000_000, outputTokens: 0, totalTokens: 0 } });
+    const a = readConverse(
+      { ...model, prices: { inputPerM: 1, outputPerM: 0 } },
+      { usage: { inputTokens: 0, cacheReadInputTokens: 1_000_000, outputTokens: 0, totalTokens: 0 } },
+    );
     expect(a.usage?.costUsd).toBe(1);
   });
 });

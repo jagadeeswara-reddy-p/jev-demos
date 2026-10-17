@@ -1,7 +1,7 @@
 import { compareStandings, type RankRules } from "../arena/ranking";
 import type { AgentSpec } from "../arena/types";
 import { useArenaState } from "./hooks";
-import { fmtBest, fmtMs, percentile, type BoardState } from "./store";
+import { type BoardState, fmtBest, fmtMs, percentile } from "./store";
 
 // The live leaderboard above the boards during a fight. One slot per model,
 // ordered by the run's win rule; when the order changes the slots slide to
