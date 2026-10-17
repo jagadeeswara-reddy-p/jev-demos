@@ -6,7 +6,17 @@ pieces keep falling while it thinks**: an answer that arrives after the piece
 has landed doesn't count. It measures speed and judgement together, then
 separately.
 
-[![Live run at 4× speed](docs/media/demo.gif)](docs/media/demo.mp4)
+**Six models, 2026-10-17** (seed 1, real-time clock, 6× speed; click for the full two-minute recording):
+
+[![Live run of six models: Jev, Cloudflare Clef, Laya, Claude Opus 5.5, Strands Decider and GPT-6.1 Sol, at 6× speed](docs/media/demo-six-models.gif)](docs/media/demo-six-models.mp4)
+
+*Jev lands 148 pieces; Clef 106; GPT-6.1 Sol 32; Laya and Strands Decider top
+out within 25 seconds; Claude Opus 5.5 lands 9, too slow for the falling pieces.
+The results screen follows the game.*
+
+**Three models, 2026-10-10** (seed 1, real-time clock, 4× speed): Jev, GPT-6.1 Sol and Claude Haiku 5.5.
+
+[![Live run of three models at 4× speed](docs/media/demo.gif)](docs/media/demo.mp4)
 
 - [Benchmarks](#benchmarks)
 - [Setup](#setup)
