@@ -2,9 +2,9 @@ import { mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { FileSink } from "bun";
 import { ArenaSimulation } from "../src/arena/simulation";
-import { DEFAULT_CONFIG, type ArenaEvent, type RunConfig } from "../src/arena/types";
+import { type ArenaEvent, DEFAULT_CONFIG, MAX_BOARDS, type RunConfig } from "../src/arena/types";
 import { config } from "./config";
-import { createSource, listSources } from "./sources/registry";
+import { createSource, listSources } from "./sources";
 
 // A live run on the server. The game clock is the server's wall clock at 1×,
 // so a model's real response time is exactly the time it spends thinking in
@@ -13,7 +13,6 @@ import { createSource, listSources } from "./sources/registry";
 
 const TICK_MS = 10;
 const CLOCK_MS = 250;
-const MAX_BOARDS = 6;
 const KEEP_FINISHED_MS = 10 * 60_000;
 
 const encoder = new TextEncoder();
@@ -88,7 +87,7 @@ export class LiveRun {
   private push(events: ArenaEvent[]) {
     for (const e of events) {
       this.events.push(e);
-      this.log.write(JSON.stringify(e) + "\n");
+      this.log.write(`${JSON.stringify(e)}\n`);
       this.send(frame(this.events.length - 1, e));
     }
   }
@@ -142,10 +141,12 @@ export function validateConfig(input: unknown): RunConfig {
   }
   const mode = body.mode === "frozen" ? "frozen" : "realtime";
   const seed = Number.isInteger(body.seed) && body.seed! >= 0 ? body.seed! : 1;
+  const targetLines = Number.isInteger(body.targetLines) && body.targetLines! > 0 ? Math.min(body.targetLines!, 1000) : 0;
   return {
     ...DEFAULT_CONFIG,
     seed,
     mode,
+    targetLines,
     agents: agents.map((a) => ({ id: a.id, name: a.name.slice(0, 40), kind: sources.get(a.sourceId)!.kind, sourceId: a.sourceId })),
   };
 }

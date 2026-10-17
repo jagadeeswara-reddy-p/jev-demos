@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { VISIBLE_HEIGHT } from "../engine/board";
-import { WIDTH_CELLS, drawBoard } from "./drawBoard";
-import { useArena, useFrame } from "./hooks";
-import { fmtMs, percentile, type BoardState, type ShownStatus } from "./store";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { AgentSpec, SourceInfo } from "../arena/types";
+import { VISIBLE_HEIGHT } from "../engine/board";
+import { drawBoard, WIDTH_CELLS } from "./drawBoard";
+import { useArena, useFrame } from "./hooks";
+import { type BoardState, fmtBest, fmtCost, fmtMs, percentile, type ShownStatus } from "./store";
 
 const KIND_LABEL = { "system-one": "System One model", llm: "Language model", baseline: "Baseline" } as const;
 
@@ -16,6 +16,7 @@ interface Props {
 
 export function BoardFigure({ index, spec, sources, board }: Props) {
   const source = sources.find((s) => s.id === spec.sourceId);
+  const kindText = source ? (source.available ? source.description : `${source.description}. ${source.reason}.`) : KIND_LABEL[spec.kind];
   const tag = `FIG_${String(index + 1).padStart(3, "0")}`;
   return (
     <figure className="figure" aria-labelledby={`${spec.id}-name`} style={{ margin: 0 }}>
@@ -23,10 +24,9 @@ export function BoardFigure({ index, spec, sources, board }: Props) {
         {tag}
       </span>
       <div className="figure-head">
-        <h2 id={`${spec.id}-name`}>{spec.name}</h2>
-        <span className="kind">
-          {source ? (source.available ? source.description : `${source.description}. ${source.reason}.`) : KIND_LABEL[spec.kind]}
-        </span>
+        <h2 id={`${spec.id}-name`} title={kindText}>
+          {spec.name}
+        </h2>
       </div>
       <DeadlineBar board={board} />
       <BoardCanvas agentId={spec.id} />
@@ -35,33 +35,67 @@ export function BoardFigure({ index, spec, sources, board }: Props) {
   );
 }
 
+// Every board is drawn at the same cell size, the largest that fits all of them,
+// so the figures come out the same width and height whatever their text.
+const fits = new Map<string, number>();
+const fitListeners = new Set<() => void>();
+function reportFit(agentId: string, cell: number | null) {
+  if (cell === null) fits.delete(agentId);
+  else if (fits.get(agentId) !== cell) fits.set(agentId, cell);
+  else return;
+  for (const l of fitListeners) l();
+}
+function subscribeFits(l: () => void) {
+  fitListeners.add(l);
+  return () => fitListeners.delete(l);
+}
+function sharedCell(): number | null {
+  return fits.size ? Math.min(...fits.values()) : null;
+}
+
 function BoardCanvas({ agentId }: { agentId: string }) {
   const { store } = useArena();
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [cell, setCell] = useState(24);
+  const [ownFit, setOwnFit] = useState(24);
+  const shared = useSyncExternalStore(subscribeFits, sharedCell);
+  const cell = Math.min(ownFit, shared ?? ownFit);
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     // Fit the space given. In the full-frame layout the wrapper's height is set
     // by the page, so the board fills it; otherwise cap it by the window height.
+    // On the fight screen the stats sit beside the board, so the board column
+    // shrinks to the canvas and the board may use up to 62% of the card's width.
+    const card = el.closest<HTMLElement>(".stage .figure");
     const fit = () => {
       const fullFrame = window.matchMedia("(min-width: 1101px)").matches;
-      const byWidth = Math.floor(el.clientWidth / WIDTH_CELLS);
-      const byHeight = fullFrame
-        ? Math.floor((el.clientHeight - 2) / VISIBLE_HEIGHT)
-        : Math.floor((window.innerHeight - 260) / VISIBLE_HEIGHT);
-      setCell(Math.max(8, Math.min(byWidth, byHeight, fullFrame ? 48 : 32)));
+      const byWidth = Math.floor((card ? card.clientWidth * 0.62 : el.clientWidth) / WIDTH_CELLS);
+      const byHeight = fullFrame ? Math.floor((el.clientHeight - 2) / VISIBLE_HEIGHT) : Math.floor((window.innerHeight - 260) / VISIBLE_HEIGHT);
+      const next = Math.max(8, Math.min(byWidth, byHeight, fullFrame ? 48 : 32));
+      setOwnFit(next);
+      reportFit(agentId, next);
     };
-    const ro = new ResizeObserver(fit);
+    // Resizing the canvas can resize the wrapper; refitting on the next frame keeps
+    // that out of the observer's own callback.
+    let frame = 0;
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    };
+    fit();
+    const ro = new ResizeObserver(schedule);
     ro.observe(el);
-    window.addEventListener("resize", fit);
+    if (card) ro.observe(card);
+    window.addEventListener("resize", schedule);
     return () => {
+      cancelAnimationFrame(frame);
       ro.disconnect();
-      window.removeEventListener("resize", fit);
+      window.removeEventListener("resize", schedule);
+      reportFit(agentId, null);
     };
-  }, []);
+  }, [agentId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -78,7 +112,12 @@ function BoardCanvas({ agentId }: { agentId: string }) {
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
     const s = store.state;
-    drawBoard(ctx, cell, s.boards.find((b) => b.spec.id === agentId), s.endAt);
+    drawBoard(
+      ctx,
+      cell,
+      s.boards.find((b) => b.spec.id === agentId),
+      s.endAt,
+    );
   });
 
   return (
@@ -131,7 +170,7 @@ function DeadlineBar({ board }: { board: BoardState | undefined }) {
       tone = b.last.status === "ok" ? "normal" : "warn";
     }
     if (b?.outAt !== null && b?.outAt !== undefined) {
-      text = b.survived ? "finished all pieces" : "topped out";
+      text = b.reachedGoal ? `cleared ${b.stats.lines} lines` : b.survived ? "finished all pieces" : "topped out";
       budget = "";
       ratio = 0;
       tone = "normal";
@@ -161,9 +200,9 @@ function Stats({ board }: { board: BoardState | undefined }) {
   const p50 = st ? percentile(st.latencies, 50) : null;
   const p95 = st ? percentile(st.latencies, 95) : null;
   const items: [string, string, boolean?][] = [
-    ["Landed", String(st?.landed ?? 0), true],
+    ["Landed", `${st?.landed ?? 0} of ${st?.pieces ?? 0}`, true],
     ["Lines", String(st?.lines ?? 0), true],
-    ["Pieces", String(st?.pieces ?? 0)],
+    ["Best moves", st ? fmtBest(st) : "–"],
     ["Decision p50", p50 === null ? "–" : fmtMs(p50)],
     ["Decision p95", p95 === null ? "–" : fmtMs(p95)],
     ["Too late", String(st?.dropped ?? 0), (st?.dropped ?? 0) > 0],
@@ -180,10 +219,4 @@ function Stats({ board }: { board: BoardState | undefined }) {
       ))}
     </dl>
   );
-}
-
-function fmtCost(usd: number): string {
-  if (usd === 0) return "$0";
-  if (usd < 0.01) return `$${usd.toFixed(4)}`;
-  return `$${usd.toFixed(2)}`;
 }

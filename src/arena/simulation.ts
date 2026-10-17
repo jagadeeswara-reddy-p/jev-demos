@@ -1,15 +1,9 @@
-import { encodeBoard } from "../engine/board";
-import { MAX_LEVEL, TetrisGame, gravityMsPerRow, type Candidate, type LockResult } from "../engine/game";
+import { type Board, encodeBoard } from "../engine/board";
+import { type Candidate, gravityMsPerRow, type LockResult, MAX_LEVEL, TetrisGame } from "../engine/game";
+import { evaluatePlacement } from "../engine/heuristic";
+import type { PieceType } from "../engine/pieces";
 import { deriveSeed } from "../engine/rng";
-import type {
-  AgentSpec,
-  ArenaEvent,
-  DecisionAnswer,
-  DecisionSource,
-  DecisionStatus,
-  DecisionUsage,
-  RunConfig,
-} from "./types";
+import type { AgentSpec, ArenaEvent, DecisionAnswer, DecisionSource, DecisionStatus, DecisionUsage, RunConfig } from "./types";
 
 // One arena run on simulated time. The game rules are deterministic; where the
 // answers come from is up to each board's DecisionSource. Mock sources answer
@@ -30,6 +24,8 @@ interface PendingDecision {
   confidence?: number;
   usage?: DecisionUsage;
   detail?: string;
+  /** Heuristic rank of every option offered for this piece, to grade the answer. */
+  ranks: Map<string, number>;
 }
 
 interface Player {
@@ -177,6 +173,7 @@ export class ArenaSimulation {
         probabilities: d.probabilities,
         confidence: d.confidence,
         usage: d.usage,
+        bestRank: d.choice === undefined ? undefined : d.ranks.get(d.choice),
       };
 
       const target = d.status === "ok" ? p.candidates.find((c) => c.id === d.choice) : undefined;
@@ -224,6 +221,12 @@ export class ArenaSimulation {
       this.topOut(p, out);
       return;
     }
+    if (this.config.targetLines > 0 && p.game.lines >= this.config.targetLines) {
+      p.done = true;
+      p.pending = [];
+      out.push({ t: "goal", at: this.t, agentId: p.spec.id, level: this.level, lines: p.game.lines, pieces: p.game.pieces });
+      return;
+    }
     if (p.game.pieces >= this.config.maxPieces) {
       p.done = true;
       p.pending = [];
@@ -241,8 +244,7 @@ export class ArenaSimulation {
     const game = p.game;
     p.candidates = game.candidates();
     p.requestedAt = this.t;
-    const deadlineMs =
-      this.config.mode === "frozen" ? this.config.frozenTimeoutMs : game.msUntilLock(this.gravityMs, this.config.lockDelayMs);
+    const deadlineMs = this.config.mode === "frozen" ? this.config.frozenTimeoutMs : game.msUntilLock(this.gravityMs, this.config.lockDelayMs);
     out.push({
       t: "spawn",
       at: this.t,
@@ -269,6 +271,7 @@ export class ArenaSimulation {
     if (candidates.length === 0) return;
     const pieceId = game.pieceId;
     const requestedAt = this.t;
+    const ranks = rankOptions(game.board, game.active!.type, candidates);
     let delivered = false;
     p.source.request(
       {
@@ -290,6 +293,7 @@ export class ArenaSimulation {
           ...answer,
           pieceId,
           requestedAt,
+          ranks,
           arrivesAt: Math.max(arrivesAt, requestedAt),
           latencyMs: latencyMs ?? Math.max(0, arrivesAt - requestedAt),
         });
@@ -297,4 +301,16 @@ export class ArenaSimulation {
       { now: () => this.t, signal: this.abort.signal },
     );
   }
+}
+
+/**
+ * Ranks every offered option with the reference heuristic (the same one the
+ * mock players and the "Heuristic bot" use). Ties share a rank, so 1 means
+ * "as good as the heuristic's best".
+ */
+export function rankOptions(board: Board, type: PieceType, candidates: Candidate[]): Map<string, number> {
+  const scores = candidates.map((c) => ({ id: c.id, v: evaluatePlacement(board, type, c) }));
+  const ranks = new Map<string, number>();
+  for (const a of scores) ranks.set(a.id, 1 + scores.filter((b) => b.v > a.v + 1e-9).length);
+  return ranks;
 }

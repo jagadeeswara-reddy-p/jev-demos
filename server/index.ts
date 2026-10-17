@@ -1,13 +1,14 @@
 import index from "../index.html";
 import { config } from "./config";
+import { modelRoutes } from "./routes/models";
 import { createRun, getRun, isRunId, listRuns, logPath, validateConfig } from "./runs";
-import { lineup, listSources } from "./sources/registry";
+import { listSources, models } from "./sources";
 
 // One Bun process serves the React app (bundled from index.html, hot reloaded
 // in development) and the arena API.
 //
 //   GET  /api/sources           decision sources and whether each is usable
-//   GET  /api/lineup            the boards in the live line-up (LINEUP in .env)
+//   /api/models, /api/lineup    configured models and the live line-up (server/routes/models.ts)
 //   POST /api/runs              start a live run        body: RunConfig
 //   GET  /api/runs              saved run logs, newest first
 //   GET  /api/runs/:id/events   server-sent events for a run (catches up first)
@@ -16,6 +17,7 @@ import { lineup, listSources } from "./sources/registry";
 
 const server = Bun.serve({
   port: config.port,
+  hostname: config.host,
   // Event streams stay open for minutes; the clock heartbeat keeps them busy.
   idleTimeout: 255,
   development: !config.production && { hmr: true, console: true },
@@ -27,7 +29,7 @@ const server = Bun.serve({
 
     "/api/sources": () => Response.json(listSources()),
 
-    "/api/lineup": () => Response.json({ sources: lineup() }),
+    ...modelRoutes(models),
 
     "/api/runs": {
       GET: () => Response.json(listRuns()),
@@ -74,5 +76,5 @@ const server = Bun.serve({
 
 const live = listSources().filter((s) => s.live);
 console.log(`Deadline Tetris on ${server.url}`);
-console.log(`  Line-up  ${lineup().join(", ")}`);
-for (const s of live) console.log(`  ${s.label.padEnd(8)} ${s.available ? "ready" : `off (${s.reason})`}`);
+console.log(`  Line-up  ${models.lineup().join(", ")}`);
+for (const s of live) console.log(`  ${s.label.padEnd(18)} ${s.available ? "ready" : `off (${s.reason})`}`);

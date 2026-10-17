@@ -1,13 +1,15 @@
 import { HIDDEN_ROWS, VISIBLE_HEIGHT, WIDTH } from "../engine/board";
-import { SHAPES, type Cell, type PieceType } from "../engine/pieces";
-import { fmtSeconds, type BoardState } from "./store";
+import { type Cell, type PieceType, SHAPES } from "../engine/pieces";
+import { type BoardState, fmtSeconds } from "./store";
 
 // Draws one board as a technical figure: dot grid, line-art blocks in the ink
 // ramp, dashed outlines for the options a model weighed, and callout labels
 // with arrows in the gutter, like the parts labels in a manual illustration.
 
-export const GUTTER_CELLS = 5;
-export const GAP_CELLS = 0.8;
+// The gutter holds the next pieces (under 2 cells wide) and the option labels
+// ("94% chosen" ends about 3.3 cells in), so 3.6 cells is enough.
+export const GUTTER_CELLS = 3.6;
+export const GAP_CELLS = 0.6;
 export const WIDTH_CELLS = WIDTH + GAP_CELLS + GUTTER_CELLS;
 
 interface Theme {
@@ -106,7 +108,7 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
   const ann = b.annotation;
   if (ann && b.lastLock && ann.pieceId === b.lastLock.pieceId) {
     for (const alt of ann.alternatives) {
-      outline(ctx, alt.candidate.cells, cell, th.inkSoft, [4, 3], 1.25);
+      outline(ctx, alt.candidate.cells, cell, th.inkSoft, [4, 3], 1, 0.4);
       callouts.push({
         y: centerY(alt.candidate.cells, cell),
         anchor: rightEdge(alt.candidate.cells, cell),
@@ -115,7 +117,7 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
         strong: false,
       });
     }
-    outline(ctx, b.lastLock.cells, cell, th.inkDeep, [], 2);
+    outline(ctx, b.lastLock.cells, cell, th.ink, [], 1.5, 0.5);
     if (ann.chosen) {
       callouts.push({
         y: centerY(b.lastLock.cells, cell),
@@ -184,7 +186,7 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
     ctx.beginPath();
     ctx.rect(0, 0, W, H);
     ctx.clip();
-    if (!b.survived) {
+    if (!b.survived && !b.reachedGoal) {
       ctx.strokeStyle = th.inkSoft;
       ctx.lineWidth = 1;
       for (let k = -H; k < W; k += 9) {
@@ -206,13 +208,15 @@ export function drawBoard(ctx: CanvasRenderingContext2D, cell: number, b: BoardS
     ctx.strokeRect(sx + 0.75, sy + 0.75, sw - 1.5, sh - 1.5);
     ctx.fillStyle = th.ink;
     ctx.textAlign = "center";
-    ctx.font = `${Math.round(cell * 0.78)}px "Silkscreen", ui-monospace, monospace`;
-    ctx.fillText(b.survived ? "SURVIVED" : "TOPPED OUT", W / 2, sy + cell * 0.45);
+    ctx.font = `italic 600 ${Math.round(cell * 0.95)}px "Newsreader", Georgia, serif`;
+    ctx.fillText(b.reachedGoal ? "Finished" : b.survived ? "Survived" : "Topped out", W / 2, sy + cell * 0.45);
     ctx.fillStyle = th.muted;
     ctx.font = mono(cell * 0.4);
-    const detail = b.survived
-      ? `${b.stats.pieces} pieces, level ${b.outLevel}`
-      : `at ${fmtSeconds(b.outAt)}, level ${b.outLevel}`;
+    const detail = b.reachedGoal
+      ? `${b.stats.lines} lines in ${b.stats.pieces} pieces, ${fmtSeconds(b.outAt)}`
+      : b.survived
+        ? `${b.stats.pieces} pieces, level ${b.outLevel}`
+        : `at ${fmtSeconds(b.outAt)}, level ${b.outLevel}`;
     ctx.fillText(detail, W / 2, sy + cell * 1.55);
     ctx.textAlign = "left";
   } else if (finishedAt !== null) {
@@ -237,8 +241,9 @@ function drawMini(ctx: CanvasRenderingContext2D, type: PieceType, x0: number, y0
 }
 
 /** Traces only the outer edges of a group of cells, so a piece reads as one shape. */
-function outline(ctx: CanvasRenderingContext2D, cells: readonly Cell[], cell: number, color: string, dash: number[], width: number) {
+function outline(ctx: CanvasRenderingContext2D, cells: readonly Cell[], cell: number, color: string, dash: number[], width: number, alpha = 1) {
   const set = new Set(cells.map(([x, y]) => `${x},${y}`));
+  ctx.globalAlpha = alpha;
   ctx.strokeStyle = color;
   ctx.lineWidth = width;
   ctx.setLineDash(dash);
@@ -250,13 +255,26 @@ function outline(ctx: CanvasRenderingContext2D, cells: readonly Cell[], cell: nu
     const t = vy * cell;
     const r = l + cell;
     const bm = t + cell;
-    if (!set.has(`${x},${y - 1}`)) (ctx.moveTo(l, t), ctx.lineTo(r, t));
-    if (!set.has(`${x},${y + 1}`)) (ctx.moveTo(l, bm), ctx.lineTo(r, bm));
-    if (!set.has(`${x - 1},${y}`)) (ctx.moveTo(l, t), ctx.lineTo(l, bm));
-    if (!set.has(`${x + 1},${y}`)) (ctx.moveTo(r, t), ctx.lineTo(r, bm));
+    if (!set.has(`${x},${y - 1}`)) {
+      ctx.moveTo(l, t);
+      ctx.lineTo(r, t);
+    }
+    if (!set.has(`${x},${y + 1}`)) {
+      ctx.moveTo(l, bm);
+      ctx.lineTo(r, bm);
+    }
+    if (!set.has(`${x - 1},${y}`)) {
+      ctx.moveTo(l, t);
+      ctx.lineTo(l, bm);
+    }
+    if (!set.has(`${x + 1},${y}`)) {
+      ctx.moveTo(r, t);
+      ctx.lineTo(r, bm);
+    }
   }
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
 }
 
 function centerY(cells: readonly Cell[], cell: number): number {

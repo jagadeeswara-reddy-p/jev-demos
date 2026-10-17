@@ -42,6 +42,12 @@ export interface RunConfig {
   maxDurationMs: number;
   /** A board that places this many pieces stops playing and counts as a survivor. */
   maxPieces: number;
+  /**
+   * Sprint mode: a board that clears this many lines is done, and the race is
+   * to get there first (real time) or in the fewest pieces (frozen clock).
+   * 0 turns it off: the run is about lasting as long as possible.
+   */
+  targetLines: number;
 }
 
 export interface CandidateView {
@@ -94,6 +100,12 @@ export type ArenaEvent =
       confidence?: number;
       usage?: DecisionUsage;
       detail?: string;
+      /**
+       * Where the chosen option ranks among the offered ones by the reference
+       * heuristic (1 = its top pick). Set for any answer that names a real
+       * option, on time or not, so it measures move quality apart from speed.
+       */
+      bestRank?: number;
     }
   | {
       t: "lock";
@@ -109,6 +121,8 @@ export type ArenaEvent =
     }
   | { t: "topout"; at: number; agentId: string; level: number }
   | { t: "survived"; at: number; agentId: string; level: number; pieces: number }
+  /** Sprint mode: the board reached the line target. */
+  | { t: "goal"; at: number; agentId: string; level: number; lines: number; pieces: number }
   | { t: "run_finished"; at: number; reason: "all_out" | "time_limit" | "stopped" };
 
 export type ArenaEventOf<T extends ArenaEvent["t"]> = Extract<ArenaEvent, { t: T }>;
@@ -193,4 +207,11 @@ export const DEFAULT_CONFIG: Omit<RunConfig, "agents" | "seed" | "mode"> = {
   frozenTimeoutMs: 30_000,
   maxDurationMs: 10 * 60_000,
   maxPieces: 1000,
+  targetLines: 0,
 };
+
+/** Most boards in one run (two rows of three on screen). */
+export const MAX_BOARDS = 6;
+
+/** The line target offered in the page for sprint mode. */
+export const SPRINT_LINES = 40;

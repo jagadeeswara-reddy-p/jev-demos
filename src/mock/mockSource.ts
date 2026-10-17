@@ -1,8 +1,8 @@
+import type { AgentSpec, DecisionSource, RunConfig, SourceInfo } from "../arena/types";
 import { decodeBoard } from "../engine/board";
 import { evaluatePlacement, softmax } from "../engine/heuristic";
 import { createRng, deriveSeed, type Rng } from "../engine/rng";
-import type { AgentSpec, DecisionSource, RunConfig, SourceInfo } from "../arena/types";
-import { MOCK_PROFILES, getProfile, type MockProfile } from "./profiles";
+import { getProfile, MOCK_PROFILES, type MockProfile } from "./profiles";
 
 /**
  * A pretend model. It decides at request time what it will answer and when,

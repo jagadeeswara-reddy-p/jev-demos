@@ -8,26 +8,33 @@ export interface Scenario {
   note: string;
   mode: ClockMode;
   sources: string[];
-  /** Live line-ups take their boards from the server's LINEUP setting instead of `sources`. */
+  /** Live line-ups take their boards from the server's line-up (Models panel, or LINEUP in .env) instead of `sources`. */
   live?: boolean;
 }
 
 export const SCENARIOS: Scenario[] = [
   {
     id: "live",
-    label: "Live models",
-    note: "The real models through their APIs, on the same pieces.",
+    label: "Live models: real time",
+    note: "The real models through their APIs, on the same pieces. The pieces keep falling while each one thinks, so this measures speed.",
     mode: "realtime",
     sources: ["live-jev", "live-llm"],
     live: true,
   },
   {
     id: "live-frozen",
-    label: "Live models, frozen clock",
-    note: "The real models with the clock frozen, to compare placement skill without speed.",
+    label: "Live models: frozen clock",
+    note: "The same models with the game paused until each answers, so this measures move quality without speed.",
     mode: "frozen",
     sources: ["live-jev", "live-llm"],
     live: true,
+  },
+  {
+    id: "preview-six",
+    label: "Preview: six models (mocked)",
+    note: "Mocked stand-ins for the planned line-up: Jev, GPT-6.1 Sol, Claude Opus 5.5, Laya, Cloudflare Clef and AWS Strands Decider. For checking the six-board layout and the results screen.",
+    mode: "realtime",
+    sources: ["jev", "preview-gpt", "preview-opus", "preview-laya", "preview-cloudflare", "preview-strands"],
   },
   {
     id: "jev-vs-llm",

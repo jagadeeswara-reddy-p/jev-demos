@@ -1,0 +1,88 @@
+{
+  "$comment": "Built-in models. Keys and addresses come from .env through ${NAME} (required) or ${NAME:-default} (optional) placeholders; a model with an unset required variable shows as unavailable. Models added in the page are saved to models.local.json instead. See docs/models.md.",
+  "models": [
+    {
+      "id": "live-jev",
+      "label": "Jev",
+      "adapter": "decision",
+      "description": "System One model jev-latest, through the TypeSafe API",
+      "baseUrl": "https://api.typesafe.ai",
+      "model": "jev-latest",
+      "apiKey": "${TYPESAFE_API_KEY}",
+      "prices": { "inputPerM": 0.042, "outputPerM": 0 }
+    },
+    {
+      "id": "live-clef",
+      "label": "Cloudflare Clef",
+      "adapter": "decision",
+      "description": "Open-weight decision model @cf/cloudflare/clef, through Cloudflare Workers AI",
+      "url": "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/cloudflare/clef",
+      "model": "clef",
+      "apiKey": "${CLOUDFLARE_API_TOKEN}",
+      "prices": { "inputPerM": 0.24, "outputPerM": 0 }
+    },
+    {
+      "id": "live-laya",
+      "label": "Laya",
+      "adapter": "decision",
+      "description": "Open-source decision model laya typed-decisions, ${LAYA_HOST_NOTE:-self-hosted}",
+      "baseUrl": "${LAYA_BASE_URL}",
+      "model": "typed-decisions",
+      "apiKey": "${LAYA_API_KEY:-}",
+      "rotations": 4,
+      "extraBody": { "max_len": 4096, "head_max_len": 2048 }
+    },
+    {
+      "id": "live-strands",
+      "label": "Strands Decider",
+      "adapter": "decision",
+      "description": "Open-weight decision model AWS Strands Decider 2B (strands-decider-2B-qwen3.5-v1-2610), ${STRANDS_HOST_NOTE:-self-hosted}",
+      "baseUrl": "${STRANDS_BASE_URL}",
+      "model": "strands-decider-2B-qwen3.5-v1-2610"
+    },
+    {
+      "id": "live-llm",
+      "label": "${LLM_LABEL:-${LLM_MODEL:-Chat model}}",
+      "adapter": "completion",
+      "description": "Language model, through an OpenAI-compatible API",
+      "baseUrl": "${LLM_BASE_URL:-https://api.openai.com/v1}",
+      "model": "${LLM_MODEL}",
+      "apiKey": "${LLM_API_KEY}"
+    },
+    {
+      "id": "bedrock-gpt",
+      "label": "gpt-6.1-sol",
+      "adapter": "bedrock",
+      "description": "Language model us.openai.gpt-6.1-sol, through AWS Bedrock",
+      "model": "us.openai.gpt-6.1-sol",
+      "prices": {
+        "inputPerM": 2.2,
+        "outputPerM": 11,
+        "cacheReadPerM": 0.11,
+        "cacheWritePerM": 2.75
+      }
+    },
+    {
+      "id": "bedrock-opus",
+      "label": "claude-opus-5-5",
+      "adapter": "bedrock",
+      "description": "Language model us.anthropic.claude-opus-5-5, through AWS Bedrock",
+      "model": "us.anthropic.claude-opus-5-5",
+      "toolChoice": "auto",
+      "prices": { "inputPerM": 4.4, "outputPerM": 22, "cacheReadPerM": 0.22, "cacheWritePerM": 5.5 }
+    },
+    {
+      "id": "bedrock-haiku",
+      "label": "claude-haiku-5-5",
+      "adapter": "bedrock",
+      "description": "Language model us.anthropic.claude-haiku-5-5, through AWS Bedrock",
+      "model": "us.anthropic.claude-haiku-5-5",
+      "prices": {
+        "inputPerM": 0.11,
+        "outputPerM": 0.55,
+        "cacheReadPerM": 0.011,
+        "cacheWritePerM": 0.1375
+      }
+    }
+  ]
+}

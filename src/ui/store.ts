@@ -1,11 +1,5 @@
-import type {
-  AgentSpec,
-  ArenaEvent,
-  CandidateView,
-  DecisionStatus,
-  RunConfig,
-} from "../arena/types";
-import { decodeBoard, emptyBoard, type Board } from "../engine/board";
+import type { AgentSpec, ArenaEvent, CandidateView, DecisionStatus, RunConfig } from "../arena/types";
+import { type Board, decodeBoard, emptyBoard } from "../engine/board";
 import type { Cell, PieceType } from "../engine/pieces";
 
 // Folds the event stream into what the screen needs. State is mutated in place
@@ -28,6 +22,9 @@ export interface BoardStats {
   errors: number;
   timeouts: number;
   latencies: number[];
+  /** Answers that named a real option, on time or not, and how many were the heuristic's top pick. */
+  graded: number;
+  best: number;
   costUsd: number;
   inputTokens: number;
   outputTokens: number;
@@ -54,9 +51,13 @@ export interface BoardState {
   flash: { rows: number[]; wall: number } | null;
   stats: BoardStats;
   linesAt: { at: number; lines: number }[];
+  /** Landed pieces and lines after every lock, for the results screen's replayed race. */
+  progress: { at: number; landed: number; lines: number }[];
   outAt: number | null;
   outLevel: number | null;
   survived: boolean;
+  /** Sprint mode: reached the line target. */
+  reachedGoal: boolean;
 }
 
 export interface LogLine {
@@ -96,6 +97,8 @@ function emptyStats(): BoardStats {
     errors: 0,
     timeouts: 0,
     latencies: [],
+    graded: 0,
+    best: 0,
     costUsd: 0,
     inputTokens: 0,
     outputTokens: 0,
@@ -164,11 +167,18 @@ export class ArenaStore {
           flash: null,
           stats: emptyStats(),
           linesAt: [{ at: 0, lines: 0 }],
+          progress: [{ at: 0, landed: 0, lines: 0 }],
           outAt: null,
           outLevel: null,
           survived: false,
+          reachedGoal: false,
         }));
-        this.log(0, null, `Run started on seed ${e.config.seed}, ${e.config.mode === "realtime" ? "real-time clock" : "frozen clock"}`, "strong");
+        this.log(
+          0,
+          null,
+          `Run started on seed ${e.config.seed}, ${e.config.mode === "realtime" ? "real-time clock" : "frozen clock"}${e.config.targetLines ? `, first to ${e.config.targetLines} lines` : ""}`,
+          "strong",
+        );
         break;
 
       case "level":
@@ -209,6 +219,10 @@ export class ArenaStore {
         if (e.status === "invalid") st.invalid += 1;
         if (e.status === "error") st.errors += 1;
         if (e.status === "timeout") st.timeouts += 1;
+        if (e.bestRank !== undefined) {
+          st.graded += 1;
+          if (e.bestRank === 1) st.best += 1;
+        }
 
         const isCurrent = b.thinking?.pieceId === e.pieceId;
         if (e.status === "late" && b.last?.pieceId === e.pieceId) {
@@ -219,7 +233,7 @@ export class ArenaStore {
             pieceId: e.pieceId,
             status: e.status,
             latencyMs: e.latencyMs,
-            deadlineMs: b.thinking?.pieceId === e.pieceId ? b.thinking.deadlineMs : b.last?.deadlineMs ?? 0,
+            deadlineMs: b.thinking?.pieceId === e.pieceId ? b.thinking.deadlineMs : (b.last?.deadlineMs ?? 0),
             at: e.at,
           };
         }
@@ -267,6 +281,7 @@ export class ArenaStore {
           b.flash = { rows: e.rows, wall: performance.now() };
           if (e.rows.length === 4) this.log(e.at, b.spec.name, "cleared four lines at once", "normal");
         }
+        b.progress.push({ at: e.at, landed: b.stats.landed, lines: b.stats.lines });
         break;
       }
 
@@ -291,11 +306,27 @@ export class ArenaStore {
         break;
       }
 
+      case "goal": {
+        const b = this.board(e.agentId);
+        b.outAt = e.at;
+        b.outLevel = e.level;
+        b.reachedGoal = true;
+        b.thinking = null;
+        b.active = null;
+        this.log(e.at, b.spec.name, `cleared ${e.lines} lines in ${e.pieces} pieces, ${fmtSeconds(e.at)}`, "strong");
+        break;
+      }
+
       case "run_finished":
         s.status = "finished";
         s.endAt = e.at;
         s.finishReason = e.reason;
-        this.log(e.at, null, { all_out: "Run finished: every board is done", time_limit: "Run finished: time limit reached", stopped: "Run stopped" }[e.reason], "strong");
+        this.log(
+          e.at,
+          null,
+          { all_out: "Run finished: every board is done", time_limit: "Run finished: time limit reached", stopped: "Run stopped" }[e.reason],
+          "strong",
+        );
         break;
     }
     this.changed();
@@ -337,7 +368,7 @@ function annotate(
     .sort((a, b) => b.p - a.p)
     .slice(0, 2)
     .filter((a) => a.p >= 0.01);
-  return { pieceId, chosen, alternatives, chosenP: choice ? probabilities[choice] ?? null : null };
+  return { pieceId, chosen, alternatives, chosenP: choice ? (probabilities[choice] ?? null) : null };
 }
 
 export function percentile(values: number[], p: number): number | null {
@@ -360,4 +391,16 @@ export function fmtSeconds(ms: number): string {
 export function fmtClock(ms: number): string {
   const s = Math.floor(ms / 1000);
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** Share of graded answers that matched the heuristic's top pick, e.g. "72%". */
+export function fmtBest(st: BoardStats): string {
+  return st.graded === 0 ? "–" : `${Math.round((100 * st.best) / st.graded)}%`;
+}
+
+export function fmtCost(usd: number): string {
+  if (usd === 0) return "$0";
+  if (usd < 0.0001) return `$${usd.toPrecision(2)}`;
+  if (usd < 0.01) return `$${usd.toFixed(4)}`;
+  return `$${usd.toFixed(2)}`;
 }

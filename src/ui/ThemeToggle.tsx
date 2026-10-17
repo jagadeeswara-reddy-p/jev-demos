@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { refreshCanvasTheme } from "./drawBoard";
+import { Icon } from "./Icon";
 
 // System follows the OS setting; Light and Dark pin it. The choice is a
 // per-viewer convenience, so it lives in localStorage (and survives without it).
@@ -7,10 +8,10 @@ import { refreshCanvasTheme } from "./drawBoard";
 type ThemeChoice = "system" | "light" | "dark";
 
 const KEY = "theme";
-const CHOICES: { value: ThemeChoice; label: string }[] = [
-  { value: "system", label: "System" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
+const CHOICES: { value: ThemeChoice; label: string; icon: "system" | "sun" | "moon" }[] = [
+  { value: "system", label: "System", icon: "system" },
+  { value: "light", label: "Light", icon: "sun" },
+  { value: "dark", label: "Dark", icon: "moon" },
 ];
 
 function stored(): ThemeChoice {
@@ -50,18 +51,18 @@ export function ThemeToggle() {
     return () => media.removeEventListener("change", onChange);
   }, []);
 
+  // One button that steps System → Light → Dark.
+  const current = CHOICES.find((c) => c.value === choice)!;
+  const nextChoice = CHOICES[(CHOICES.indexOf(current) + 1) % CHOICES.length];
   return (
-    <div className="control">
-      <span className="label" id="theme-label">
-        Theme
-      </span>
-      <div className="segmented" role="group" aria-labelledby="theme-label">
-        {CHOICES.map((c) => (
-          <button key={c.value} type="button" aria-pressed={choice === c.value} onClick={() => setChoice(c.value)}>
-            {c.label}
-          </button>
-        ))}
-      </div>
-    </div>
+    <button
+      type="button"
+      className="icon-btn"
+      onClick={() => setChoice(nextChoice.value)}
+      aria-label={`Theme: ${current.label}. Switch to ${nextChoice.label}`}
+      title={`Theme: ${current.label}`}
+    >
+      <Icon name={current.icon} />
+    </button>
   );
 }
