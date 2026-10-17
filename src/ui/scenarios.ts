@@ -32,9 +32,9 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "preview-six",
     label: "Preview: six models (mocked)",
-    note: "Mocked stand-ins for the planned line-up: Jev, GPT-6.1 Sol, Claude Opus 5.5, Laya, Cloudflare Clef and Google's EmbeddingGemma 2. For checking the six-board layout and the results screen.",
+    note: "Mocked stand-ins for the planned line-up: Jev, GPT-6.1 Sol, Claude Opus 5.5, Laya, Cloudflare Clef and AWS Strands Decider. For checking the six-board layout and the results screen.",
     mode: "realtime",
-    sources: ["jev", "preview-gpt", "preview-opus", "preview-laya", "preview-cloudflare", "preview-google"],
+    sources: ["jev", "preview-gpt", "preview-opus", "preview-laya", "preview-cloudflare", "preview-strands"],
   },
   {
     id: "jev-vs-llm",

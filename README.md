@@ -172,7 +172,7 @@ Every model on a board goes through one of three **adapters**, chosen by the API
 | Adapter | API | For | Offered in the page |
 |---|---|---|---|
 | **Completion** | OpenAI-compatible Chat Completions, `POST {baseUrl}/chat/completions` | chat models: OpenAI, OpenRouter, Groq, Together, vLLM, Ollama, Gemini's OpenAI endpoint, gateways | yes |
-| **Decision** | the Decisions API, `POST {baseUrl}/v1/systemone` | models that score options: Jev, Laya, Cloudflare Clef, EmbeddingGemma (via `deploy/gemma-serve`) | yes |
+| **Decision** | the Decisions API, `POST {baseUrl}/v1/systemone` | models that score options: Jev, Laya, Cloudflare Clef, AWS Strands Decider | yes |
 | **Bedrock** | AWS Bedrock's Converse API (signed AWS requests) | chat models on Bedrock | no; `models.json` only |
 
 Models come from two files:
@@ -200,7 +200,7 @@ adapter) is in **[docs/models.md](docs/models.md)**.
 | `live-jev` | Jev (`jev-latest`), TypeSafe | Decision | `TYPESAFE_API_KEY` |
 | `live-clef` | Cloudflare Clef, Workers AI | Decision | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
 | `live-laya` | Laya `typed-decisions`, self-hosted ([Running Laya](#running-laya-self-hosted)) | Decision | `LAYA_BASE_URL` (`LAYA_API_KEY` if set on the server) |
-| `live-gemma` | EmbeddingGemma 2 typed-decision, self-hosted (`deploy/gemma-serve`) | Decision | `GEMMA_BASE_URL` (`GEMMA_API_KEY` if set) |
+| `live-strands` | AWS Strands Decider 2B, self-hosted (`strands-decider serve`) | Decision | `STRANDS_BASE_URL` |
 | `live-llm` | any OpenAI-compatible chat model | Completion | `LLM_MODEL`, `LLM_API_KEY` (`LLM_BASE_URL`, `LLM_LABEL` optional) |
 | `bedrock-gpt` | GPT-6.1 Sol | Bedrock | AWS credentials |
 | `bedrock-opus` | Claude Opus 5.5 | Bedrock | AWS credentials |
@@ -382,8 +382,8 @@ per-model setting change how it is sent, never what it says:
   ([Laya documents this](https://github.com/NandhaKishorM/laya#option-order)).
   With `rotations: N` the same question is asked N times in one request, each
   copy with the options shifted (`option_order`), and the probabilities are
-  averaged. The model must accept `option_order`: laya-serve and gemma-serve do;
-  Cloudflare Clef rejects it.
+  averaged. The model must accept `option_order`: laya-serve does; Cloudflare
+  Clef rejects it; Strands Decider ignores it.
 
 **AWS Bedrock models** (`server/adapters/bedrock.ts`) get the same system and
 user text as the completion adapter. They go through Bedrock's Converse API,
@@ -503,11 +503,21 @@ LAYA_HOST_NOTE=self-hosted, CPU
 
 Restart `bun dev`, then tick Laya in the Models panel and press **Test**.
 
-**A short-lived GPU box on AWS:** `deploy/ec2/launch.sh` starts a `g4dn.xlarge`
-(T4) that serves Laya on port 8000 and EmbeddingGemma 2 on port 8001, opens the
-ports to your IP only, writes `LAYA_*` and `GEMMA_*` into `.env`, and deletes
-itself after two hours (`SHUTDOWN_MINUTES`). `deploy/ec2/teardown.sh` removes it
-sooner. Laya takes about ten minutes to build on first boot.
+**A short-lived GPU box on AWS:** `deploy/ec2/launch.sh` starts a `g5.xlarge`
+(NVIDIA A10G, about $1 an hour) that serves Laya on port 8000 and
+[AWS Strands Decider 2B](https://github.com/strands-labs/strands-decider) on port 8001,
+each installed from a pinned version into its own virtualenv. It opens the ports to
+your IP only, writes `LAYA_*` and `STRANDS_*` into `.env`, and deletes itself after
+one hour (pass other minutes as the first argument; `WITH_LAYA=0` serves Strands only).
+Then `deploy/ec2/wait-ready.sh` waits until both answer real moves, warming them up
+first (Strands compiles its GPU kernels on the first request, which takes longer than
+the arena's timeout), and reports setup errors from the box's boot log as they appear.
+Restart `bun dev` afterwards so the page uses the new address. `deploy/ec2/teardown.sh`
+removes the box sooner, and cleans up after one that already deleted itself.
+For debugging, the box has a throwaway SSH key: `ssh -i .ec2-key.pem ubuntu@$EC2_IP`.
+Strands Decider needs an Ampere or newer GPU (bf16 and Triton kernels); for Laya alone,
+`INSTANCE_TYPE=g4dn.xlarge` (T4) is half the price. Strands Decider's server has no
+authentication, so the firewall rule is what protects it.
 
 Things to know before reading its numbers:
 - **Hardware is part of its latency.** Jev runs on TypeSafe's servers, Laya on
@@ -623,7 +633,7 @@ src/arena/              the shared core
   replayBackend.ts      replays and JSONL import/export
 src/mock/               mock profiles and the in-browser mock backend
 src/ui/                 React + canvas UI, theme, store; ModelsPanel.tsx and ModelForm.tsx
-deploy/                 ec2/ (short-lived GPU box for Laya and Gemma), gemma-serve/ (Decisions API for EmbeddingGemma 2)
+deploy/ec2/             a short-lived GPU box serving Laya and Strands Decider
 scripts/                stats.ts, smoke.ts, fake-providers.ts, Playwright helpers (*.mjs)
 docs/                   models.md (adapters and model settings), media/ (demo recording)
 runs/                   saved live runs (git-ignored)

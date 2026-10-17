@@ -156,10 +156,10 @@ export const MOCK_PROFILES: MockProfile[] = [
     usage: { inputTokens: 2300, outputTokens: 20, costUsd: 0.0004 },
   },
   {
-    id: "preview-google",
-    label: "EmbeddingGemma 2",
+    id: "preview-strands",
+    label: "Strands Decider",
     kind: "system-one",
-    description: "Preview: mocked embeddinggemma-2-ft-typed-decision, about 0.2 s per decision",
+    description: "Preview: mocked AWS Strands Decider 2B, about 0.2 s per decision",
     latency: { medianMs: 200, spread: 0.25 },
     temperature: 1.5,
     invalidRate: 0,

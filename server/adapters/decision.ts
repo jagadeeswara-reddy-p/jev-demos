@@ -6,7 +6,7 @@ import { bearer, httpError, usageOf } from "./shared";
 
 // Decision adapter: models that score a fixed set of options instead of writing
 // text, over the Decisions API (TypeSafe's /v1/systemone). Jev, Laya's
-// laya-serve, Cloudflare Clef and deploy/gemma-serve all speak it.
+// laya-serve, Cloudflare Clef and AWS Strands Decider all speak it.
 //
 //   POST {baseUrl}/v1/systemone   (or `url`)
 //   { model, state, questions: { placement: { type: "choice", instructions, criteria } }, ...extraBody }

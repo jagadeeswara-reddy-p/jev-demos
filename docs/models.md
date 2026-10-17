@@ -110,7 +110,7 @@ If the API rejects strict schemas, set `jsonMode` to `object` or `none`.
 
 `server/adapters/decision.ts`. For models that score a fixed set of options
 instead of writing text, over the Decisions API (TypeSafe's `/v1/systemone`).
-Jev, Laya's `laya-serve`, Cloudflare Clef and `deploy/gemma-serve` speak it.
+Jev, Laya's `laya-serve`, Cloudflare Clef and AWS Strands Decider's `strands-decider serve` speak it.
 
 ```http
 POST {baseUrl}/v1/systemone
@@ -156,8 +156,10 @@ across the copies. The adapter averages the probabilities and picks the highest.
   Fewer rotations are cheaper and still spread the options out.
 - Each copy is a full question for the model, so N rotations cost about N times
   the compute per move, and the latency shows it.
-- The server must accept `option_order` on choice questions: laya-serve and
-  gemma-serve do. Jev accepts the request. Cloudflare Clef rejects it with a 422.
+- The server must accept `option_order` on choice questions: laya-serve does.
+  Jev accepts the request. Cloudflare Clef rejects it with a 422. Strands Decider's
+  server accepts the request but ignores the field, so rotations would only repeat
+  the same question there.
 
 ## Bedrock adapter
 

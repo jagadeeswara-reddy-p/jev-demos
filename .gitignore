@@ -7,3 +7,4 @@ dist
 runs/
 .DS_Store
 models.local.json
+.ec2-key.pem
