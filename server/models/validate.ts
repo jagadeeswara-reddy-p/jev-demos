@@ -105,7 +105,18 @@ function text(o: Record<string, unknown>, field: string, opts: { required?: bool
   return s;
 }
 
-/** An http(s) address. Placeholders (${NAME}) are checked once filled, so they pass here. */
+/** Why a filled-in address isn't a usable http(s) address, or undefined when it is (or is absent). */
+export function addressProblem(v: string | undefined): string | undefined {
+  if (!v) return undefined;
+  try {
+    const u = new URL(v);
+    return u.protocol === "http:" || u.protocol === "https:" ? undefined : "must start with http:// or https://";
+  } catch {
+    return "must be a full address such as http://10.0.0.5:8000";
+  }
+}
+
+/** An http(s) address. Placeholders (${NAME}) are checked once filled (ModelStore), so they pass here. */
 function address(o: Record<string, unknown>, field: string): string {
   const s = text(o, field, { max: 2000 }).replace(/\/+$/, "");
   if (!s || s.includes("${")) return s;

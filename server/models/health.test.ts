@@ -79,6 +79,37 @@ describe("HealthChecks", () => {
     expect(pings).toBe(2);
   });
 
+  test("an address that isn't a URL counts as down instead of throwing", async () => {
+    const h = new HealthChecks();
+    await h.refresh([{ ...down, id: "typo", baseUrl: "192.168.1.5:8000" }]);
+    expect(h.problem("typo")).toContain("Not responding");
+  });
+
+  test("a model that loses its health check drops its old result", async () => {
+    const h = new HealthChecks();
+    await h.refresh([down]);
+    expect(h.problem("down")).toBeDefined();
+    await h.refresh([{ ...down, healthCheck: undefined }]);
+    expect(h.problem("down")).toBeUndefined();
+  });
+
+  test("a result for an old address doesn't count after the address changes", async () => {
+    status = 200;
+    const h = new HealthChecks();
+    await h.refresh([{ ...down, id: "moved" }]);
+    expect(h.problem("moved")).toBeDefined();
+    await h.refresh([{ ...up, id: "moved" }]);
+    expect(h.problem("moved")).toBeUndefined();
+  });
+
+  test("refreshes at the same time share one ping", async () => {
+    status = 200;
+    const h = new HealthChecks();
+    pings = 0;
+    await Promise.all([h.refresh([up]), h.refresh([up]), h.refresh([up])]);
+    expect(pings).toBe(1);
+  });
+
   test("a slow server times out", async () => {
     const slow = Bun.serve({ port: 0, fetch: () => Bun.sleep(500).then(() => new Response("ok")) });
     const h = new HealthChecks({ timeoutMs: 50 });

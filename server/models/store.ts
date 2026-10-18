@@ -3,7 +3,7 @@ import { MAX_BOARDS } from "../../src/arena/types";
 import { ADAPTERS } from "../adapters";
 import { type Env, fillEnv } from "./env";
 import type { ModelConfig, ModelInfo } from "./types";
-import { ModelError, slugify, validateModel } from "./validate";
+import { addressProblem, ModelError, slugify, validateModel } from "./validate";
 
 // Every model the server can put on a board, and the saved line-up.
 //
@@ -64,14 +64,14 @@ export class ModelStore {
     if (!raw) throw new Error(`Unknown model "${id}"`);
     const reason = this.unavailable(raw);
     if (reason) throw new Error(`${raw.label} can't run: ${reason}`);
-    return fillEnv(raw, this.opts.env).value;
+    return this.filled(raw);
   }
 
   /** Every model that can run, placeholders filled (for health checks). */
   runnable(): ModelConfig[] {
     return this.all()
       .filter((m) => !this.unavailable(m))
-      .map((m) => fillEnv(m, this.opts.env).value);
+      .map((m) => this.filled(m));
   }
 
   /** Adds a model from the page. The id comes from the label unless given. */
@@ -85,12 +85,21 @@ export class ModelStore {
     return this.info(model, false);
   }
 
-  /** Replaces a page-added model's settings. A blank apiKey keeps the saved one. */
+  /**
+   * Replaces a page-added model's settings. A blank apiKey keeps the saved one, but only
+   * while the address stays the same: a key is never sent to a new address without being typed again.
+   */
   update(id: string, input: unknown): ModelInfo {
     const i = this.local.models.findIndex((m) => m.id === id);
     if (i < 0) throw new ModelError("id", this.builtIn.some((m) => m.id === id) ? "built-in models are edited in models.json" : `no model "${id}"`);
     const draft = isObject(input) ? { ...input, id } : input;
-    if (isObject(draft) && !draft.apiKey && this.local.models[i].apiKey) draft.apiKey = this.local.models[i].apiKey;
+    const saved = this.local.models[i];
+    if (isObject(draft) && !draft.apiKey && saved.apiKey) {
+      const norm = (v: unknown) => (typeof v === "string" ? v.trim().replace(/\/+$/, "") : "") || undefined;
+      const sameAddress = norm(draft.baseUrl) === norm(saved.baseUrl) && norm(draft.url) === norm(saved.url);
+      if (!sameAddress) throw new ModelError("apiKey", "type the key again: the address changed");
+      draft.apiKey = saved.apiKey;
+    }
     const model = validateModel(draft);
     this.local.models[i] = model;
     this.save();
@@ -121,6 +130,12 @@ export class ModelStore {
     return this.lineup();
   }
 
+  /** Placeholders filled, trailing slashes dropped from addresses that came from .env. */
+  private filled(m: ModelConfig): ModelConfig {
+    const v = fillEnv(m, this.opts.env).value;
+    return { ...v, ...(v.baseUrl && { baseUrl: v.baseUrl.replace(/\/+$/, "") }), ...(v.url && { url: v.url.replace(/\/+$/, "") }) };
+  }
+
   private all(): ModelConfig[] {
     return [...this.builtIn, ...this.local.models];
   }
@@ -137,6 +152,10 @@ export class ModelStore {
   private unavailable(m: ModelConfig): string | undefined {
     const { value, missing } = fillEnv(m, this.opts.env);
     if (missing.length) return `Set ${missing.join(" and ")} in .env`;
+    for (const field of ["baseUrl", "url"] as const) {
+      const problem = addressProblem(value[field]);
+      if (problem) return `${m[field]?.match(/\$\{([A-Z0-9_]+)/)?.[1] ?? field} ${problem}`;
+    }
     return ADAPTERS[m.adapter].unavailable?.(value, this.opts.env);
   }
 

@@ -1,8 +1,8 @@
 // ${NAME} placeholders in model settings, filled from the environment. This is
 // how models.json refers to keys and addresses without containing them.
 //   ${NAME}           required: the model is unavailable while NAME is unset or empty
-//   ${NAME:-default}  optional: uses `default` instead, which may be empty or hold
-//                     placeholders of its own (only looked at when NAME is unset)
+//   ${NAME:-default}  optional: uses `default` when NAME is unset or empty; the default
+//                     may be empty or hold placeholders of its own (only looked at then)
 // Values from the environment are used as they are; a "${" inside one is not expanded.
 
 export type Env = Record<string, string | undefined>;

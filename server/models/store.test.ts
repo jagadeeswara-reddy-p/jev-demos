@@ -78,6 +78,27 @@ describe("ModelStore", () => {
     expect(m.apiKey).toBe("sk-local");
   });
 
+  test("a saved key is never sent to a new address without being typed again", () => {
+    const store = new ModelStore(opts);
+    store.add(custom);
+    expect(() => store.update("my-qwen", { ...custom, apiKey: "", baseUrl: "https://evil.example/v1" })).toThrow("type the key again");
+    store.update("my-qwen", { ...custom, apiKey: "", baseUrl: "http://localhost:8000/v1/" });
+    expect(new ModelStore(opts).resolve("my-qwen").apiKey).toBe("sk-local");
+  });
+
+  test("an address from .env that isn't a full URL makes the model unavailable, not broken", () => {
+    const store = new ModelStore({ ...opts, env: { ...opts.env, LAYA_BASE_URL: "192.168.1.5:8000" } });
+    expect(store.list().find((m) => m.id === "laya")).toMatchObject({
+      available: false,
+      reason: "LAYA_BASE_URL must be a full address such as http://10.0.0.5:8000",
+    });
+  });
+
+  test("trailing slashes from .env are dropped before use", () => {
+    const store = new ModelStore({ ...opts, env: { ...opts.env, LAYA_BASE_URL: "http://10.0.0.5:8000/" } });
+    expect(store.resolve("laya").baseUrl).toBe("http://10.0.0.5:8000");
+  });
+
   test("built-in models can't be changed or removed from the page", () => {
     const store = new ModelStore(opts);
     expect(() => store.update("jev", custom)).toThrow("built-in models are edited in models.json");

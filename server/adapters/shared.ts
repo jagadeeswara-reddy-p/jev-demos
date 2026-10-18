@@ -32,7 +32,19 @@ export function liveSource(call: (req: DecisionRequest, signal: AbortSignal) => 
 
 export async function httpError(service: string, res: Response): Promise<DecisionAnswer> {
   const body = await res.text().catch(() => "");
-  return { status: "error", detail: `${service} returned ${res.status}: ${body.slice(0, 200)}` };
+  return { status: "error", detail: `${service} returned ${res.status}: ${redact(body).slice(0, 200)}` };
+}
+
+/**
+ * Masks anything shaped like a credential in text a provider sent back, since error
+ * details are shown in the page and saved in run logs: some gateways echo the request.
+ */
+export function redact(text: string): string {
+  return text
+    .replace(/(bearer\s+)[^\s"',]+/gi, "$1[redacted]")
+    .replace(/\b(sk|rk|pk)-[A-Za-z0-9_-]{8,}/g, "$1-[redacted]")
+    .replace(/\b(AKIA|ASIA)[A-Z0-9]{12,}/g, "[redacted]")
+    .replace(/("?(?:api[_-]?key|token|secret|password|authorization)"?\s*[:=]\s*"?)[^\s"',}]+/gi, "$1[redacted]");
 }
 
 export function usageOf(inputTokens: number, outputTokens: number, prices?: Prices): DecisionUsage {

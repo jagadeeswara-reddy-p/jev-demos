@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { DecisionAnswer } from "../../src/arena/types";
 import { sampleRequest } from "../sample";
-import { liveSource, parseChoice, usageOf } from "./shared";
+import { liveSource, parseChoice, redact, usageOf } from "./shared";
 
 const usage = usageOf(0, 0);
 
@@ -19,6 +19,16 @@ describe("parseChoice", () => {
   test("anything else is invalid, with the start of the text", () => {
     const a = parseChoice("option_3", usage);
     expect(a).toMatchObject({ status: "invalid", detail: "Not a JSON choice: option_3" });
+  });
+});
+
+describe("redact", () => {
+  test("masks credentials a provider echoes back in an error", () => {
+    const text = redact('{"error":"bad key","authorization":"Bearer sk-test-000000000000","api_key":"xyz123","id":"AKIAIOSFODNN7EXAMPLE"}');
+    expect(text).not.toContain("sk-test-000000000000");
+    expect(text).not.toContain("xyz123");
+    expect(text).not.toContain("AKIAIOSFODNN7EXAMPLE");
+    expect(text).toContain("bad key");
   });
 });
 
