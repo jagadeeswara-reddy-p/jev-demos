@@ -154,3 +154,10 @@ bun run smoke               # one real move from every model that can run
 | [docs/development.md](docs/development.md) | Project layout, tests and tools, known limitations |
 | [docs/results-history.md](docs/results-history.md) | Earlier rounds (2026-10-09 and 2026-10-10) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+
+---
+
+## License
+
+[MIT](LICENSE). The benchmark data in `benchmarks/` comes from runs of third-party models and the
+[JevBench](https://github.com/fstandhartinger/jevbench) public set (MIT); each model and dataset keeps its own terms.
