@@ -35,6 +35,11 @@ deploy/ec2/teardown.sh      # when you're done
 - Strands Decider needs an Ampere or newer GPU (bf16 and Triton kernels). For Laya
   alone, `INSTANCE_TYPE=g4dn.xlarge` (T4, $0.526/hour) works.
 - Strands Decider's server has no authentication; the firewall rule is what protects it.
+  If your public IP is shared (a company or mobile-carrier NAT), everyone behind it can
+  reach both servers while the box is up.
+- The scripts need bash 4+ and GNU tools: Linux, or WSL on Windows. They check this
+  before creating anything. Box, firewall rule and key are named per AWS user, so people
+  sharing an account don't touch each other's.
 - When the box is gone (deleted on its timer or by `teardown.sh`), Laya and Strands
   show as unavailable ("Not responding at …") within a couple of seconds: their
   `models.json` entries set `healthCheck: "/health"`, so the server pings them

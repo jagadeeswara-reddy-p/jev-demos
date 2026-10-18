@@ -2,6 +2,13 @@
 
 ## Server API and run logs
 
+**Who can call it.** The server listens on `127.0.0.1` unless `HOST` says otherwise, and
+every `/api/` route checks the request first (`server/guard.ts`): the `Host` must be this
+machine or a name in `ALLOWED_HOSTS`, and a request that changes something must declare a
+JSON body and, when the browser sends an `Origin`, come from this server's own page. That
+keeps other websites open in your browser from starting runs or reading your models.
+Scripts calling the API directly need only `Content-Type: application/json` on writes.
+
 **Statistics:** `bun run stats` reads every log in `runs/` and prints per-run
 and per-model tables: wins, pieces landed, lines, too-late rate, best moves and
 top-3 share, sprint results (target reached, time and pieces to it), answer-time

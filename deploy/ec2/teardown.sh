@@ -2,10 +2,8 @@
 # Terminates the GPU box, deletes its firewall rule and SSH key, then clears its settings from .env.
 # Safe to run after the box has already deleted itself (it cleans up what is left).
 set -euo pipefail
-cd "$(dirname "$0")/../.."
-export $(grep -E '^AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)=' .env | xargs)
-export AWS_REGION=${AWS_REGION:-us-east-1}
-NAME=jev-decision-gpu
+source "$(dirname "$0")/common.sh"
+owner_name
 IDS=$(aws ec2 describe-instances --filters Name=tag:Name,Values=$NAME Name=instance-state-name,Values=pending,running,stopping,stopped \
   --query 'Reservations[].Instances[].InstanceId' --output text)
 if [ -n "$IDS" ]; then

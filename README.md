@@ -49,7 +49,8 @@ the board with the most **pieces landed**: placed where the model chose, in time
 top option, counted on every answer, late or not, so it measures judgement
 apart from speed. The large language models choose best but answer too slowly
 for the falling pieces; Laya and Strands answer fast but choose poorly; Jev is
-the only model that is both fast and good. Reproduce with `bun run stats --since 2026-10-17T14:07`.
+the only model that is both fast and good. The game logs are in
+[benchmarks/2026-10-17](benchmarks/README.md); `bun run stats benchmarks/2026-10-17/tetris/*.jsonl` recomputes this table.
 
 ### JevBench: typed decisions on text
 
