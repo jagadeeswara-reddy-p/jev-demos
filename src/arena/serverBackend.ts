@@ -6,6 +6,7 @@ import type { ArenaBackend, ArenaEvent, RunConfig, SourceInfo } from "./types";
 export class ServerBackend implements ArenaBackend {
   private listeners = new Set<(e: ArenaEvent) => void>();
   private runId: string | null = null;
+  private stopped = false;
   private clock = { at: 0, wall: 0 };
   private finishedAt: number | null = null;
 
@@ -25,7 +26,12 @@ export class ServerBackend implements ArenaBackend {
   setSpeed() {}
 
   stop() {
-    if (this.runId) void fetch(`/api/runs/${this.runId}/stop`, { method: "POST" });
+    this.stopped = true;
+    if (this.runId) this.sendStop(this.runId);
+  }
+
+  private sendStop(id: string) {
+    void fetch(`/api/runs/${id}/stop`, { method: "POST", headers: { "Content-Type": "application/json" } });
   }
 
   /** Server time, interpolated between clock heartbeats so timers move smoothly. */
@@ -53,6 +59,8 @@ export class ServerBackend implements ArenaBackend {
       return;
     }
     this.runId = body.id;
+    // Stop was pressed while the run was being created: end it now, and don't follow it.
+    if (this.stopped) return this.sendStop(body.id);
     const source = new EventSource(`/api/runs/${body.id}/events`);
     source.onmessage = (m) => {
       const e = JSON.parse(m.data) as ArenaEvent;

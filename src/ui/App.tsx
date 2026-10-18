@@ -225,7 +225,7 @@ function Page({ store, use, backendRef }: { store: ArenaStore; use: (b: ArenaBac
       <ResultsScreen
         boards={state.boards}
         config={state.config}
-        rules={rules}
+        rules={{ mode: state.config.mode, targetLines: state.config.targetLines ?? 0 }}
         endAt={state.endAt ?? state.lastAt}
         mocked={!isLive(state.config.agents)}
         onBack={() => setPhase("setup")}
@@ -235,8 +235,8 @@ function Page({ store, use, backendRef }: { store: ArenaStore; use: (b: ArenaBac
     );
   }
 
-  const boardFigures = shown.map((spec, i) => (
-    <BoardFigure key={spec.id} index={i + 1} spec={spec} sources={sources} board={state.boards.find((b) => b.spec.id === spec.id)} />
+  const boardFigures = shown.map((spec) => (
+    <BoardFigure key={spec.id} spec={spec} sources={sources} board={state.boards.find((b) => b.spec.id === spec.id)} />
   ));
   const cols = Math.min(3, Math.max(1, shown.length));
   const rowCount = Math.ceil(shown.length / cols);

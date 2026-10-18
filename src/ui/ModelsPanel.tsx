@@ -27,6 +27,7 @@ export function ModelsPanel({ open, lineup, onClose, onChanged }: Props) {
   const [view, setView] = useState<{ form: false } | { form: true; model?: ModelInfo }>({ form: false });
   const [tests, setTests] = useState<Record<string, TestState>>({});
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const reload = () =>
     listModels()
@@ -55,14 +56,18 @@ export function ModelsPanel({ open, lineup, onClose, onChanged }: Props) {
     }
   };
 
+  // One save at a time: a second tick before the first lands would start from the old line-up.
   const toggle = async (id: string) => {
     const next = lineup.includes(id) ? lineup.filter((x) => x !== id) : [...lineup, id];
     setError(null);
+    setSaving(true);
     try {
       await saveLineup(next);
       onChanged();
     } catch (e) {
       setError(e instanceof ApiError ? e.message.replace(/^lineup: /, "Line-up: ") : String(e));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -120,7 +125,13 @@ export function ModelsPanel({ open, lineup, onClose, onChanged }: Props) {
                 return (
                   <li key={m.id} className="model-row" data-off={!m.available || undefined}>
                     <label className="model-pick" title={slot >= 0 ? `Board ${slot + 1}` : full ? "The line-up is full" : "Add to the line-up"}>
-                      <input type="checkbox" checked={slot >= 0} disabled={slot < 0 && full} onChange={() => void toggle(m.id)} />
+                      <input
+                        type="checkbox"
+                        aria-label={`Use ${m.label} in the line-up`}
+                        checked={slot >= 0}
+                        disabled={saving || (slot < 0 && full)}
+                        onChange={() => void toggle(m.id)}
+                      />
                       <span className="model-slot" aria-hidden="true">
                         {slot >= 0 ? slot + 1 : ""}
                       </span>

@@ -38,6 +38,8 @@ interface Player {
   /** When the next piece appears, after the entry delay that follows a lock. */
   spawnAt: number | null;
   done: boolean;
+  /** Frozen clock: the piece the game stopped waiting for. Its answer, if it still comes, is late. */
+  timedOutPiece: number | null;
 }
 
 export class ArenaSimulation {
@@ -64,6 +66,7 @@ export class ArenaSimulation {
       candidates: [],
       requestedAt: 0,
       pending: [],
+      timedOutPiece: null,
       spawnAt: null,
       done: false,
     }));
@@ -131,6 +134,7 @@ export class ArenaSimulation {
             status: "timeout",
             latencyMs: this.t - p.requestedAt,
           });
+          p.timedOutPiece = p.game.pieceId;
           p.game.release();
         }
         continue;
@@ -162,7 +166,8 @@ export class ArenaSimulation {
     p.pending = p.pending.filter((d) => d.arrivesAt > this.t);
 
     for (const d of arrived) {
-      const current = p.game.active !== null && d.pieceId === p.game.pieceId;
+      // A piece the frozen clock already gave up on is falling without its answer: too late to steer.
+      const current = p.game.active !== null && d.pieceId === p.game.pieceId && d.pieceId !== p.timedOutPiece;
       const base = {
         t: "decision" as const,
         at: this.t,

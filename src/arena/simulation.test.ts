@@ -53,6 +53,25 @@ describe("ArenaSimulation", () => {
     expect(frontier.late).toBeGreaterThan(0);
   });
 
+  it("frozen clock: an answer that arrives after the time-out is late, even while the piece is still falling", () => {
+    // Like a live model whose reply comes back just after the 1 s limit, while the released piece is falling.
+    let reply: ((at: number) => void) | null = null;
+    const slow: DecisionSource = {
+      request(req, deliver) {
+        if (req.pieceId === 1) reply = (at) => deliver({ status: "ok", choice: req.candidates[0].id }, at, at - req.requestedAt);
+      },
+    };
+    const cfg = { ...config(["slow"], "frozen"), frozenTimeoutMs: 1000, maxPieces: 3 };
+    const sim = new ArenaSimulation(cfg, [slow]);
+    const events = sim.start();
+    while (sim.t < 1010) events.push(...sim.step(10));
+    reply!(sim.t);
+    for (let i = 0; i < 20; i++) events.push(...sim.step(10));
+    const first = events.filter((e) => e.t === "decision" && e.pieceId === 1).map((e) => (e.t === "decision" ? e.status : ""));
+    expect(first).toEqual(["timeout", "late"]);
+    expect(events.some((e) => e.t === "lock" && e.pieceId === 1 && e.byDecision)).toBe(false);
+  });
+
   it("removes the speed penalty when the clock is frozen", () => {
     const events = runToEnd(config(["llm-frontier"], "frozen"));
     expect(events.some((e) => e.t === "decision" && e.status === "late")).toBe(false);
@@ -127,7 +146,7 @@ describe("ArenaSimulation", () => {
     }
   });
 
-  // CALIBRATE=1 pnpm test prints how each mock profile fares, to tune profiles against the demo.
+  // CALIBRATE=1 bun test prints how each mock profile fares, to tune profiles against the demo.
   it.skipIf(!process.env.CALIBRATE)("prints a calibration table", () => {
     const rows = [1, 2, 3].map((seed) => {
       const events = runToEnd(config(["jev", "llm-fast", "llm-frontier", "heuristic", "random", "no-input"], "realtime", seed));
