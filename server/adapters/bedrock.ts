@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { BedrockRuntimeClient, ConverseCommand, type ConverseCommandInput, type ConverseCommandOutput } from "@aws-sdk/client-bedrock-runtime";
 import type { DecisionAnswer, DecisionRequest } from "../../src/arena/types";
 import type { ModelConfig } from "../models/types";
@@ -53,6 +54,11 @@ export function readConverse(model: ModelConfig, res: Partial<Pick<ConverseComma
 
 const clients = new Map<string, BedrockRuntimeClient>();
 
+/** ~/.aws/credentials or ~/.aws/config (profiles, SSO): the SDK uses them when no variable is set. */
+function awsConfigFileExists(home: string | undefined): boolean {
+  return Boolean(home) && ["credentials", "config"].some((f) => existsSync(`${home}/.aws/${f}`));
+}
+
 function region(): string {
   return Bun.env.AWS_REGION ?? Bun.env.AWS_DEFAULT_REGION ?? "us-east-1";
 }
@@ -62,7 +68,15 @@ export const bedrockAdapter: Adapter = {
   defaultTimeoutMs: 60_000,
 
   unavailable(_model, env) {
-    return env.AWS_ACCESS_KEY_ID || env.AWS_PROFILE ? undefined : "Set AWS credentials in .env";
+    // The SDK also reads web-identity, container and SSO/profile credentials; accept any of them.
+    const sources = [
+      env.AWS_ACCESS_KEY_ID,
+      env.AWS_PROFILE,
+      env.AWS_WEB_IDENTITY_TOKEN_FILE,
+      env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI,
+      env.AWS_CONTAINER_CREDENTIALS_FULL_URI,
+    ];
+    return sources.some(Boolean) || awsConfigFileExists(env.HOME) ? undefined : "Set AWS credentials in .env";
   },
 
   async decide(model, req, signal) {

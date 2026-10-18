@@ -1,6 +1,8 @@
 # Earlier results
 
 The first rounds, kept for reference. Current results are in the [README](../README.md#benchmarks).
+The `bun run stats` commands below were run on our own run logs, which aren't published; the
+2026-10-17 benchmark logs are, in [benchmarks/](../benchmarks/README.md).
 
 ## Results so far
 

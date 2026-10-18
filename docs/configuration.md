@@ -36,7 +36,7 @@ adapter) is in **[docs/models.md](models.md)**.
 |---|---|---|---|
 | `live-jev` | Jev (`jev-latest`), TypeSafe | Decision | `TYPESAFE_API_KEY` |
 | `live-clef` | Cloudflare Clef, Workers AI | Decision | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
-| `live-laya` | Laya `typed-decisions`, self-hosted ([Running Laya](self-hosting.md)) | Decision | `LAYA_BASE_URL` (`LAYA_API_KEY` if set on the server) |
+| `live-laya` | Laya `typed-decisions`, self-hosted ([self-hosting](self-hosting.md)) | Decision | `LAYA_BASE_URL` (`LAYA_API_KEY` if set on the server) |
 | `live-strands` | AWS Strands Decider 2B, self-hosted (`strands-decider serve`) | Decision | `STRANDS_BASE_URL` |
 | `live-llm` | any OpenAI-compatible chat model | Completion | `LLM_MODEL`, `LLM_API_KEY` (`LLM_BASE_URL`, `LLM_LABEL` optional) |
 | `bedrock-gpt` | GPT-6.1 Sol | Bedrock | AWS credentials |
@@ -51,6 +51,8 @@ Mock sources (simulated in the browser, no API calls) can also be in a line-up:
 | Setting | What it does | Default |
 |---|---|---|
 | `PORT` | Port for the page and API | `5317` |
+| `HOST` | Address the server listens on. `0.0.0.0` shares the page on your network: anyone who can reach it can run models on your keys. | `127.0.0.1` |
+| `ALLOWED_HOSTS` | Extra hostnames the API answers to, comma-separated (e.g. a LAN name when `HOST=0.0.0.0`). Requests for any other Host are refused, which blocks DNS-rebinding attacks. | none |
 | `LINEUP` | The line-up until one is picked in the page, as model ids, left to right. Up to 6. | `live-jev,live-llm` |
 | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` (or `AWS_PROFILE`) | Credentials for the Bedrock adapter. Temporary session credentials expire and must be refreshed. | `us-east-1` |
 | `MODELS_FILE`, `LOCAL_MODELS_FILE` | Where the two model files are | `models.json`, `models.local.json` |

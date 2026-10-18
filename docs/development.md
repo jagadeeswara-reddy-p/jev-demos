@@ -11,10 +11,11 @@ server/                 Bun server: page + API, live runs
   config.ts             reads .env (port, files, default line-up)
   runs.ts               live runs on the wall clock, SSE, saving logs
   sources.ts            every source a board can use: configured models and mocks
+  guard.ts              keeps other websites from calling the API (Host, Origin, Content-Type)
   sample.ts             one test decision outside a run (Test button, smoke script)
   adapters/             one file per wire format: completion.ts, decision.ts, bedrock.ts;
                         shared.ts (timing, errors, prices, the chat prompt), types.ts (the Adapter interface)
-  models/               the model list: types.ts, validate.ts, env.ts (${ENV} placeholders), store.ts
+  models/               the model list: types.ts, validate.ts, env.ts (${ENV} placeholders), store.ts, health.ts (pings self-hosted models)
   routes/models.ts      /api/models and /api/lineup
 src/engine/             game rules: pieces, board, gravity, landing spots, the hand-written evaluator
 src/arena/              the shared core
@@ -26,9 +27,10 @@ src/arena/              the shared core
   replayBackend.ts      replays and JSONL import/export
 src/mock/               mock profiles and the in-browser mock backend
 src/ui/                 React + canvas UI, theme, store; ModelsPanel.tsx and ModelForm.tsx
-deploy/ec2/             a short-lived GPU box serving Laya and Strands Decider
+deploy/ec2/             a short-lived GPU box serving Laya and Strands Decider (common.sh is shared by the scripts)
+benchmarks/             the published benchmark data (game logs and JevBench results), by date
 scripts/                stats.ts, smoke.ts, position-bias.ts (shuffle test), fake-providers.ts
-docs/                   models.md (adapters and model settings), media/ (demo recording)
+docs/                   findings, how it works, models, configuration, self-hosting, API, development; media/ (demo videos)
 runs/                   saved live runs (git-ignored)
 ```
 

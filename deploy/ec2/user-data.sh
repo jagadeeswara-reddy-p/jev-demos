@@ -40,8 +40,10 @@ laya() {
   uv venv --python 3.12 .venv
   uv pip install --python .venv torch --index-url https://download.pytorch.org/whl/cu128
   uv pip install --python .venv "laya[serve]==__LAYA_VERSION__"
+  { set +x; } 2>/dev/null  # the next line holds the API key; keep it out of the console log
   unit laya "Laya decision server" /opt/laya /opt/laya/.venv/bin/laya-serve \
     "Environment=LAYA_HOST=0.0.0.0 LAYA_PORT=8000 LAYA_DEVICE=cuda LAYA_API_KEY=__LAYA_KEY__ LAYA_CUDA_AMP=fp16 LAYA_PRELOAD=1 LAYA_MODELS=typed-decisions LAYA_IDLE_UNLOAD_SECONDS=0 LAYA_MAX_TOKEN_BUDGET=8192 HF_HOME=/opt/laya/hf"
+  set -x
   echo "LAYA STARTED"
 }
 
@@ -61,7 +63,10 @@ strands() {
   echo "STRANDS STARTED"
 }
 
-[ "__WITH_LAYA__" = 1 ] && laya &
-strands &
-wait
-echo "SETUP DONE"
+# Each install runs in the background; a failure is reported by name instead of a false "done".
+pids=()
+if [ "__WITH_LAYA__" = 1 ]; then laya & pids+=("laya:$!"); fi
+strands & pids+=("strands:$!")
+failed=""
+for p in "${pids[@]}"; do wait "${p#*:}" || failed="$failed ${p%%:*}"; done
+if [ -n "$failed" ]; then echo "SETUP FAILED:$failed"; else echo "SETUP DONE"; fi

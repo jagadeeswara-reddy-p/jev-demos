@@ -16,6 +16,11 @@ export const config = {
   port: num("PORT", 5317),
   /** 127.0.0.1 keeps the page (which can run models on your keys) off the network; set HOST=0.0.0.0 to share it. */
   host: env.HOST || "127.0.0.1",
+  /** Extra hostnames the API answers to (comma-separated), e.g. a LAN name when HOST=0.0.0.0. */
+  allowedHosts: (env.ALLOWED_HOSTS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
   runsDir: env.RUNS_DIR ?? "runs",
   production: env.NODE_ENV === "production",
   /** Built-in models (committed). */

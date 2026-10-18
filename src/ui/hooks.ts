@@ -27,7 +27,14 @@ const frameCallbacks = new Set<(now: number) => void>();
 let frameId: number | null = null;
 
 function tick(now: number) {
-  for (const cb of frameCallbacks) cb(now);
+  for (const cb of frameCallbacks) {
+    // One canvas failing (a bad event in a loaded log) must not freeze every other one.
+    try {
+      cb(now);
+    } catch (err) {
+      console.error(err);
+    }
+  }
   frameId = frameCallbacks.size > 0 ? requestAnimationFrame(tick) : null;
 }
 

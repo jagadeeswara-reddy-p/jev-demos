@@ -14,22 +14,21 @@
 # port 22 open to your IP only:  ssh -i .ec2-key.pem ubuntu@<ip>  then
 # journalctl -u laya -u strands, or /var/log/jev-setup.log. teardown.sh deletes the key.
 set -euo pipefail
-cd "$(dirname "$0")/../.."
-export $(grep -E '^AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY|SESSION_TOKEN)=' .env | xargs)
-export AWS_REGION=${AWS_REGION:-us-east-1}
+source "$(dirname "$0")/common.sh"
 
 MINUTES=${1:-60}
+# The box's only off switch is its own shutdown timer, so the minutes must be a real number.
+[[ $MINUTES =~ ^[1-9][0-9]*$ ]] && (( MINUTES <= 720 )) || { echo "Shutdown minutes must be a whole number from 1 to 720, got '$MINUTES'." >&2; exit 1; }
 TYPE=${INSTANCE_TYPE:-g5.xlarge}
 STRANDS_MODEL=${STRANDS_MODEL:-StrandsAgents/strands-decider-2B-qwen3.5-v1-2610}
 # Versions known to serve these checkpoints (2026-10-13). Change deliberately.
 STRANDS_COMMIT=${STRANDS_COMMIT:-b9fc83626bcca822d00f822d6c2e151b8d244ee9}
 LAYA_VERSION=${LAYA_VERSION:-0.4.8}
-NAME=jev-decision-gpu
 KEY_FILE=.ec2-key.pem
 PORTS="22 8000 8001"
 
-aws sts get-caller-identity >/dev/null || { echo "AWS credentials don't work (expired?). Refresh the AWS_* values in .env." >&2; exit 1; }
-TAGS="{Key=Project,Value=jev-demos},{Key=Name,Value=$NAME},{Key=Owner,Value=$(aws sts get-caller-identity --query 'Arn' --output text | sed 's#.*/##')}"
+owner_name
+TAGS="{Key=Project,Value=jev-demos},{Key=Name,Value=$NAME},{Key=Owner,Value=$OWNER}"
 AMI=$(aws ec2 describe-images --owners amazon \
   --filters 'Name=name,Values=Deep Learning Base OSS Nvidia Driver GPU AMI (Ubuntu 22.04)*' 'Name=state,Values=available' \
   --query 'sort_by(Images,&CreationDate)[-1].ImageId' --output text)
@@ -61,6 +60,7 @@ for port in $PORTS; do
 done
 
 USERDATA=$(mktemp)
+trap 'rm -f "$USERDATA"' EXIT  # it holds the Laya key
 sed -e "s/__SHUTDOWN_MINUTES__/$MINUTES/" -e "s/__LAYA_KEY__/$LAYA_KEY/" -e "s#__STRANDS_MODEL__#$STRANDS_MODEL#" \
   -e "s/__STRANDS_COMMIT__/$STRANDS_COMMIT/" -e "s/__LAYA_VERSION__/$LAYA_VERSION/" -e "s/__WITH_LAYA__/${WITH_LAYA:-1}/" \
   deploy/ec2/user-data.sh > "$USERDATA"
@@ -72,7 +72,7 @@ ID=$(aws ec2 run-instances --image-id "$AMI" --instance-type "$TYPE" --count 1 \
   --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeSize=100,VolumeType=gp3,DeleteOnTermination=true}' \
   --tag-specifications "ResourceType=instance,Tags=[$TAGS]" "ResourceType=volume,Tags=[$TAGS]" \
   --query 'Instances[0].InstanceId' --output text)
-rm -f "$USERDATA"
+echo "Started $ID; it deletes itself after $MINUTES minutes (deploy/ec2/teardown.sh removes it sooner)."
 aws ec2 wait instance-running --instance-ids "$ID"
 IP=$(aws ec2 describe-instances --instance-ids "$ID" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 GPU=$(aws ec2 describe-instance-types --instance-types "$TYPE" --query 'InstanceTypes[0].GpuInfo.Gpus[0].Name' --output text)

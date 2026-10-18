@@ -84,7 +84,9 @@ export function readDecision(model: ModelConfig, raw: ReplyBody & { result?: Rep
   }
   const probabilities: Record<string, number> = {};
   for (const a of answers) for (const [id, p] of Object.entries(a.probabilities!)) probabilities[id] = (probabilities[id] ?? 0) + p / answers.length;
-  const [choice, top] = Object.entries(probabilities).reduce((best, e) => (e[1] > best[1] ? e : best));
+  const entries = Object.entries(probabilities);
+  if (entries.length === 0) return { status: "invalid", usage, detail: "The rotated answers had no probabilities" };
+  const [choice, top] = entries.reduce((best, e) => (e[1] > best[1] ? e : best));
   return { status: "ok", choice, probabilities, confidence: top, usage, detail };
 }
 

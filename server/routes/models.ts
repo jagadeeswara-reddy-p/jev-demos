@@ -15,10 +15,25 @@ import { type TestResult, testModel } from "../sample";
 
 type Req = Request & { params: Record<string, string> };
 
-export function modelRoutes(store: ModelStore, test: (m: ModelConfig) => Promise<TestResult> = testModel) {
+/** Reachability of self-hosted models (server/models/health.ts); a no-op where none is given. */
+export interface Health {
+  /** Pings the models whose last result is stale. */
+  refresh(): Promise<void>;
+  /** Marks a model unavailable when its last ping failed. */
+  apply<T extends { id: string; available: boolean; reason?: string }>(info: T): T;
+  /** Why the model can't be reached, if it can't. */
+  problem(id: string): string | undefined;
+}
+
+const NO_HEALTH: Health = { refresh: async () => {}, apply: (i) => i, problem: () => undefined };
+
+export function modelRoutes(store: ModelStore, test: (m: ModelConfig) => Promise<TestResult> = testModel, health: Health = NO_HEALTH) {
   return {
     "/api/models": {
-      GET: () => Response.json(store.list()),
+      GET: async () => {
+        await health.refresh();
+        return Response.json(store.list().map((m) => health.apply(m)));
+      },
       POST: (req: Request) => guard(async () => Response.json(store.add(await body(req)), { status: 201 })),
     },
     "/api/models/:id": {
@@ -33,7 +48,11 @@ export function modelRoutes(store: ModelStore, test: (m: ModelConfig) => Promise
       POST: (req: Req) =>
         guard(async () => {
           if (!store.has(req.params.id)) return Response.json({ error: `No model "${req.params.id}"` }, { status: 404 });
-          return Response.json(await test(store.resolve(req.params.id)));
+          const model = store.resolve(req.params.id);
+          await health.refresh();
+          const problem = health.problem(req.params.id);
+          if (problem) return Response.json({ error: `${model.label} can't run: ${problem}` }, { status: 409 });
+          return Response.json(await test(model));
         }),
     },
     "/api/lineup": {

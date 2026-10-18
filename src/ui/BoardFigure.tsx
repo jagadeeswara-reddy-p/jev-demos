@@ -8,21 +8,16 @@ import { type BoardState, fmtBest, fmtCost, fmtMs, percentile, type ShownStatus 
 const KIND_LABEL = { "system-one": "System One model", llm: "Language model", baseline: "Baseline" } as const;
 
 interface Props {
-  index: number;
   spec: AgentSpec;
   sources: SourceInfo[];
   board: BoardState | undefined;
 }
 
-export function BoardFigure({ index, spec, sources, board }: Props) {
+export function BoardFigure({ spec, sources, board }: Props) {
   const source = sources.find((s) => s.id === spec.sourceId);
   const kindText = source ? (source.available ? source.description : `${source.description}. ${source.reason}.`) : KIND_LABEL[spec.kind];
-  const tag = `FIG_${String(index + 1).padStart(3, "0")}`;
   return (
     <figure className="figure" aria-labelledby={`${spec.id}-name`} style={{ margin: 0 }}>
-      <span className="fig-tag" aria-hidden="true">
-        {tag}
-      </span>
       <div className="figure-head">
         <h2 id={`${spec.id}-name`} title={kindText}>
           {spec.name}

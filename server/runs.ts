@@ -154,7 +154,8 @@ export function validateConfig(input: unknown): RunConfig {
 export function createRun(runConfig: RunConfig): LiveRun {
   mkdirSync(config.runsDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").replace("Z", "");
-  const id = `${stamp}-seed${runConfig.seed}`;
+  // A random suffix keeps two runs started in the same millisecond apart.
+  const id = `${stamp}-seed${runConfig.seed}-${crypto.randomUUID().slice(0, 4)}`;
   const run = new LiveRun(id, runConfig);
   runs.set(id, run);
   run.start();

@@ -91,6 +91,13 @@ describe("readDecision", () => {
     expect(a.detail).toContain("12 state tokens dropped");
   });
 
+  test("rotated answers with empty probabilities are invalid, not a crash", () => {
+    const a = readDecision(base, {
+      answers: { placement_0: { choice: "option_1", probabilities: {} }, placement_1: { choice: "option_2", probabilities: {} } },
+    });
+    expect(a).toMatchObject({ status: "invalid", detail: "The rotated answers had no probabilities" });
+  });
+
   test("an answer without a choice is invalid", () => {
     expect(readDecision(base, { answers: {} }).status).toBe("invalid");
     expect(readDecision(base, { answers: { placement: { choice: 3 } } }).status).toBe("invalid");

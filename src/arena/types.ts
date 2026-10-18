@@ -1,6 +1,6 @@
 import type { Cell, PieceType } from "../engine/pieces";
 
-// The contract between a backend (mock today, real server later) and the UI.
+// The contract between a backend (mock, replay or the live server) and the UI.
 // Every run is fully described by its config plus the ordered event stream,
 // which is also what gets saved and replayed.
 
@@ -11,7 +11,7 @@ export interface AgentSpec {
   id: string;
   name: string;
   kind: AgentKind;
-  /** Which decision source drives this board: a mock profile id now, a provider adapter later. */
+  /** Which decision source drives this board: a model id from models.json / models.local.json, or a mock profile id. */
   sourceId: string;
 }
 

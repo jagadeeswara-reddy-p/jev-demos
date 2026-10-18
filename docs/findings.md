@@ -205,11 +205,21 @@ network round trip.
 
 ## Costs
 
-Everything was covered by AWS credits. Our share of October to the 17th, before
-credits: about $6–8 on AWS (Bedrock models about $3.50, GPU boxes about $3.30,
-3.9 hours in all), plus Clef and Jev at well under $1. The four Tetris games
-cost $1.64 in model calls; the JevBench pass $2.85, $2.31 of it Opus. Most of
-the account's bill is an unrelated always-on t3.large.
+The whole investigation, 9–17 October, cost about $14 in model calls and GPU time
+(list prices; the AWS part was covered by credits):
+
+| Item | Cost |
+|---|---|
+| Claude Opus 5.5 (Bedrock) | $7.12 |
+| GPT-6.1 Sol (Bedrock) | $2.57 |
+| Cloudflare Clef | about $0.45 |
+| Jev | about $0.21 |
+| Claude Haiku 5.5 (Bedrock) | $0.04 |
+| GPU boxes (T4 1.4 h, A10G 2.9 h, with disks) | about $3.75 |
+| **Total** | **about $14** |
+
+Opus is half of it: the most expensive per token and the most tokens per move.
+The four benchmark games cost $1.64 in model calls and the JevBench pass $2.85.
 
 ## Limits of these results, and next steps
 

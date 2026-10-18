@@ -1,8 +1,10 @@
+import type { BunRequest } from "bun";
 import index from "../index.html";
 import { config } from "./config";
+import { allowedHosts, protect } from "./guard";
 import { modelRoutes } from "./routes/models";
 import { createRun, getRun, isRunId, listRuns, logPath, validateConfig } from "./runs";
-import { listSources, models } from "./sources";
+import { health, listSources, models, refreshHealth } from "./sources";
 
 // One Bun process serves the React app (bundled from index.html, hot reloaded
 // in development) and the arena API.
@@ -21,59 +23,74 @@ const server = Bun.serve({
   // Event streams stay open for minutes; the clock heartbeat keeps them busy.
   idleTimeout: 255,
   development: !config.production && { hmr: true, console: true },
+  // Model settings and run configs are small; nothing legitimate comes near this.
+  maxRequestBodySize: 1024 * 1024,
 
-  routes: {
-    "/": index,
+  // Every /api/ route checks the Host and, for changes, Origin and Content-Type first (server/guard.ts).
+  routes: protect(
+    {
+      "/": index,
 
-    "/api/health": () => Response.json({ ok: true }),
+      "/api/health": () => Response.json({ ok: true }),
 
-    "/api/sources": () => Response.json(listSources()),
-
-    ...modelRoutes(models),
-
-    "/api/runs": {
-      GET: () => Response.json(listRuns()),
-      POST: async (req) => {
-        try {
-          const run = createRun(validateConfig(await req.json()));
-          return Response.json({ id: run.id, config: run.config }, { status: 201 });
-        } catch (err) {
-          return Response.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });
-        }
+      "/api/sources": async () => {
+        await refreshHealth();
+        return Response.json(listSources());
       },
-    },
 
-    "/api/runs/:id/events": (req) => {
-      const run = getRun(req.params.id);
-      if (!run) return Response.json({ error: "No live run with that id" }, { status: 404 });
-      const header = req.headers.get("Last-Event-ID");
-      const last = header === null ? NaN : Number(header);
-      return run.stream(Number.isInteger(last) && last >= 0 ? last + 1 : 0);
-    },
+      ...modelRoutes(models, undefined, {
+        refresh: refreshHealth,
+        apply: (info) => health.apply(info),
+        problem: (id) => health.problem(id),
+      }),
 
-    "/api/runs/:id/log": async (req) => {
-      const { id } = req.params;
-      if (!isRunId(id)) return Response.json({ error: "Bad run id" }, { status: 400 });
-      const file = Bun.file(logPath(id));
-      if (!(await file.exists())) return Response.json({ error: "No saved run with that id" }, { status: 404 });
-      return new Response(file, { headers: { "Content-Type": "application/x-ndjson" } });
-    },
+      "/api/runs": {
+        GET: () => Response.json(listRuns()),
+        POST: async (req: Request) => {
+          try {
+            await refreshHealth(); // a self-hosted model that went away can't start a run
+            const run = createRun(validateConfig(await req.json()));
+            return Response.json({ id: run.id, config: run.config }, { status: 201 });
+          } catch (err) {
+            return Response.json({ error: err instanceof Error ? err.message : String(err) }, { status: 400 });
+          }
+        },
+      },
 
-    "/api/runs/:id/stop": {
-      POST: (req) => {
+      "/api/runs/:id/events": (req: BunRequest<"/api/runs/:id/events">) => {
         const run = getRun(req.params.id);
         if (!run) return Response.json({ error: "No live run with that id" }, { status: 404 });
-        run.stop();
-        return Response.json({ ok: true });
+        const header = req.headers.get("Last-Event-ID");
+        const last = header === null ? NaN : Number(header);
+        return run.stream(Number.isInteger(last) && last >= 0 ? last + 1 : 0);
+      },
+
+      "/api/runs/:id/log": async (req: BunRequest<"/api/runs/:id/log">) => {
+        const { id } = req.params;
+        if (!isRunId(id)) return Response.json({ error: "Bad run id" }, { status: 400 });
+        const file = Bun.file(logPath(id));
+        if (!(await file.exists())) return Response.json({ error: "No saved run with that id" }, { status: 404 });
+        return new Response(file, { headers: { "Content-Type": "application/x-ndjson" } });
+      },
+
+      "/api/runs/:id/stop": {
+        POST: (req: BunRequest<"/api/runs/:id/stop">) => {
+          const run = getRun(req.params.id);
+          if (!run) return Response.json({ error: "No live run with that id" }, { status: 404 });
+          run.stop();
+          return Response.json({ ok: true });
+        },
       },
     },
-  },
+    allowedHosts(config.host, config.allowedHosts),
+  ),
 
   fetch() {
     return Response.json({ error: "Not found" }, { status: 404 });
   },
 });
 
+await refreshHealth();
 const live = listSources().filter((s) => s.live);
 console.log(`Deadline Tetris on ${server.url}`);
 console.log(`  Line-up  ${models.lineup().join(", ")}`);

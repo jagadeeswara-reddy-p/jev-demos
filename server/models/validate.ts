@@ -17,7 +17,7 @@ export const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/;
 export const MAX_ROTATIONS = 64;
 
 const ADAPTERS: AdapterName[] = ["completion", "decision", "bedrock"];
-const COMMON = ["id", "label", "adapter", "description", "baseUrl", "url", "model", "apiKey", "timeoutMs", "prices", "extraBody"];
+const COMMON = ["id", "label", "adapter", "description", "baseUrl", "url", "model", "apiKey", "timeoutMs", "prices", "extraBody", "healthCheck"];
 const ONLY: Record<AdapterName, string[]> = {
   completion: ["jsonMode", "maxTokens"],
   decision: ["rotations"],
@@ -61,6 +61,11 @@ export function validateModel(input: unknown, options: ValidateOptions = {}): Mo
   const apiKey = text(input, "apiKey", { max: 4000 });
   if (apiKey) model.apiKey = apiKey;
 
+  const healthCheck = text(input, "healthCheck", { max: 200 });
+  if (healthCheck) {
+    if (!healthCheck.startsWith("/")) throw new ModelError("healthCheck", 'must be a path on the API address, such as "/health"');
+    model.healthCheck = healthCheck;
+  }
   if (input.timeoutMs !== undefined) model.timeoutMs = integer(input, "timeoutMs", 1_000, 600_000);
   if (input.prices !== undefined) model.prices = prices(input.prices, a);
   if (input.extraBody !== undefined) {
@@ -100,7 +105,18 @@ function text(o: Record<string, unknown>, field: string, opts: { required?: bool
   return s;
 }
 
-/** An http(s) address. Placeholders (${NAME}) are checked once filled, so they pass here. */
+/** Why a filled-in address isn't a usable http(s) address, or undefined when it is (or is absent). */
+export function addressProblem(v: string | undefined): string | undefined {
+  if (!v) return undefined;
+  try {
+    const u = new URL(v);
+    return u.protocol === "http:" || u.protocol === "https:" ? undefined : "must start with http:// or https://";
+  } catch {
+    return "must be a full address such as http://10.0.0.5:8000";
+  }
+}
+
+/** An http(s) address. Placeholders (${NAME}) are checked once filled (ModelStore), so they pass here. */
 function address(o: Record<string, unknown>, field: string): string {
   const s = text(o, field, { max: 2000 }).replace(/\/+$/, "");
   if (!s || s.includes("${")) return s;

@@ -148,17 +148,6 @@ input {
   color: var(--ink);
 }
 
-.fig-tag {
-  position: absolute;
-  top: 0;
-  left: -22px;
-  writing-mode: vertical-rl;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
 /* ---------- controls ---------- */
 
 .segmented {
@@ -539,9 +528,6 @@ input.field {
   .boards {
     padding-left: 0;
   }
-  .fig-tag {
-    display: none;
-  }
 }
 
 /* ---------- full frame: on wide screens the whole page fits the window ----------
@@ -821,10 +807,6 @@ input.field {
   padding-left: 0;
   flex: 1;
   min-height: 0;
-}
-
-.stage .fig-tag {
-  display: none;
 }
 
 /* Each card: the board on the left at the card's full height; name, clock and numbers beside it. */

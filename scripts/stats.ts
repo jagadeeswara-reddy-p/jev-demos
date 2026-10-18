@@ -265,7 +265,7 @@ if (runs.length === 0) {
 const out: string[] = [];
 out.push(`# Run statistics\n`);
 out.push(
-  `${runs.length} run(s): ${runs.filter((r) => r.end === "all_out").length} played to the end, ${runs.filter((r) => r.end === "stopped").length} stopped early, ${runs.filter((r) => r.end === "cut off").length} cut off.\n`,
+  `${runs.length} run(s): ${runs.filter((r) => r.end === "all_out").length} played to the end, ${runs.filter((r) => r.end === "time_limit").length} hit the time limit, ${runs.filter((r) => r.end === "stopped").length} stopped early, ${runs.filter((r) => r.end === "cut off").length} cut off.\n`,
 );
 
 out.push(`## Per run\n`);
@@ -466,7 +466,7 @@ out.push(`- **Too late**: pieces that locked before an answer arrived (or, on th
 out.push(`- **Late**: answers that arrived after their piece had already locked.`);
 out.push(`- **Latency** counts every answer that came back (in time, late or invalid); failed requests are excluded.`);
 out.push(`- **Median margin left**: for in-time answers, how much of the piece's deadline was still unused.`);
-out.push(`- Cost is $0 when no prices are set in .env.`);
+out.push(`- Cost is $0 for a model without prices in models.json (or models.local.json), and for runs made before they were set.`);
 out.push(`- Runs stopped early are included; filter with --min-decisions or --since.`);
 
 console.log(out.join("\n"));
