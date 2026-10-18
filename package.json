@@ -1,6 +1,7 @@
 {
   "name": "jev-demos",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "bun --hot server/index.ts",

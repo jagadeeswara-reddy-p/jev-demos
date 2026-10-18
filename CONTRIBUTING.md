@@ -51,3 +51,7 @@ All three run in CI on every pull request.
 Keys belong in `.env` or `models.local.json`, both git-ignored. Never commit
 them, paste them in issues, or put them in `models.json`: use a `${ENV_VAR}`
 placeholder there instead. The server never sends a key to the browser; keep it that way.
+
+## License
+
+By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).
