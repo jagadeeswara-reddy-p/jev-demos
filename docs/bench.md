@@ -145,8 +145,8 @@ runs/bench/<name>/
 Each `<variant>-<clock>-seed<seed>.jsonl` is a run log in the same format the
 page saves. `bun run stats <files>` reads it, and the page replays it.
 
-`settings.json` holds the `stopWhenFinished` the folder was run with (see
-[Resuming and the cost limit](#resuming-and-the-cost-limit)).
+`settings.json` holds the `stopWhenFinished` and the Tetris `environment.version` the folder was run with (see
+[Resuming and the cost limit](#resuming-and-the-cost-limit)); a folder from another version, including one made before the version was recorded, is refused.
 
 `bench.json` is the manifest, written after the last match:
 

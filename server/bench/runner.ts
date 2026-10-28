@@ -111,12 +111,18 @@ const SETTINGS = "settings.json";
 async function checkSettings(outDir: string, stopWhenFinished: number): Promise<void> {
   const file = Bun.file(join(outDir, SETTINGS));
   if (await file.exists()) {
-    const saved = (await file.json()) as { stopWhenFinished?: number };
+    const saved = (await file.json()) as { stopWhenFinished?: number; environment?: { version?: string } };
     if (saved.stopWhenFinished !== stopWhenFinished) {
       throw new ResumeMismatchError(`${outDir} was run with stopWhenFinished ${saved.stopWhenFinished}; use --out <new folder> or delete it`);
     }
+    // Folders made before the version was recorded were played with Tetris v1.
+    const savedVersion = saved.environment?.version ?? "1";
+    if (savedVersion !== tetris.version) {
+      throw new ResumeMismatchError(`${outDir} was run with tetris version ${savedVersion}; use --out <new folder> or delete it`);
+    }
   }
-  await Bun.write(file, `${JSON.stringify({ stopWhenFinished }, null, 2)}\n`);
+  const environment = { id: tetris.id, version: tetris.version };
+  await Bun.write(file, `${JSON.stringify({ stopWhenFinished, environment }, null, 2)}\n`);
 }
 
 /** A finished log is only reused for the same line-up and settings; anything else is refused and left as it is. */

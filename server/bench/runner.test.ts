@@ -159,6 +159,34 @@ describe("runMatches", () => {
     expect((err as Error).message).toBe(`${outDir} was run with stopWhenFinished 0.75; use --out <new folder> or delete it`);
   });
 
+  test("refuses a folder made before the Tetris version was recorded", async () => {
+    const outDir = tempDir();
+    writeFileSync(join(outDir, "settings.json"), `${JSON.stringify({ stopWhenFinished: 0.75 }, null, 2)}\n`);
+    const plans = planMatches(cfg, MOCKS);
+    const err = await runMatches(plans, fastOpts(outDir)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ResumeMismatchError);
+    expect((err as Error).message).toBe(`${outDir} was run with tetris version 1; use --out <new folder> or delete it`);
+  });
+
+  test("refuses a folder made by another Tetris version", async () => {
+    const outDir = tempDir();
+    writeFileSync(
+      join(outDir, "settings.json"),
+      `${JSON.stringify({ stopWhenFinished: 0.75, environment: { id: "tetris", version: "1" } }, null, 2)}\n`,
+    );
+    const plans = planMatches(cfg, MOCKS);
+    const err = await runMatches(plans, fastOpts(outDir)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ResumeMismatchError);
+    expect((err as Error).message).toBe(`${outDir} was run with tetris version 1; use --out <new folder> or delete it`);
+  });
+
+  test("a fresh folder records the stop share and the Tetris version", async () => {
+    const outDir = tempDir();
+    await runMatches(planMatches(cfg, MOCKS), fastOpts(outDir));
+    const saved = JSON.parse(readFileSync(join(outDir, "settings.json"), "utf8"));
+    expect(saved).toEqual({ stopWhenFinished: 0.75, environment: { id: "tetris", version: "2" } });
+  });
+
   test("skips the matches after the cost limit is passed", async () => {
     const costly = parseBench({ name: "t", seeds: [1], clocks: ["frozen", "realtime"], tetris: { maxPieces: 40 }, models: ["jev"] });
     const plans = planMatches(costly, MOCKS);
