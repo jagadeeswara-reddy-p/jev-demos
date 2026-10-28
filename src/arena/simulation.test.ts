@@ -115,6 +115,23 @@ describe("ArenaSimulation", () => {
     expect(ok.every((e) => e.t === "decision" && e.latencyMs === 42)).toBe(true);
   });
 
+  it("ignores answers that arrive after the run was stopped", () => {
+    const cfg = { ...config(["jev"]), maxPieces: 5 };
+    const queue: (() => void)[] = [];
+    const live: TetrisAgent = {
+      request: (turn, deliver, ctx) => {
+        queue.push(() => deliver({ status: "ok", choice: turn.detail.candidates[0].id }, ctx.now(), 42));
+      },
+    };
+    const sim = new ArenaSimulation(cfg, [live]);
+    const events = sim.start();
+    events.push(...sim.stop());
+    for (const f of queue.splice(0)) f();
+    events.push(...sim.step(1000));
+    expect(events.at(-1)).toMatchObject({ t: "run_finished", reason: "stopped" });
+    expect(events.some((e) => e.t === "decision")).toBe(false);
+  });
+
   it("grades every answer that names an option, late ones included", () => {
     const events = runToEnd(config(["heuristic", "llm-frontier"]));
     const graded = (id: string, status?: string) =>
