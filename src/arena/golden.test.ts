@@ -13,4 +13,4 @@ test("mock run logs match the golden digests", async () => {
   }
   if (Bun.env.UPDATE_GOLDEN === "1") await Bun.write(FIXTURE, `${JSON.stringify(actual, null, 2)}\n`);
   expect(actual).toEqual(await Bun.file(FIXTURE).json());
-});
+}, 30_000); // four full mock games: about 5 s, more on a busy machine

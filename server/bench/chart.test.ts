@@ -17,6 +17,14 @@ function model(overrides: Partial<ModelSummary> & Pick<ModelSummary, "id" | "lab
 }
 
 /** Four models in row order: one decision model, two language models, one reference. */
+/** The footer's lines, joined back into one " · " list. */
+function footerText(svg: string): string {
+  return [...svg.matchAll(/<text x="24" y="(\d+)" font-size="11" fill="[^"]+">([^<]*)<\/text>/g)]
+    .filter((m) => Number(m[1]) > 112)
+    .map((m) => m[2])
+    .join(" · ");
+}
+
 function fixture(overrides: Partial<BenchSummary> = {}): BenchSummary {
   return {
     name: "demo",
@@ -75,9 +83,10 @@ describe("renderChart", () => {
     expect(strip(renderChart(fixture(), "light"))).toBe(strip(renderChart(fixture(), "dark")));
   });
 
-  test("height is 112 + rows x 34 + 36", () => {
-    const svg = renderChart(fixture(), "light");
-    expect(svg).toContain('height="284"');
+  test("height is 112 + rows x 34 + 36, plus 16 per extra footer line", () => {
+    // This fixture's footer wraps onto two lines.
+    expect(renderChart(fixture(), "light")).toContain('height="300"');
+    expect(renderChart(fixture({ frozenPieces: null, realtimeSeconds: null }), "light")).toContain('height="284"');
   });
 
   test("judgement bar widths are proportional to agreement on a 0-100 scale", () => {
@@ -110,6 +119,25 @@ describe("renderChart", () => {
     expect(svg).toContain("&lt;script&gt;x");
   });
 
+  test("every text fits even in a wide fallback font (0.6 em per character)", () => {
+    const wide = fixture({ seeds: 12, realtimeSeconds: 100, totalCostUsd: 123.45, skipped: ["a.jsonl", "b.jsonl"] });
+    for (const theme of ["light", "dark"] as const) {
+      const svg = renderChart(wide, theme);
+      const texts = [...svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)" font-size="(\d+)"([^>]*)>([^<]*)<\/text>/g)].map((m) => ({
+        x: Number(m[1]),
+        y: Number(m[2]),
+        size: Number(m[3]),
+        end: m[4].includes('text-anchor="end"'),
+        width: Array.from(m[5].replace(/&[a-z#0-9]+;/g, "_")).length * 0.6 * Number(m[3]),
+      }));
+      for (const t of texts) if (!t.end) expect(t.x + t.width).toBeLessThanOrEqual(876);
+      // Panel subtitles share a row: each must end before the next one starts.
+      const subs = texts.filter((t) => t.size === 11 && t.y < 112).sort((a, b) => a.x - b.x);
+      expect(subs.length).toBe(3);
+      for (let i = 0; i + 1 < subs.length; i++) expect(subs[i].x + subs[i].width).toBeLessThanOrEqual(subs[i + 1].x - 8);
+    }
+  });
+
   test("the footer says 2 seeds for two seeds", () => {
     expect(renderChart(fixture({ seeds: 2 }), "light")).toContain("· 2 seeds ·");
   });
@@ -121,8 +149,7 @@ describe("renderChart", () => {
   });
 
   test("the footer states environment, frozen pieces, real time, cost, date and the CI caveat", () => {
-    const svg = renderChart(fixture(), "light");
-    expect(svg).toContain(
+    expect(footerText(renderChart(fixture(), "light"))).toBe(
       "tetris v3 · 2 seeds · frozen: 30 pieces each · real time: 2 minutes · total cost $2.42 · 2026-10-28 · no confidence intervals yet",
     );
   });
@@ -191,17 +218,17 @@ describe("renderChart", () => {
 
   test("a real-time limit in whole minutes reads as minutes, and any other as seconds", () => {
     const minutes = renderChart(fixture({ realtimeSeconds: 120 }), "light");
-    expect(minutes).toContain("Pieces landed per 2-minute game");
+    expect(minutes).toContain("Pieces landed, 2-minute game");
     expect(minutes).toContain("real time: 2 minutes");
     const seconds = renderChart(fixture({ realtimeSeconds: 100 }), "light");
-    expect(seconds).toContain("Pieces landed per 100-second game");
+    expect(seconds).toContain("Pieces landed, 100-second game");
     expect(seconds).toContain("real time: 100 seconds");
     expect(seconds).not.toContain("1.66");
   });
 
   test("the footer names the unfinished matches left out, and says nothing when there are none", () => {
-    expect(renderChart(fixture({ skipped: ["a.jsonl", "b.jsonl"] }), "light")).toContain("· 2 unfinished matches left out ·");
-    expect(renderChart(fixture({ skipped: ["a.jsonl"] }), "light")).toContain("· 1 unfinished match left out ·");
+    expect(footerText(renderChart(fixture({ skipped: ["a.jsonl", "b.jsonl"] }), "light"))).toContain("· 2 unfinished matches left out ·");
+    expect(footerText(renderChart(fixture({ skipped: ["a.jsonl"] }), "light"))).toContain("· 1 unfinished match left out ·");
     expect(renderChart(fixture(), "light")).not.toContain("left out");
   });
 
