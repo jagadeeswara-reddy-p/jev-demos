@@ -1,3 +1,4 @@
+import type { Agent } from "../core/types";
 import type { Cell, PieceType } from "../engine/pieces";
 
 // The contract between a backend (mock, replay or the live server) and the UI.
@@ -126,6 +127,23 @@ export type ArenaEvent =
   | { t: "run_finished"; at: number; reason: "all_out" | "time_limit" | "stopped" };
 
 export type ArenaEventOf<T extends ArenaEvent["t"]> = Extract<ArenaEvent, { t: T }>;
+
+// ---------- turns ----------
+
+/** Tetris's own view of a turn: what mocks and baselines read. API adapters see only the generic Turn. */
+export interface TetrisTurnDetail {
+  agentId: string;
+  pieceId: number;
+  type: PieceType;
+  /** Board before placing the piece, one char per cell including the hidden rows. */
+  board: string;
+  next: PieceType[];
+  candidates: CandidateView[];
+  level: number;
+  mode: ClockMode;
+}
+
+export type TetrisAgent = Agent<TetrisTurnDetail>;
 
 // ---------- decision sources ----------
 
