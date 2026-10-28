@@ -64,6 +64,10 @@ describe("clocks and variants", () => {
   test("a variant the environment does not have is refused", () => {
     expect(fieldOf(() => parseBench({ name: "a", variants: ["board-only"], models: ["jev"] }))).toBe("variants");
   });
+
+  test("a repeated variant is refused, since two matches would share a log file", () => {
+    expect(fieldOf(() => parseBench({ name: "a", variants: ["described", "described"], models: ["jev"] }))).toBe("variants");
+  });
 });
 
 describe("models", () => {
@@ -137,6 +141,10 @@ describe("limits and tetris settings", () => {
   });
 });
 
+function parseFailure(field: string): string {
+  return new BenchConfigError(field, "must be an ${ENV} placeholder; put the key itself in .env").message;
+}
+
 describe("loadBench", () => {
   test("parses the example file", async () => {
     const c = await loadBench(EXAMPLE);
@@ -152,17 +160,39 @@ describe("loadBench", () => {
     expect(await loadBench(json)).toEqual(await loadBench(EXAMPLE));
   });
 
-  test("validation errors name the file and the field", async () => {
+  test("a validation failure keeps its class and field", async () => {
     const dir = mkdtempSync(join(tmpdir(), "bench-"));
     const bad = join(dir, "bench.yaml");
-    writeFileSync(bad, "name: Bad Name\nmodels: [jev]\n");
-    await expect(loadBench(bad)).rejects.toThrow(`${bad}: name: `);
+    writeFileSync(bad, "name: a\nmodels:\n  - id: x\n    apiKey: sk-live-123\n");
+    const err = await loadBench(bad).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BenchConfigError);
+    expect((err as BenchConfigError).field).toBe("models[0].apiKey");
+    expect((err as BenchConfigError).message).toBe(parseFailure("models[0].apiKey"));
   });
 
-  test("syntax errors name the file", async () => {
+  test("a YAML syntax error is a BenchConfigError whose field is the path", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "bench-"));
+    const bad = join(dir, "bench.yaml");
+    writeFileSync(bad, "name: [unclosed\n");
+    const err = await loadBench(bad).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BenchConfigError);
+    expect((err as BenchConfigError).field).toBe(bad);
+    expect((err as BenchConfigError).message.startsWith(`${bad}: `)).toBe(true);
+  });
+
+  test("a JSON syntax error is a BenchConfigError whose field is the path", async () => {
     const dir = mkdtempSync(join(tmpdir(), "bench-"));
     const bad = join(dir, "bench.json");
     writeFileSync(bad, "{ not json");
-    await expect(loadBench(bad)).rejects.toThrow(bad);
+    const err = await loadBench(bad).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BenchConfigError);
+    expect((err as BenchConfigError).field).toBe(bad);
+  });
+
+  test("a missing file is a BenchConfigError whose field is the path", async () => {
+    const missing = join(mkdtempSync(join(tmpdir(), "bench-")), "nope.yaml");
+    const err = await loadBench(missing).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BenchConfigError);
+    expect((err as BenchConfigError).field).toBe(missing);
   });
 });

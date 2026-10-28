@@ -78,21 +78,19 @@ export function parseBench(raw: unknown): BenchConfig {
   return config;
 }
 
-/** Reads a .json file as JSON, anything else as YAML. Errors name the file. */
+/**
+ * Reads a .json file as JSON, anything else as YAML. A file that cannot be read or
+ * parsed is a BenchConfigError whose field is the path; validation errors pass through.
+ */
 export async function loadBench(path: string): Promise<BenchConfig> {
   let raw: unknown;
   try {
     const text = await Bun.file(path).text();
     raw = path.endsWith(".json") ? JSON.parse(text) : Bun.YAML.parse(text);
   } catch (err) {
-    throw new Error(`${path}: ${err instanceof Error ? err.message : String(err)}`);
+    throw new BenchConfigError(path, err instanceof Error ? err.message : String(err));
   }
-  try {
-    return parseBench(raw);
-  } catch (err) {
-    if (err instanceof BenchConfigError) throw new Error(`${path}: ${err.message}`);
-    throw err;
-  }
+  return parseBench(raw);
 }
 
 function seeds(v: unknown): number[] {
@@ -125,6 +123,7 @@ function variants(v: unknown): string[] {
       throw new BenchConfigError("variants", `unknown variant ${String(name)}; tetris has ${tetris.variants.join(", ")}`);
     }
   }
+  if (new Set(v).size !== v.length) throw new BenchConfigError("variants", "must not repeat a variant");
   return [...v];
 }
 
