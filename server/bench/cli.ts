@@ -1,5 +1,6 @@
 import { chmodSync, copyFileSync, existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
+import type { Env } from "../models/env";
 import { testModel } from "../sample";
 import { createSource, listSources, models, refreshHealth } from "../sources";
 import { type BenchConfig, BenchConfigError, loadBench, parseBench } from "./config";
@@ -15,6 +16,8 @@ import { type MatchOutcome, ResumeMismatchError, runMatches, writeManifest } fro
 export interface Io {
   out(text: string): void;
   confirm(question: string): Promise<boolean>;
+  /** The environment the models read their keys from. Defaults to Bun.env. */
+  env?: Env;
 }
 
 const ROOT = resolve(import.meta.dir, "../..");
@@ -173,7 +176,7 @@ async function inspect(command: "doctor" | "run", file: string, io: Io): Promise
   try {
     const cfg = await loadBench(file);
     await refreshHealth();
-    const entrants = resolveEntrants(cfg.models, listSources(), Bun.env);
+    const entrants = resolveEntrants(cfg.models, listSources(), io.env ?? Bun.env);
     const checks = await preflight(entrants, (e) => testModel(e.model ?? models.resolve(e.id)));
     return { cfg, entrants, checks };
   } catch (err) {

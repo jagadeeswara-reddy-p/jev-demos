@@ -52,6 +52,15 @@ describe("bench init", () => {
 });
 
 describe("bench doctor", () => {
+  test("the example bench passes doctor with no keys set", async () => {
+    const dir = tempDir();
+    const file = join(dir, "bench.yaml");
+    expect(await main(["init", file], capture().io)).toBe(0);
+    const { io, text } = capture();
+    expect(await main(["doctor", file], { ...io, env: {} })).toBe(0);
+    expect(text()).not.toContain("Set ");
+  });
+
   test("a missing bench file names init and exits 1, without a stack trace", async () => {
     const file = join(tempDir(), "nope.yaml");
     const { io, text } = capture();

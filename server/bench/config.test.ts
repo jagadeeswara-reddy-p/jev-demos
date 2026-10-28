@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MOCK_SOURCES } from "../../src/mock/mockSource";
 import { BenchConfigError, loadBench, parseBench } from "./config";
+import { resolveEntrants } from "./entrants";
 
 const EXAMPLE = join(import.meta.dir, "../../bench.example.yaml");
 
@@ -164,7 +166,15 @@ describe("loadBench", () => {
   test("parses the example file", async () => {
     const c = await loadBench(EXAMPLE);
     expect(c.name).toBe("my-first-bench");
-    expect(c.models).toHaveLength(3);
+    expect(c.models).toHaveLength(5);
+    expect(c.models.every((m) => typeof m === "string")).toBe(true);
+  });
+
+  test("the example file runs on mock models only, with no keys", async () => {
+    const c = await loadBench(EXAMPLE);
+    const entrants = resolveEntrants(c.models, MOCK_SOURCES, {});
+    expect(entrants.filter((e) => e.unavailable)).toEqual([]);
+    expect(entrants.filter((e) => e.live)).toEqual([]);
   });
 
   test("a JSON file with the same content gives the same config", async () => {

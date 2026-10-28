@@ -11,3 +11,7 @@ models.local.json
 
 # personal benches stay local
 bench.yaml
+
+# internal notes, not part of the repo
+docs/superpowers/
+docs/posts/

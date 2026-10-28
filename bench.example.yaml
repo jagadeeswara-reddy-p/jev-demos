@@ -35,17 +35,22 @@ limits:
 # Models to compare: 1 to 12 entries. A plain id names a model in models.json, or the
 # mock baseline. An inline model is written out in full.
 models:
-  # A model from models.json, called through its live API.
-  - live-jev
-  # A mock baseline: no API calls.
-  - heuristic  # a mock baseline: no API calls
+  # Mock models: no API calls, no keys needed.
+  - jev  # about 0.28 s per decision
+  - llm-fast  # about 0.75 s per decision
+  - llm-frontier  # about 6 s per decision
+  - heuristic  # hand-written evaluator, always picks its best spot
+  - random  # picks any legal spot at random
+  # Live models: uncomment, and put their keys in .env.
+  # - live-jev
+  # - bedrock-gpt
   # An inline model. Its key is read from .env: write ${NAME}, never the key itself.
-  - id: openrouter-example
-    label: OpenRouter example
-    adapter: completion
-    baseUrl: https://openrouter.ai/api/v1
-    model: vendor/model-name
-    apiKey: "${OPENROUTER_API_KEY}"
-    prices:
-      inputPerM: 0.5
-      outputPerM: 1.5
+  # - id: openrouter-example
+  #   label: OpenRouter example
+  #   adapter: completion
+  #   baseUrl: https://openrouter.ai/api/v1
+  #   model: vendor/model-name
+  #   apiKey: "${OPENROUTER_API_KEY}"
+  #   prices:
+  #     inputPerM: 0.5
+  #     outputPerM: 1.5
