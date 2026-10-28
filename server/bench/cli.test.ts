@@ -101,6 +101,93 @@ describe("bench run", () => {
   });
 });
 
+describe("bench run confirmation", () => {
+  // A live model on a local server: wall pace, so run asks before it starts.
+  function liveBench(dir: string, port: number): string {
+    const file = join(dir, "bench.yaml");
+    writeFileSync(
+      file,
+      `name: confirm-test
+seeds: 1
+clocks:
+  - frozen
+tetris:
+  maxDurationMs: 10000
+  maxPieces: 3
+models:
+  - id: local
+    label: Local
+    adapter: completion
+    baseUrl: http://localhost:${port}/v1
+    model: fake
+`,
+    );
+    return file;
+  }
+
+  function fakeServer() {
+    return Bun.serve({
+      port: 0,
+      fetch: () =>
+        Response.json({
+          choices: [{ message: { content: '{"choice":"option_1"}' } }],
+          usage: { prompt_tokens: 1, completion_tokens: 1 },
+        }),
+    });
+  }
+
+  function portOf(server: { port?: number }): number {
+    if (server.port === undefined) throw new Error("the fake server has no port");
+    return server.port;
+  }
+
+  function spyIo(answer: boolean) {
+    const lines: string[] = [];
+    let asked = 0;
+    const io: Io = {
+      out: (text) => lines.push(text),
+      confirm: async () => {
+        asked++;
+        return answer;
+      },
+    };
+    return { io, text: () => lines.join("\n"), asked: () => asked };
+  }
+
+  test("a no at the confirmation stops the run before any match is played", async () => {
+    const server = fakeServer();
+    try {
+      const dir = tempDir();
+      const file = liveBench(dir, portOf(server));
+      const out = join(dir, "out");
+      const spy = spyIo(false);
+      expect(await main(["run", file, "--out", out], spy.io)).toBe(0);
+      expect(spy.asked()).toBe(1);
+      expect(spy.text()).toContain("Not started.");
+      const files = existsSync(out) ? readdirSync(out) : [];
+      expect(files.filter((f) => f.endsWith(".jsonl"))).toEqual([]);
+      expect(files).not.toContain("bench.json");
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("--yes skips the confirmation and plays the bench", async () => {
+    const server = fakeServer();
+    try {
+      const dir = tempDir();
+      const file = liveBench(dir, portOf(server));
+      const out = join(dir, "out");
+      const spy = spyIo(false);
+      expect(await main(["run", file, "--yes", "--out", out], spy.io)).toBe(0);
+      expect(spy.asked()).toBe(0);
+      expect(existsSync(join(out, "bench.json"))).toBe(true);
+    } finally {
+      server.stop(true);
+    }
+  });
+});
+
 describe("bench demo", () => {
   test("plays the demo matches with mocks and writes the manifest and logs", async () => {
     const dir = tempDir();
