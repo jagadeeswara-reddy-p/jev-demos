@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --hot server/index.ts",
+    "bench": "bun server/bench/cli.ts",
     "start": "NODE_ENV=production bun server/index.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
