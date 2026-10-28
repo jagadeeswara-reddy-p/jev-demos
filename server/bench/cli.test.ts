@@ -259,3 +259,44 @@ describe("bench usage", () => {
     expect(text()).toContain("bun bench run");
   });
 });
+
+describe("bench chart", () => {
+  const demoOpts = { ...DEMO, maxPieces: 30 };
+
+  test("refuses a bench whose models are all mocks unless --allow-mock is given", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    const out = join(tempDir(), "media/results");
+    const { io, text } = capture();
+    expect(await main(["chart", tmp, "--out", out], io)).toBe(1);
+    expect(text()).toContain("--allow-mock");
+    expect(existsSync(`${out}-light.svg`)).toBe(false);
+  });
+
+  test("with --allow-mock it writes both SVGs and prints the picture snippet", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    const out = join(tempDir(), "media/results");
+    const { io, text } = capture();
+    expect(await main(["chart", tmp, "--out", out, "--allow-mock"], io)).toBe(0);
+    for (const theme of ["light", "dark"]) {
+      const svg = readFileSync(`${out}-${theme}.svg`, "utf8");
+      expect(svg.startsWith("<svg")).toBe(true);
+    }
+    expect(text()).toContain("<picture>");
+    expect(text()).toContain("srcset=");
+  });
+
+  test("a missing folder prints the reason and exits 1", async () => {
+    const missing = join(tempDir(), "nope");
+    const { io, text } = capture();
+    expect(await main(["chart", missing, "--allow-mock"], io)).toBe(1);
+    expect(text()).toContain(missing);
+  });
+
+  test("the usage text lists chart", async () => {
+    const { io, text } = capture();
+    expect(await main([], io)).toBe(0);
+    expect(text()).toContain("bun bench chart");
+  });
+});
