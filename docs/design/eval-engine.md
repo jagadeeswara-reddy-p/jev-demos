@@ -51,36 +51,45 @@ on the same clock for viewing and for a fair start.
 
 ### Environment plugin
 
+As built in step 1 (`src/core/types.ts`). An environment creates a whole
+**match**, because shared things like Tetris's level clock belong to the
+match, not to one model:
+
 ```ts
-interface Environment<Cfg, State> {
-  id: string;                          // "tetris"
-  version: string;                     // bumped when rules change; results of different versions aren't compared
-  variants: string[];                  // ["described", "board-only"]
-  parseConfig(raw: unknown): Cfg;      // validates the environment block of bench.yaml
-  start(cfg: Cfg, variant: string, seed: number): State;
-  /** Advance simulated time; returns events and, when a turn is due, the turn to ask. */
-  tick(state: State, now: number): { events: EnvEvent[]; turn?: Turn };
-  /** Apply an answer that arrived at `at`; the environment decides if it was in time. */
-  answer(state: State, turnId: string, answer: Answer, at: number): EnvEvent[];
-  done(state: State): boolean;
-  /** Per-episode numbers from its events, e.g. pieces landed, best-move rate; task success for browser. */
-  score(events: EnvEvent[]): Record<string, number>;
-  /** Which metrics the results page shows, how to rank, which are "higher is better". */
-  metrics: MetricDef[];
+/** Several agents playing one environment on one simulated clock. */
+export interface Match<E> {
+  readonly t: number;
+  readonly finished: boolean;
+  start(): E[];
+  /** Advances the match by `dtMs` of simulated time and returns what happened. */
+  step(dtMs: number): E[];
+  stop(): E[];
+}
+
+export interface Environment<C, E, D = unknown> {
+  id: string;
+  /** Bumped when rules or prompts change; results from different versions aren't compared. */
+  version: string;
+  variants: readonly string[];
+  createMatch(config: C, agents: Agent<D>[]): Match<E>;
 }
 ```
 
-Today's `src/engine` and `src/arena/simulation.ts` become the Tetris plugin.
-A browser plugin implements the same shape, with `tick` driving Playwright and
-`score` running the task's state check.
+The Tetris environment is `src/arena/environment.ts`, wrapping
+`ArenaSimulation`. A browser environment implements the same shape, with
+`step` driving Playwright. Still to come:
+- `parseConfig`, with `bench.yaml` (step 3);
+- `score` and `metrics`, with the results bundle (step 5): per-episode numbers
+  such as pieces landed or task success, and how the results page ranks them.
 
 ### Turns: the one thing adapters see
 
-Adapters stop knowing about Tetris. They turn a generic `Turn` into one API
-call:
+Adapters don't know about Tetris. They turn a generic `Turn` into one API
+call. Step 1 shipped the `choice` action and text observations. The `tool`
+action, images, `throttled` and `providerRequestId` below are still to come.
 
 ```ts
-interface Turn {
+interface Turn<D = unknown> {
   id: string;
   instructions: string;                 // system text
   observation: Part[];                  // text now; images later (screenshots)
@@ -88,6 +97,8 @@ interface Turn {
     | { kind: "choice"; options: { id: string; text: string }[] }   // Tetris; also browser "pick an element"
     | { kind: "tool"; schema: JsonSchema };                         // free-form actions, e.g. click(bid), type(bid, text)
   deadlineMs: number;
+  requestedAt: number;                  // simulated time the turn was asked
+  detail: D;                            // the environment's own view, for mocks and baselines; adapters never read it
 }
 interface Answer {
   status: "ok" | "invalid" | "error" | "throttled";
@@ -384,9 +395,9 @@ runs a small Node worker that talks to the engine over stdio.
 
 ## Migration from today
 
-1. Make the Tetris engine and arena an `Environment` plugin. The current UI
+1. **Done (branch `engine-core`).** Make the Tetris engine and arena an `Environment` plugin. The current UI
    keeps working through it.
-2. Generic `Turn`/`Answer`; adapters lose `DecisionRequest`.
+2. **Done (branch `engine-core`).** Generic `Turn`/`Answer`; adapters lose `DecisionRequest`.
 3. `bench.yaml` loader and the headless runner, with preflight and resume.
 4. Board-only variant.
 5. Results bundle, `stats`, `publish`, `verify`, with hashes and SSH
