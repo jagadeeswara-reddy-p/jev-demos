@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use decision-bench, please cite it as below."
+type: software
+title: decision-bench
+authors:
+  - name: jagadeeswara-reddy-p
+version: 0.1.0
+date-released: 2026-10-28
+license: MIT
+repository-code: "https://github.com/jagadeeswara-reddy-p/jev-demos"
