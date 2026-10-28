@@ -53,7 +53,10 @@ const CHAR_W = 6.6;
 const LABEL_MAX = 20;
 /** Marks a mock row when chart drew it (--allow-mock). Baselines are never marked. */
 const MOCK_TAG = " (mock)";
-const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
+const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif";
+/** Widest likely glyph, as a share of the font size: text is laid out so a wide fallback font still fits. */
+const WIDE = 0.6;
+const FOOTER_LINE = 16;
 const ARIA = "Benchmark comparison: judgement, speed and pieces landed in real time";
 const TITLE = "Judgement, speed and the live game";
 
@@ -92,14 +95,14 @@ function panelsFor(game: GameLength | null): Panel[] {
   return [
     {
       title: "Judgement",
-      sub: "Agreement with the heuristic, frozen clock",
+      sub: "Agreement with heuristic (frozen)",
       max: () => 100,
       value: (m) => m.agreement,
       fmt: (m) => `${Math.round(m.agreement ?? 0)}%`,
     },
     {
       title: "Speed",
-      sub: "Median answer time (shorter is faster)",
+      sub: "Median answer (shorter is faster)",
       max: (rows) => largest(rows.map((m) => m.medianMs)),
       value: (m) => m.medianMs,
       fmt: (m) => {
@@ -109,7 +112,7 @@ function panelsFor(game: GameLength | null): Panel[] {
     },
     {
       title: "Real time",
-      sub: game === null ? "Pieces landed per game" : `Pieces landed per ${game.adjective} game`,
+      sub: game === null ? "Pieces landed per game" : `Pieces landed, ${game.adjective} game`,
       max: (rows) => largest(rows.map((m) => m.realtimeLanded)),
       value: (m) => m.realtimeLanded,
       fmt: (m) => {
@@ -125,8 +128,9 @@ function panelsFor(game: GameLength | null): Panel[] {
 export function renderChart(summary: BenchSummary, theme: ChartTheme): string {
   const c = PALETTES[theme];
   const rows = summary.models;
-  const H = TOP + rows.length * ROW_H + 36;
   const game = summary.realtimeSeconds === null ? null : gameLength(summary.realtimeSeconds);
+  const notes = wrap(footer(summary, game), Math.floor((W - 48) / (11 * WIDE)));
+  const H = TOP + rows.length * ROW_H + 36 + (notes.length - 1) * FOOTER_LINE;
   const present = new Set(rows.map(kindOf));
 
   const parts: string[] = [];
@@ -169,7 +173,9 @@ export function renderChart(summary: BenchSummary, theme: ChartTheme): string {
     });
   });
 
-  parts.push(text(24, H - 14, 11, 400, c.muted, footer(summary, game)));
+  notes.forEach((line, i) => {
+    parts.push(text(24, H - 14 - (notes.length - 1 - i) * FOOTER_LINE, 11, 400, c.muted, line));
+  });
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}" role="img" aria-label="${esc(ARIA)}">\n${parts.join("\n")}\n</svg>\n`;
 }
@@ -190,7 +196,18 @@ function rowLabel(m: ModelSummary): string {
   return isMockRow(m) ? `${shortLabel(m.label, LABEL_MAX - MOCK_TAG.length)}${MOCK_TAG}` : shortLabel(m.label, LABEL_MAX);
 }
 
-function footer(summary: BenchSummary, game: GameLength | null): string {
+/** Lines of at most `max` characters, breaking only between " · " clauses. */
+function wrap(clauses: string[], max: number): string[] {
+  const lines: string[] = [];
+  for (const clause of clauses) {
+    const last = lines.at(-1);
+    if (last !== undefined && Array.from(`${last} · ${clause}`).length <= max) lines[lines.length - 1] = `${last} · ${clause}`;
+    else lines.push(clause);
+  }
+  return lines;
+}
+
+function footer(summary: BenchSummary, game: GameLength | null): string[] {
   const clauses = [summary.environment, `${summary.seeds} ${summary.seeds === 1 ? "seed" : "seeds"}`];
   if (summary.frozenPieces !== null) clauses.push(`frozen: ${summary.frozenPieces} pieces each`);
   if (game !== null) clauses.push(`real time: ${game.plain}`);
@@ -198,7 +215,7 @@ function footer(summary: BenchSummary, game: GameLength | null): string {
   const left = summary.skipped.length;
   if (left > 0) clauses.push(`${left} unfinished ${left === 1 ? "match" : "matches"} left out`);
   clauses.push(summary.date, "no confidence intervals yet");
-  return clauses.join(" · ");
+  return clauses;
 }
 
 function shortLabel(label: string, max: number): string {

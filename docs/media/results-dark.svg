@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="318" viewBox="0 0 880 318" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-label="Benchmark comparison: judgement, speed and pieces landed in real time">
-<rect width="880" height="318" rx="8" fill="#1a1a19"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="334" viewBox="0 0 880 334" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" role="img" aria-label="Benchmark comparison: judgement, speed and pieces landed in real time">
+<rect width="880" height="334" rx="8" fill="#1a1a19"/>
 <text x="24" y="36" font-size="18" font-weight="600" fill="#f0efec">Judgement, speed and the live game</text>
 <rect x="24" y="50" width="12" height="12" rx="3" fill="#3987e5"/>
 <text x="42" y="60" font-size="12" fill="#c3c2b7">Decision model</text>
@@ -13,7 +13,7 @@
 <text x="150" y="226" font-size="13" text-anchor="end" fill="#f0efec">claude-opus-5-5</text>
 <text x="150" y="260" font-size="13" text-anchor="end" fill="#f0efec">Heuristic bot</text>
 <text x="174" y="82" font-size="14" font-weight="600" fill="#f0efec">Judgement</text>
-<text x="174" y="98" font-size="11" fill="#898781">Agreement with the heuristic, frozen clock</text>
+<text x="174" y="98" font-size="11" fill="#898781">Agreement with heuristic (frozen)</text>
 <line x1="174" y1="106" x2="174" y2="272" stroke="#383835" stroke-width="1"/>
 <rect x="174" y="112" width="73.3" height="16" rx="4" fill="#3987e5"><title>Jev: 50%</title></rect>
 <text x="253.3" y="124" font-size="12" fill="#c3c2b7">50%</text>
@@ -26,7 +26,7 @@
 <rect x="174" y="248" width="146.7" height="16" rx="4" fill="#5c5b57"><title>Heuristic bot: 100%</title></rect>
 <text x="326.7" y="260" font-size="12" fill="#c3c2b7">100%</text>
 <text x="418.66666666666663" y="82" font-size="14" font-weight="600" fill="#f0efec">Speed</text>
-<text x="418.66666666666663" y="98" font-size="11" fill="#898781">Median answer time (shorter is faster)</text>
+<text x="418.66666666666663" y="98" font-size="11" fill="#898781">Median answer (shorter is faster)</text>
 <line x1="418.66666666666663" y1="106" x2="418.66666666666663" y2="272" stroke="#383835" stroke-width="1"/>
 <rect x="418.66666666666663" y="112" width="7.1" height="16" rx="4" fill="#3987e5"><title>Jev: 281 ms</title></rect>
 <text x="431.8" y="124" font-size="12" fill="#c3c2b7">281 ms</text>
@@ -39,7 +39,7 @@
 <rect x="418.66666666666663" y="248" width="2.0" height="16" rx="4" fill="#5c5b57"><title>Heuristic bot: 3 ms</title></rect>
 <text x="426.7" y="260" font-size="12" fill="#c3c2b7">3 ms</text>
 <text x="663.3333333333333" y="82" font-size="14" font-weight="600" fill="#f0efec">Real time</text>
-<text x="663.3333333333333" y="98" font-size="11" fill="#898781">Pieces landed per 2-minute game</text>
+<text x="663.3333333333333" y="98" font-size="11" fill="#898781">Pieces landed, 2-minute game</text>
 <line x1="663.3333333333333" y1="106" x2="663.3333333333333" y2="272" stroke="#383835" stroke-width="1"/>
 <rect x="663.3333333333333" y="112" width="55.3" height="16" rx="4" fill="#3987e5"><title>Jev: 86.7</title></rect>
 <text x="724.7" y="124" font-size="12" fill="#c3c2b7">86.7</text>
@@ -51,5 +51,6 @@
 <text x="677.4" y="226" font-size="12" fill="#c3c2b7">12.7 · 46% late</text>
 <rect x="663.3333333333333" y="248" width="107.7" height="16" rx="4" fill="#5c5b57"><title>Heuristic bot: 168.7</title></rect>
 <text x="777.0" y="260" font-size="12" fill="#c3c2b7">168.7</text>
-<text x="24" y="304" font-size="11" fill="#898781">tetris v3 · 3 seeds · frozen: 40 pieces each · real time: 2 minutes · total cost $4.48 · 2026-10-28 · no confidence intervals yet</text>
+<text x="24" y="304" font-size="11" fill="#898781">tetris v3 · 3 seeds · frozen: 40 pieces each · real time: 2 minutes · total cost $4.48 · 2026-10-28</text>
+<text x="24" y="320" font-size="11" fill="#898781">no confidence intervals yet</text>
 </svg>
