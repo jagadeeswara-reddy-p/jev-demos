@@ -16,7 +16,7 @@ describe("converseInput", () => {
   test("forces the answer tool by default, limited to the offered options", () => {
     const input = converseInput(model, req);
     expect(input.modelId).toBe("us.openai.gpt-6.1-sol");
-    expect(input.toolConfig?.toolChoice).toEqual({ tool: { name: "choose_placement" } });
+    expect(input.toolConfig?.toolChoice).toEqual({ tool: { name: "choose_option" } });
     const schema = input.toolConfig?.tools?.[0]?.toolSpec?.inputSchema?.json as any;
     expect(schema.properties.choice.enum).toHaveLength(req.action.options.length);
     expect(input.inferenceConfig?.maxTokens).toBe(1024);
@@ -35,7 +35,7 @@ describe("readConverse", () => {
   test("reads the tool call and prices cache reads and writes at their own rates", () => {
     const a = readConverse(model, {
       usage: { inputTokens: 1000, cacheReadInputTokens: 2000, cacheWriteInputTokens: 1000, outputTokens: 100, totalTokens: 4100 },
-      output: { message: { role: "assistant", content: [{ toolUse: { toolUseId: "t", name: "choose_placement", input: { choice: "option_4" } } }] } },
+      output: { message: { role: "assistant", content: [{ toolUse: { toolUseId: "t", name: "choose_option", input: { choice: "option_4" } } }] } },
     });
     expect(a.choice).toBe("option_4");
     expect(a.usage?.inputTokens).toBe(4000);

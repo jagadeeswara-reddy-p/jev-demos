@@ -12,7 +12,7 @@ import type { Adapter } from "./types";
 // It is for models.json only; the page offers the two plain HTTP adapters.
 // Credentials and region come from the usual AWS_* variables (or AWS_PROFILE).
 
-const TOOL = "choose_placement";
+const TOOL = "choose_option";
 
 export function converseInput(model: ModelConfig, turn: Turn): ConverseCommandInput {
   return {
@@ -20,7 +20,7 @@ export function converseInput(model: ModelConfig, turn: Turn): ConverseCommandIn
     system: [{ text: systemText(turn) }],
     messages: [{ role: "user", content: [{ text: userText(turn) }] }],
     toolConfig: {
-      tools: [{ toolSpec: { name: TOOL, description: "Report the chosen landing spot.", inputSchema: { json: choiceSchema(turn) } } }],
+      tools: [{ toolSpec: { name: TOOL, description: "Report the chosen option.", inputSchema: { json: choiceSchema(turn) } } }],
       toolChoice: model.toolChoice === "auto" ? { auto: {} } : { tool: { name: TOOL } },
     },
     inferenceConfig: { maxTokens: model.maxTokens ?? 1024 },
