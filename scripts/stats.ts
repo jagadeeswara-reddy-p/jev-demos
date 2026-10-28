@@ -454,7 +454,9 @@ out.push(
 );
 
 out.push(`\n## Notes\n`);
-out.push(`- **Winner**: ${winRule({ mode: "realtime", targetLines: 0 })} Ties go to more lines, then longer survival.`);
+out.push(
+  `- **Winner**: ${winRule({ mode: "realtime", targetLines: 0 })} Ties go to more lines, then longer survival. On the frozen clock, ties are not broken by time.`,
+);
 out.push(
   `- **Sprint runs** (format shows the line target): ${winRule({ mode: "realtime", targetLines: 40 })} On the frozen clock, fewest pieces wins instead of time.`,
 );

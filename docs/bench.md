@@ -74,10 +74,10 @@ keys are an error, and every error names the field.
 | `clocks` | `[frozen, realtime]` | Any of `frozen` (turn timer paused) and `realtime` (live clock). |
 | `variants` | `[described]` | Rule variants. Tetris has `described` only. |
 | `tetris.goal` | `survive` | `survive` (last as long as possible) or `sprint40` (clear 40 lines). |
-| `tetris.maxDurationMs` | `600000` | Longest a match may run, from 10000 to 3600000 ms (10 seconds to 1 hour). |
-| `tetris.maxPieces` | `1000` | Most pieces a board may place in a realtime match, from 1 to 10000. |
-| `tetris.frozenPieces` | `100` | Pieces every board places in a frozen match, from 10 to 1000. The match runs until every board has placed them or topped out. |
-| `limits.stopWhenFinished` | `0.75` | Share of boards that must be finished before a match stops. More than 0, at most 1. See below. |
+| `tetris.maxDurationMs` | `600000` | Longest a realtime match may run, from 10000 to 3600000 ms (10 seconds to 1 hour). Frozen matches use `frozenPieces` (survive) or `maxPieces` (sprint40). |
+| `tetris.maxPieces` | `1000` | Most pieces a board may place in a realtime match, from 1 to 10000. A frozen `sprint40` match uses it too, so it can reach 40 lines. |
+| `tetris.frozenPieces` | `100` | Pieces every board places in a frozen `survive` match, from 10 to 1000. The match runs until every board has placed them or topped out. A frozen `sprint40` ends at 40 lines or `maxPieces`, not `frozenPieces`. |
+| `limits.stopWhenFinished` | `0.75` | Share of boards that must be finished before a realtime match stops. More than 0, at most 1. Frozen matches play to the end. See below. |
 | `limits.maxCostUsd` | none | Spend cap for the whole bench, in USD, greater than 0. Off unless set. Only live models count; mock models' simulated costs are not spend. |
 | `models` | required | 1 to 12 entries. Each is a model id (a string) or an inline model (an object). |
 
@@ -118,14 +118,15 @@ models and the default 0.75, a match stops when three boards are done. A match
 that reaches its time limit lists no unfinished boards: its log does not say
 which boards were still playing, so none are named.
 
-**Frozen matches** have no stop rule. Every board gets `frozenPieces` pieces, and
-the match runs until each board has placed them or topped out. A board that
+**Frozen matches** have no stop rule. Every board gets `frozenPieces` pieces (a
+frozen `sprint40` gets `maxPieces`, and stops at 40 lines), and the match runs
+until each board has placed them or topped out. A board that
 answers slowly still places the same pieces as the others, so the ranking
 measures judgement, not speed.
 
 **Wall-clock pace.** A bench with any live model runs every match on the wall
 clock, frozen matches included. A realtime match takes up to `maxDurationMs`; a
-frozen match takes as long as its slowest board needs for `frozenPieces` pieces. A bench of
+frozen match takes as long as its slowest board needs for its pieces (`frozenPieces`, or `maxPieces` for a sprint). A bench of
 mock models only runs as fast as the machine can simulate, and the estimate says
 it needs no waiting.
 
@@ -179,7 +180,7 @@ without `prices` costs $0.
 
 ## The estimate
 
-`doctor` and `run` print an estimate before anything plays. It is an upper bound.
+`doctor` and `run` print an estimate before anything plays. Cost is an upper bound for the measured latency. Frozen time is an estimate from one check's latency: the worst case is `frozenPieces × 31 s` per frozen match (or `maxPieces × 31 s` for a frozen sprint).
 
 - **Time** (only with a live model): each realtime match is `maxDurationMs`, and
   each frozen match is `frozenPieces × (slowest latency + 1 s)`, where the slowest
@@ -198,4 +199,5 @@ are counted apart in the time and the cost. The estimate is rounded up, so the
 printed figure never undershoots.
 
 The check itself is one real move, so the latency and the cost per move come from
-a single answer. Treat the figure as a ceiling, not a forecast.
+a single answer. Treat the cost as a ceiling for that latency, and the frozen time
+as an estimate, not a forecast.

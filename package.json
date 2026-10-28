@@ -2,7 +2,7 @@
   "name": "decision-bench",
   "version": "0.1.0",
   "private": true,
-  "description": "Benchmark models on judgement, 2D reasoning and speed, separately, by making them play real-time games.",
+  "description": "Benchmark models on judgement and speed, separately, by making them play real-time games. 2D reasoning (a board-only variant) is coming.",
   "repository": {
     "type": "git",
     "url": "https://github.com/jagadeeswara-reddy-p/jev-demos"

@@ -24,7 +24,8 @@ The game, what every model is shown, how answers are judged, and what the screen
 Run both on the same seed. Real time shows speed, and frozen shows skill without speed.
 On the page, a frozen run still stops at the time limit. In `bun bench`, a frozen
 match gives every board the same number of pieces (`tetris.frozenPieces`, 100 by
-default), and runs until each board has placed them or topped out.
+default; a frozen sprint uses `tetris.maxPieces`), and runs until each board has
+placed them or topped out.
 
 ### Two goals: survive or sprint
 
@@ -35,7 +36,7 @@ config, so replays and `bun run stats` use the same rules.
 |---|---|---|
 | A board stops when | it tops out (or places 1,000 pieces) | it tops out, or **clears 40 lines** (shown as FINISHED) |
 | Winner, real time | most pieces landed, then lines, then time survived | **first to 40 lines**; boards that fell short rank by lines, then pieces landed |
-| Winner, frozen clock | same as real time | **fewest pieces to 40 lines**, since time there mostly measures waiting |
+| Winner, frozen clock | most pieces landed, then lines, then pieces placed (time never breaks a tie) | **fewest pieces to 40 lines**, since time there mostly measures waiting |
 
 The rules live in one place, `src/arena/ranking.ts`, shared by the results
 chart and the stats script.

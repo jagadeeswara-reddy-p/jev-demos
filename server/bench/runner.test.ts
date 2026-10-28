@@ -74,6 +74,21 @@ describe("planMatches", () => {
     expect(realtime.stopShare).toBe(0.5);
   });
 
+  test("a frozen sprint40 keeps maxPieces, so 40 lines can be reached, and runs for that many pieces", () => {
+    const sprint = parseBench({
+      name: "t",
+      seeds: [1],
+      clocks: ["frozen", "realtime"],
+      tetris: { goal: "sprint40", maxPieces: 200, frozenPieces: 100 },
+      models: ["jev"],
+    });
+    const [frozen] = planMatches(sprint, MOCKS.slice(0, 2));
+    expect(frozen.config.targetLines).toBe(40);
+    expect(frozen.config.maxPieces).toBe(200);
+    expect(frozen.config.maxDurationMs).toBe(200 * 31_000);
+    expect(frozen.stopShare).toBe(1);
+  });
+
   test("sprint40 sets the line target to 40", () => {
     const sprint = parseBench({ name: "t", tetris: { goal: "sprint40" }, models: ["jev"] });
     expect(planMatches(sprint, MOCKS)[0].config.targetLines).toBe(40);

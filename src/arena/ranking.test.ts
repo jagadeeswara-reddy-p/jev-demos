@@ -29,6 +29,25 @@ describe("compareStandings", () => {
     expect(order(boards, "frozen", 40)).toEqual([0, 1]);
   });
 
+  it("never breaks a frozen-clock survive tie by time", () => {
+    const a = board({ landed: 50, lines: 9, pieces: 60, outAt: 40_000 });
+    const b = board({ landed: 50, lines: 9, pieces: 60, outAt: 90_000 });
+    expect(compareStandings(a, b, { mode: "frozen", targetLines: 0 })).toBe(0);
+  });
+
+  it("ranks a frozen-clock survive tie by pieces placed, the board that lasted longer first", () => {
+    const fewer = board({ landed: 50, lines: 9, pieces: 40, outAt: 90_000 });
+    const more = board({ landed: 50, lines: 9, pieces: 60, outAt: 40_000 });
+    expect(compareStandings(more, fewer, { mode: "frozen", targetLines: 0 })).toBeLessThan(0);
+    expect(order([fewer, more], "frozen", 0)).toEqual([1, 0]);
+  });
+
+  it("still breaks a real-time tie by time survived", () => {
+    const early = board({ landed: 50, lines: 9, pieces: 60, outAt: 40_000 });
+    const late = board({ landed: 50, lines: 9, pieces: 60, outAt: 90_000 });
+    expect(order([early, late], "realtime", 0)).toEqual([1, 0]);
+  });
+
   it("ranks boards that fell short by lines", () => {
     const boards = [board({ lines: 20, landed: 90 }), board({ lines: 31, landed: 70 })];
     expect(order(boards, "realtime", 40)).toEqual([1, 0]);

@@ -5,8 +5,10 @@ import type { ClockMode } from "./types";
 // Default: most pieces landed (each model's own in-time placements), then lines,
 // then time survived.
 // Sprint (a line target is set): boards that reached the target come first,
-// ordered by time on the real-time clock or by pieces used on the frozen clock,
-// where time mostly measures waiting. Boards that fell short follow, by lines.
+// ordered by time on the real-time clock or by pieces used on the frozen clock.
+// Boards that fell short follow, by lines.
+// On the frozen clock, time never breaks a tie: time there mostly measures waiting.
+// Pieces placed break it instead, so a board that lasted longer ranks higher.
 
 export interface Standing {
   landed: number;
@@ -23,20 +25,21 @@ export interface RankRules {
 }
 
 export function compareStandings(a: Standing, b: Standing, rules: RankRules): number {
+  const frozen = rules.mode === "frozen";
   const later = (b.outAt ?? Infinity) - (a.outAt ?? Infinity);
   if (rules.targetLines > 0) {
     if (a.reachedGoal !== b.reachedGoal) return a.reachedGoal ? -1 : 1;
     if (a.reachedGoal) {
-      if (rules.mode === "frozen" && a.pieces !== b.pieces) return a.pieces - b.pieces;
+      if (frozen) return a.pieces - b.pieces;
       return (a.outAt ?? 0) - (b.outAt ?? 0);
     }
     if (a.lines !== b.lines) return b.lines - a.lines;
     if (a.landed !== b.landed) return b.landed - a.landed;
-    return later;
+    return frozen ? b.pieces - a.pieces : later;
   }
   if (a.landed !== b.landed) return b.landed - a.landed;
   if (a.lines !== b.lines) return b.lines - a.lines;
-  return later;
+  return frozen ? b.pieces - a.pieces : later;
 }
 
 /** One line on what decides the winner under these rules, for notes and README tables. */

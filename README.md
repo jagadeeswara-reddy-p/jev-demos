@@ -3,7 +3,7 @@
 [![CI](https://github.com/jagadeeswara-reddy-p/jev-demos/actions/workflows/ci.yml/badge.svg)](https://github.com/jagadeeswara-reddy-p/jev-demos/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Benchmark models on judgement, 2D reasoning and speed, separately, by making them play real-time games.
+Benchmark models on judgement and speed, separately, by making them play real-time games. 2D reasoning (a board-only variant) is coming.
 
 The first environment is *Deadline Tetris*, where pieces keep falling while the model thinks.
 
@@ -64,7 +64,7 @@ Run both clocks on the same seed.
 | An answer counts if | it arrives before the piece locks | it arrives within 30 s |
 | What it measures | is the model fast enough for a live loop? | does the model place pieces well? |
 
-- In `bun bench`, a frozen match gives every board the same number of pieces (`tetris.frozenPieces`, 100 by default) and has no early stop. On the page, a frozen run still stops at the time limit.
+- In `bun bench`, a frozen match gives every board the same number of pieces (`tetris.frozenPieces`, 100 by default; a frozen `sprint40` uses `tetris.maxPieces`) and has no early stop. On the page, a frozen run still stops at the time limit.
 - Every board gets the same pieces in the same order, the same prompt and the same rules. Real-time matches share one clock.
 - **Coming:** a board-only variant, to test 2D reasoning on its own. See [how it works](docs/how-it-works.md).
 

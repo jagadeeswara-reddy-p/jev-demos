@@ -18,16 +18,16 @@ variants:
 tetris:
   # survive: last as long as possible; sprint40: clear 40 lines as fast as possible.
   goal: survive
-  # Longest a match may run, in milliseconds (10 seconds to 1 hour).
+  # Longest a realtime match may run, in milliseconds (10 seconds to 1 hour). Frozen matches use frozenPieces.
   maxDurationMs: 600000
-  # Most pieces a board may place (1 to 10000).
+  # Most pieces a board may place in a realtime match (1 to 10000). A frozen sprint40 uses it too.
   maxPieces: 1000
-  # Pieces every board places in a frozen match (10 to 1000); the match runs until each board is done.
+  # Pieces every board places in a frozen survive match (10 to 1000); frozen matches play until each board is done.
   frozenPieces: 100
 
 # When a match stops, and an optional spend cap.
 limits:
-  # A match stops once this share of its boards are finished: topped out, survived or reached the goal (more than 0, at most 1).
+  # A realtime match stops once this share of its boards are finished: topped out, survived or reached the goal (more than 0, at most 1). Frozen matches play to the end.
   stopWhenFinished: 0.75
   # Spend cap for the whole bench, in USD. Off by default; uncomment to set one.
   # maxCostUsd: 5

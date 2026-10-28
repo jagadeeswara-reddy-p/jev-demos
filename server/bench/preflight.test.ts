@@ -95,6 +95,15 @@ describe("estimate", () => {
     expect(e.maxCostUsd).toBeCloseTo(0.03, 6);
   });
 
+  test("a frozen sprint40 is bounded by maxPieces, not frozenPieces", () => {
+    const sprint = parseBench({ name: "demo", seeds: 1, clocks: ["frozen"], tetris: { goal: "sprint40", maxPieces: 200 }, models: ["live-x"] });
+    const checks: Check[] = [{ id: "live-x", label: "Live X", ok: true, detail: "", latencyMs: 2000, costUsd: 0.001 }];
+    const e = estimate(sprint, [live], checks);
+    // 200 pieces at (2000 + 1000) ms each.
+    expect(e.maxMinutes).toBeCloseTo(10, 6);
+    expect(e.maxCostUsd).toBeCloseTo(0.2, 6);
+  });
+
   test("failed checks are left out of the cost", () => {
     const checks: Check[] = [{ id: "live-x", label: "Live X", ok: false, detail: "", latencyMs: 300, costUsd: 0.001 }];
     expect(estimate(cfg, [live], checks).maxCostUsd).toBe(0);

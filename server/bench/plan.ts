@@ -13,6 +13,11 @@ export interface MatchPlan {
   stopShare: number;
 }
 
+/** Pieces each board places in a frozen match: frozenPieces for survive, maxPieces for a sprint, which ends at 40 lines. */
+export function frozenPiecesFor(cfg: BenchConfig): number {
+  return cfg.goal === "sprint40" ? cfg.maxPieces : cfg.frozenPieces;
+}
+
 export function planMatches(cfg: BenchConfig, entrants: BenchEntrant[]): MatchPlan[] {
   const agents: AgentSpec[] = entrants.map((e) => ({ id: e.id, name: e.label, kind: e.kind, sourceId: e.id }));
   const plans: MatchPlan[] = [];
@@ -20,6 +25,7 @@ export function planMatches(cfg: BenchConfig, entrants: BenchEntrant[]): MatchPl
     for (const clock of cfg.clocks) {
       for (const seed of cfg.seeds) {
         const frozen = clock === "frozen";
+        const framePieces = frozenPiecesFor(cfg);
         plans.push({
           key: `${variant}-${clock}-seed${seed}`,
           variant,
@@ -28,8 +34,8 @@ export function planMatches(cfg: BenchConfig, entrants: BenchEntrant[]): MatchPl
             seed,
             mode: clock,
             targetLines: cfg.goal === "sprint40" ? 40 : 0,
-            maxDurationMs: frozen ? cfg.frozenPieces * (DEFAULT_CONFIG.frozenTimeoutMs + 1000) : cfg.maxDurationMs,
-            maxPieces: frozen ? cfg.frozenPieces : cfg.maxPieces,
+            maxDurationMs: frozen ? framePieces * (DEFAULT_CONFIG.frozenTimeoutMs + 1000) : cfg.maxDurationMs,
+            maxPieces: frozen ? framePieces : cfg.maxPieces,
             agents: agents.map((a) => ({ ...a })),
           },
           stopShare: frozen ? 1 : cfg.stopWhenFinished,

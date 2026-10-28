@@ -2,6 +2,7 @@ import { DEFAULT_CONFIG } from "../../src/arena/types";
 import type { TestResult } from "../sample";
 import type { BenchConfig } from "./config";
 import type { BenchEntrant } from "./entrants";
+import { frozenPiecesFor } from "./plan";
 
 // Checks every entrant before a bench starts, and estimates how long and how much
 // the whole bench can take. The estimate is an upper bound: matches stop early when
@@ -50,6 +51,7 @@ async function check(e: BenchEntrant, test: (e: BenchEntrant) => Promise<TestRes
 export function estimate(cfg: BenchConfig, entrants: BenchEntrant[], checks: Check[]): Estimate {
   const perVariant = cfg.variants.length * cfg.seeds.length;
   const frozenMatches = cfg.clocks.includes("frozen") ? perVariant : 0;
+  const framePieces = frozenPiecesFor(cfg);
   const realtimeMatches = cfg.clocks.includes("realtime") ? perVariant : 0;
   const matches = frozenMatches + realtimeMatches;
   const pace = paceFor(entrants);
@@ -60,14 +62,14 @@ export function estimate(cfg: BenchConfig, entrants: BenchEntrant[], checks: Che
 
   let maxMinutes = 0;
   if (pace === "wall") {
-    maxMinutes = (realtimeMatches * cfg.maxDurationMs) / 60_000 + (frozenMatches * cfg.frozenPieces * (slowestMs + 1000)) / 60_000;
+    maxMinutes = (realtimeMatches * cfg.maxDurationMs) / 60_000 + (frozenMatches * framePieces * (slowestMs + 1000)) / 60_000;
   }
 
   let maxCostUsd = 0;
   for (const c of liveChecks) {
     const turnMs = (c.latencyMs ?? 0) + DEFAULT_CONFIG.entryDelayMs;
     const realtimeTurns = Math.min(cfg.maxPieces, Math.ceil(cfg.maxDurationMs / turnMs));
-    const turns = frozenMatches * cfg.frozenPieces + realtimeMatches * realtimeTurns;
+    const turns = frozenMatches * framePieces + realtimeMatches * realtimeTurns;
     maxCostUsd += (c.costUsd ?? 0) * turns;
   }
   return { matches, pace, maxMinutes, maxCostUsd };
