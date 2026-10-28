@@ -1,0 +1,1018 @@
+{
+  "completion-schema-seed1": {
+    "model": "fake",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat. Reply with JSON only, in the form {\"choice\": \"<option id>\"}."
+      },
+      {
+        "role": "user",
+        "content": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: J\nNext pieces: T, Z, O\nLevel: 1\n\nOptions:\noption_1: Rotation 1, columns 1-2, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.\noption_2: Rotation 0, columns 1-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 2.\noption_3: Rotation 1, columns 2-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_4: Rotation 2, columns 1-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.\noption_5: Rotation 3, columns 1-2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 5.\noption_6: Rotation 0, columns 2-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_7: Rotation 1, columns 3-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_8: Rotation 2, columns 2-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_9: Rotation 3, columns 2-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_10: Rotation 0, columns 3-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_11: Rotation 1, columns 4-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_12: Rotation 2, columns 3-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_13: Rotation 3, columns 3-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_14: Rotation 0, columns 4-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_15: Rotation 1, columns 5-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_16: Rotation 2, columns 4-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_17: Rotation 3, columns 4-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_18: Rotation 0, columns 5-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_19: Rotation 1, columns 6-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_20: Rotation 2, columns 5-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_21: Rotation 3, columns 5-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_22: Rotation 0, columns 6-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_23: Rotation 1, columns 7-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_24: Rotation 2, columns 6-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_25: Rotation 3, columns 6-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_26: Rotation 0, columns 7-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_27: Rotation 1, columns 8-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_28: Rotation 2, columns 7-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_29: Rotation 3, columns 7-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_30: Rotation 0, columns 8-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 3.\noption_31: Rotation 1, columns 9-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.\noption_32: Rotation 2, columns 8-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.\noption_33: Rotation 3, columns 8-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_34: Rotation 3, columns 9-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 3."
+      }
+    ],
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "placement",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "choice": {
+              "type": "string",
+              "enum": [
+                "option_1",
+                "option_2",
+                "option_3",
+                "option_4",
+                "option_5",
+                "option_6",
+                "option_7",
+                "option_8",
+                "option_9",
+                "option_10",
+                "option_11",
+                "option_12",
+                "option_13",
+                "option_14",
+                "option_15",
+                "option_16",
+                "option_17",
+                "option_18",
+                "option_19",
+                "option_20",
+                "option_21",
+                "option_22",
+                "option_23",
+                "option_24",
+                "option_25",
+                "option_26",
+                "option_27",
+                "option_28",
+                "option_29",
+                "option_30",
+                "option_31",
+                "option_32",
+                "option_33",
+                "option_34"
+              ]
+            }
+          },
+          "required": [
+            "choice"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "completion-object-seed1": {
+    "model": "fake",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat. Reply with JSON only, in the form {\"choice\": \"<option id>\"}."
+      },
+      {
+        "role": "user",
+        "content": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: J\nNext pieces: T, Z, O\nLevel: 1\n\nOptions:\noption_1: Rotation 1, columns 1-2, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.\noption_2: Rotation 0, columns 1-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 2.\noption_3: Rotation 1, columns 2-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_4: Rotation 2, columns 1-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.\noption_5: Rotation 3, columns 1-2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 5.\noption_6: Rotation 0, columns 2-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_7: Rotation 1, columns 3-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_8: Rotation 2, columns 2-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_9: Rotation 3, columns 2-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_10: Rotation 0, columns 3-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_11: Rotation 1, columns 4-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_12: Rotation 2, columns 3-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_13: Rotation 3, columns 3-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_14: Rotation 0, columns 4-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_15: Rotation 1, columns 5-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_16: Rotation 2, columns 4-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_17: Rotation 3, columns 4-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_18: Rotation 0, columns 5-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_19: Rotation 1, columns 6-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_20: Rotation 2, columns 5-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_21: Rotation 3, columns 5-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_22: Rotation 0, columns 6-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_23: Rotation 1, columns 7-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_24: Rotation 2, columns 6-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_25: Rotation 3, columns 6-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_26: Rotation 0, columns 7-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_27: Rotation 1, columns 8-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_28: Rotation 2, columns 7-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_29: Rotation 3, columns 7-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_30: Rotation 0, columns 8-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 3.\noption_31: Rotation 1, columns 9-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.\noption_32: Rotation 2, columns 8-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.\noption_33: Rotation 3, columns 8-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_34: Rotation 3, columns 9-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 3."
+      }
+    ],
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "decision-rot1-seed1": {
+    "model": "fake",
+    "state": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: J\nNext pieces: T, Z, O\nLevel: 1",
+    "questions": {
+      "placement": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, columns 1-2, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_2": "Rotation 0, columns 1-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 2.",
+          "option_3": "Rotation 1, columns 2-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_4": "Rotation 2, columns 1-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_5": "Rotation 3, columns 1-2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 5.",
+          "option_6": "Rotation 0, columns 2-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_7": "Rotation 1, columns 3-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_8": "Rotation 2, columns 2-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_9": "Rotation 3, columns 2-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_10": "Rotation 0, columns 3-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_11": "Rotation 1, columns 4-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_12": "Rotation 2, columns 3-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_13": "Rotation 3, columns 3-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_14": "Rotation 0, columns 4-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_15": "Rotation 1, columns 5-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_16": "Rotation 2, columns 4-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_17": "Rotation 3, columns 4-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_18": "Rotation 0, columns 5-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_19": "Rotation 1, columns 6-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_20": "Rotation 2, columns 5-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_21": "Rotation 3, columns 5-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_22": "Rotation 0, columns 6-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_23": "Rotation 1, columns 7-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_24": "Rotation 2, columns 6-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_25": "Rotation 3, columns 6-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_26": "Rotation 0, columns 7-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_27": "Rotation 1, columns 8-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_28": "Rotation 2, columns 7-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_29": "Rotation 3, columns 7-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_30": "Rotation 0, columns 8-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 3.",
+          "option_31": "Rotation 1, columns 9-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_32": "Rotation 2, columns 8-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_33": "Rotation 3, columns 8-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_34": "Rotation 3, columns 9-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 3."
+        }
+      }
+    }
+  },
+  "decision-rot4-seed1": {
+    "model": "fake",
+    "state": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: J\nNext pieces: T, Z, O\nLevel: 1",
+    "questions": {
+      "placement_0": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, columns 1-2, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_2": "Rotation 0, columns 1-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 2.",
+          "option_3": "Rotation 1, columns 2-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_4": "Rotation 2, columns 1-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_5": "Rotation 3, columns 1-2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 5.",
+          "option_6": "Rotation 0, columns 2-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_7": "Rotation 1, columns 3-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_8": "Rotation 2, columns 2-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_9": "Rotation 3, columns 2-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_10": "Rotation 0, columns 3-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_11": "Rotation 1, columns 4-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_12": "Rotation 2, columns 3-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_13": "Rotation 3, columns 3-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_14": "Rotation 0, columns 4-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_15": "Rotation 1, columns 5-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_16": "Rotation 2, columns 4-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_17": "Rotation 3, columns 4-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_18": "Rotation 0, columns 5-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_19": "Rotation 1, columns 6-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_20": "Rotation 2, columns 5-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_21": "Rotation 3, columns 5-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_22": "Rotation 0, columns 6-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_23": "Rotation 1, columns 7-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_24": "Rotation 2, columns 6-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_25": "Rotation 3, columns 6-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_26": "Rotation 0, columns 7-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_27": "Rotation 1, columns 8-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_28": "Rotation 2, columns 7-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_29": "Rotation 3, columns 7-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_30": "Rotation 0, columns 8-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 3.",
+          "option_31": "Rotation 1, columns 9-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_32": "Rotation 2, columns 8-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_33": "Rotation 3, columns 8-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_34": "Rotation 3, columns 9-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 3."
+        },
+        "option_order": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ]
+      },
+      "placement_1": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, columns 1-2, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_2": "Rotation 0, columns 1-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 2.",
+          "option_3": "Rotation 1, columns 2-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_4": "Rotation 2, columns 1-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_5": "Rotation 3, columns 1-2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 5.",
+          "option_6": "Rotation 0, columns 2-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_7": "Rotation 1, columns 3-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_8": "Rotation 2, columns 2-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_9": "Rotation 3, columns 2-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_10": "Rotation 0, columns 3-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_11": "Rotation 1, columns 4-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_12": "Rotation 2, columns 3-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_13": "Rotation 3, columns 3-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_14": "Rotation 0, columns 4-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_15": "Rotation 1, columns 5-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_16": "Rotation 2, columns 4-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_17": "Rotation 3, columns 4-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_18": "Rotation 0, columns 5-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_19": "Rotation 1, columns 6-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_20": "Rotation 2, columns 5-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_21": "Rotation 3, columns 5-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_22": "Rotation 0, columns 6-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_23": "Rotation 1, columns 7-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_24": "Rotation 2, columns 6-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_25": "Rotation 3, columns 6-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_26": "Rotation 0, columns 7-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_27": "Rotation 1, columns 8-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_28": "Rotation 2, columns 7-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_29": "Rotation 3, columns 7-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_30": "Rotation 0, columns 8-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 3.",
+          "option_31": "Rotation 1, columns 9-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_32": "Rotation 2, columns 8-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_33": "Rotation 3, columns 8-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_34": "Rotation 3, columns 9-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 3."
+        },
+        "option_order": [
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "placement_2": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, columns 1-2, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_2": "Rotation 0, columns 1-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 2.",
+          "option_3": "Rotation 1, columns 2-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_4": "Rotation 2, columns 1-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_5": "Rotation 3, columns 1-2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 5.",
+          "option_6": "Rotation 0, columns 2-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_7": "Rotation 1, columns 3-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_8": "Rotation 2, columns 2-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_9": "Rotation 3, columns 2-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_10": "Rotation 0, columns 3-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_11": "Rotation 1, columns 4-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_12": "Rotation 2, columns 3-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_13": "Rotation 3, columns 3-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_14": "Rotation 0, columns 4-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_15": "Rotation 1, columns 5-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_16": "Rotation 2, columns 4-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_17": "Rotation 3, columns 4-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_18": "Rotation 0, columns 5-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_19": "Rotation 1, columns 6-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_20": "Rotation 2, columns 5-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_21": "Rotation 3, columns 5-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_22": "Rotation 0, columns 6-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_23": "Rotation 1, columns 7-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_24": "Rotation 2, columns 6-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_25": "Rotation 3, columns 6-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_26": "Rotation 0, columns 7-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_27": "Rotation 1, columns 8-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_28": "Rotation 2, columns 7-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_29": "Rotation 3, columns 7-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_30": "Rotation 0, columns 8-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 3.",
+          "option_31": "Rotation 1, columns 9-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_32": "Rotation 2, columns 8-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_33": "Rotation 3, columns 8-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_34": "Rotation 3, columns 9-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 3."
+        },
+        "option_order": [
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ]
+      },
+      "placement_3": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, columns 1-2, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_2": "Rotation 0, columns 1-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 2.",
+          "option_3": "Rotation 1, columns 2-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_4": "Rotation 2, columns 1-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_5": "Rotation 3, columns 1-2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 5.",
+          "option_6": "Rotation 0, columns 2-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_7": "Rotation 1, columns 3-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_8": "Rotation 2, columns 2-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_9": "Rotation 3, columns 2-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_10": "Rotation 0, columns 3-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_11": "Rotation 1, columns 4-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_12": "Rotation 2, columns 3-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_13": "Rotation 3, columns 3-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_14": "Rotation 0, columns 4-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_15": "Rotation 1, columns 5-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_16": "Rotation 2, columns 4-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_17": "Rotation 3, columns 4-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_18": "Rotation 0, columns 5-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_19": "Rotation 1, columns 6-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_20": "Rotation 2, columns 5-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_21": "Rotation 3, columns 5-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_22": "Rotation 0, columns 6-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_23": "Rotation 1, columns 7-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_24": "Rotation 2, columns 6-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_25": "Rotation 3, columns 6-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_26": "Rotation 0, columns 7-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.",
+          "option_27": "Rotation 1, columns 8-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.",
+          "option_28": "Rotation 2, columns 7-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.",
+          "option_29": "Rotation 3, columns 7-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_30": "Rotation 0, columns 8-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 3.",
+          "option_31": "Rotation 1, columns 9-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.",
+          "option_32": "Rotation 2, columns 8-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.",
+          "option_33": "Rotation 3, columns 8-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.",
+          "option_34": "Rotation 3, columns 9-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 3."
+        },
+        "option_order": [
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25
+        ]
+      }
+    }
+  },
+  "bedrock-forced-seed1": {
+    "modelId": "fake",
+    "system": [
+      {
+        "text": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat. Reply with JSON only, in the form {\"choice\": \"<option id>\"}."
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "text": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: J\nNext pieces: T, Z, O\nLevel: 1\n\nOptions:\noption_1: Rotation 1, columns 1-2, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.\noption_2: Rotation 0, columns 1-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 2.\noption_3: Rotation 1, columns 2-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_4: Rotation 2, columns 1-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.\noption_5: Rotation 3, columns 1-2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 5.\noption_6: Rotation 0, columns 2-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_7: Rotation 1, columns 3-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_8: Rotation 2, columns 2-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_9: Rotation 3, columns 2-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_10: Rotation 0, columns 3-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_11: Rotation 1, columns 4-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_12: Rotation 2, columns 3-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_13: Rotation 3, columns 3-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_14: Rotation 0, columns 4-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_15: Rotation 1, columns 5-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_16: Rotation 2, columns 4-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_17: Rotation 3, columns 4-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_18: Rotation 0, columns 5-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_19: Rotation 1, columns 6-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_20: Rotation 2, columns 5-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_21: Rotation 3, columns 5-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_22: Rotation 0, columns 6-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_23: Rotation 1, columns 7-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_24: Rotation 2, columns 6-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_25: Rotation 3, columns 6-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_26: Rotation 0, columns 7-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_27: Rotation 1, columns 8-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_28: Rotation 2, columns 7-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_29: Rotation 3, columns 7-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_30: Rotation 0, columns 8-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 3.\noption_31: Rotation 1, columns 9-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.\noption_32: Rotation 2, columns 8-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.\noption_33: Rotation 3, columns 8-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_34: Rotation 3, columns 9-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 3."
+          }
+        ]
+      }
+    ],
+    "toolConfig": {
+      "tools": [
+        {
+          "toolSpec": {
+            "name": "choose_placement",
+            "description": "Report the chosen landing spot.",
+            "inputSchema": {
+              "json": {
+                "type": "object",
+                "properties": {
+                  "choice": {
+                    "type": "string",
+                    "enum": [
+                      "option_1",
+                      "option_2",
+                      "option_3",
+                      "option_4",
+                      "option_5",
+                      "option_6",
+                      "option_7",
+                      "option_8",
+                      "option_9",
+                      "option_10",
+                      "option_11",
+                      "option_12",
+                      "option_13",
+                      "option_14",
+                      "option_15",
+                      "option_16",
+                      "option_17",
+                      "option_18",
+                      "option_19",
+                      "option_20",
+                      "option_21",
+                      "option_22",
+                      "option_23",
+                      "option_24",
+                      "option_25",
+                      "option_26",
+                      "option_27",
+                      "option_28",
+                      "option_29",
+                      "option_30",
+                      "option_31",
+                      "option_32",
+                      "option_33",
+                      "option_34"
+                    ]
+                  }
+                },
+                "required": [
+                  "choice"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
+      "toolChoice": {
+        "tool": {
+          "name": "choose_placement"
+        }
+      }
+    },
+    "inferenceConfig": {
+      "maxTokens": 1024
+    }
+  },
+  "bedrock-auto-seed1": {
+    "modelId": "fake",
+    "system": [
+      {
+        "text": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat. Reply with JSON only, in the form {\"choice\": \"<option id>\"}."
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "text": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: J\nNext pieces: T, Z, O\nLevel: 1\n\nOptions:\noption_1: Rotation 1, columns 1-2, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.\noption_2: Rotation 0, columns 1-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 2.\noption_3: Rotation 1, columns 2-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_4: Rotation 2, columns 1-3, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.\noption_5: Rotation 3, columns 1-2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 5.\noption_6: Rotation 0, columns 2-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_7: Rotation 1, columns 3-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_8: Rotation 2, columns 2-4, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_9: Rotation 3, columns 2-3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_10: Rotation 0, columns 3-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_11: Rotation 1, columns 4-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_12: Rotation 2, columns 3-5, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_13: Rotation 3, columns 3-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_14: Rotation 0, columns 4-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_15: Rotation 1, columns 5-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_16: Rotation 2, columns 4-6, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_17: Rotation 3, columns 4-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_18: Rotation 0, columns 5-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_19: Rotation 1, columns 6-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_20: Rotation 2, columns 5-7, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_21: Rotation 3, columns 5-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_22: Rotation 0, columns 6-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_23: Rotation 1, columns 7-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_24: Rotation 2, columns 6-8, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_25: Rotation 3, columns 6-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_26: Rotation 0, columns 7-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 4.\noption_27: Rotation 1, columns 8-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 6.\noption_28: Rotation 2, columns 7-9, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 4.\noption_29: Rotation 3, columns 7-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_30: Rotation 0, columns 8-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 2, bumpiness after: 3.\noption_31: Rotation 1, columns 9-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 3, bumpiness after: 3.\noption_32: Rotation 2, columns 8-10, lands 1 row above the floor; clears no lines, creates 2 holes; stack height after: 2, bumpiness after: 2.\noption_33: Rotation 3, columns 8-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 6.\noption_34: Rotation 3, columns 9-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 3, bumpiness after: 3."
+          }
+        ]
+      }
+    ],
+    "toolConfig": {
+      "tools": [
+        {
+          "toolSpec": {
+            "name": "choose_placement",
+            "description": "Report the chosen landing spot.",
+            "inputSchema": {
+              "json": {
+                "type": "object",
+                "properties": {
+                  "choice": {
+                    "type": "string",
+                    "enum": [
+                      "option_1",
+                      "option_2",
+                      "option_3",
+                      "option_4",
+                      "option_5",
+                      "option_6",
+                      "option_7",
+                      "option_8",
+                      "option_9",
+                      "option_10",
+                      "option_11",
+                      "option_12",
+                      "option_13",
+                      "option_14",
+                      "option_15",
+                      "option_16",
+                      "option_17",
+                      "option_18",
+                      "option_19",
+                      "option_20",
+                      "option_21",
+                      "option_22",
+                      "option_23",
+                      "option_24",
+                      "option_25",
+                      "option_26",
+                      "option_27",
+                      "option_28",
+                      "option_29",
+                      "option_30",
+                      "option_31",
+                      "option_32",
+                      "option_33",
+                      "option_34"
+                    ]
+                  }
+                },
+                "required": [
+                  "choice"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
+      "toolChoice": {
+        "auto": {}
+      }
+    },
+    "inferenceConfig": {
+      "maxTokens": 1024
+    }
+  },
+  "completion-schema-seed2": {
+    "model": "fake",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat. Reply with JSON only, in the form {\"choice\": \"<option id>\"}."
+      },
+      {
+        "role": "user",
+        "content": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: I\nNext pieces: S, O, L\nLevel: 1\n\nOptions:\noption_1: Rotation 1, column 1, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4.\noption_2: Rotation 1, column 2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_3: Rotation 0, columns 1-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.\noption_4: Rotation 1, column 3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_5: Rotation 0, columns 2-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_6: Rotation 1, column 4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_7: Rotation 0, columns 3-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_8: Rotation 1, column 5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_9: Rotation 0, columns 4-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_10: Rotation 1, column 6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_11: Rotation 0, columns 5-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_12: Rotation 1, column 7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_13: Rotation 0, columns 6-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_14: Rotation 1, column 8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_15: Rotation 0, columns 7-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.\noption_16: Rotation 1, column 9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_17: Rotation 1, column 10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4."
+      }
+    ],
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "placement",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "choice": {
+              "type": "string",
+              "enum": [
+                "option_1",
+                "option_2",
+                "option_3",
+                "option_4",
+                "option_5",
+                "option_6",
+                "option_7",
+                "option_8",
+                "option_9",
+                "option_10",
+                "option_11",
+                "option_12",
+                "option_13",
+                "option_14",
+                "option_15",
+                "option_16",
+                "option_17"
+              ]
+            }
+          },
+          "required": [
+            "choice"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "completion-object-seed2": {
+    "model": "fake",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat. Reply with JSON only, in the form {\"choice\": \"<option id>\"}."
+      },
+      {
+        "role": "user",
+        "content": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: I\nNext pieces: S, O, L\nLevel: 1\n\nOptions:\noption_1: Rotation 1, column 1, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4.\noption_2: Rotation 1, column 2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_3: Rotation 0, columns 1-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.\noption_4: Rotation 1, column 3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_5: Rotation 0, columns 2-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_6: Rotation 1, column 4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_7: Rotation 0, columns 3-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_8: Rotation 1, column 5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_9: Rotation 0, columns 4-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_10: Rotation 1, column 6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_11: Rotation 0, columns 5-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_12: Rotation 1, column 7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_13: Rotation 0, columns 6-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_14: Rotation 1, column 8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_15: Rotation 0, columns 7-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.\noption_16: Rotation 1, column 9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_17: Rotation 1, column 10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4."
+      }
+    ],
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "decision-rot1-seed2": {
+    "model": "fake",
+    "state": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: I\nNext pieces: S, O, L\nLevel: 1",
+    "questions": {
+      "placement": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, column 1, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4.",
+          "option_2": "Rotation 1, column 2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_3": "Rotation 0, columns 1-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_4": "Rotation 1, column 3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_5": "Rotation 0, columns 2-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_6": "Rotation 1, column 4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_7": "Rotation 0, columns 3-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_8": "Rotation 1, column 5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_9": "Rotation 0, columns 4-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_10": "Rotation 1, column 6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_11": "Rotation 0, columns 5-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_12": "Rotation 1, column 7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_13": "Rotation 0, columns 6-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_14": "Rotation 1, column 8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_15": "Rotation 0, columns 7-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_16": "Rotation 1, column 9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_17": "Rotation 1, column 10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4."
+        }
+      }
+    }
+  },
+  "decision-rot4-seed2": {
+    "model": "fake",
+    "state": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: I\nNext pieces: S, O, L\nLevel: 1",
+    "questions": {
+      "placement_0": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, column 1, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4.",
+          "option_2": "Rotation 1, column 2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_3": "Rotation 0, columns 1-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_4": "Rotation 1, column 3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_5": "Rotation 0, columns 2-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_6": "Rotation 1, column 4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_7": "Rotation 0, columns 3-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_8": "Rotation 1, column 5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_9": "Rotation 0, columns 4-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_10": "Rotation 1, column 6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_11": "Rotation 0, columns 5-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_12": "Rotation 1, column 7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_13": "Rotation 0, columns 6-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_14": "Rotation 1, column 8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_15": "Rotation 0, columns 7-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_16": "Rotation 1, column 9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_17": "Rotation 1, column 10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4."
+        },
+        "option_order": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ]
+      },
+      "placement_1": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, column 1, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4.",
+          "option_2": "Rotation 1, column 2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_3": "Rotation 0, columns 1-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_4": "Rotation 1, column 3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_5": "Rotation 0, columns 2-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_6": "Rotation 1, column 4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_7": "Rotation 0, columns 3-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_8": "Rotation 1, column 5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_9": "Rotation 0, columns 4-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_10": "Rotation 1, column 6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_11": "Rotation 0, columns 5-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_12": "Rotation 1, column 7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_13": "Rotation 0, columns 6-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_14": "Rotation 1, column 8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_15": "Rotation 0, columns 7-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_16": "Rotation 1, column 9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_17": "Rotation 1, column 10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4."
+        },
+        "option_order": [
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "placement_2": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, column 1, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4.",
+          "option_2": "Rotation 1, column 2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_3": "Rotation 0, columns 1-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_4": "Rotation 1, column 3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_5": "Rotation 0, columns 2-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_6": "Rotation 1, column 4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_7": "Rotation 0, columns 3-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_8": "Rotation 1, column 5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_9": "Rotation 0, columns 4-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_10": "Rotation 1, column 6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_11": "Rotation 0, columns 5-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_12": "Rotation 1, column 7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_13": "Rotation 0, columns 6-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_14": "Rotation 1, column 8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_15": "Rotation 0, columns 7-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_16": "Rotation 1, column 9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_17": "Rotation 1, column 10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4."
+        },
+        "option_order": [
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
+      },
+      "placement_3": {
+        "type": "choice",
+        "instructions": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat.",
+        "criteria": {
+          "option_1": "Rotation 1, column 1, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4.",
+          "option_2": "Rotation 1, column 2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_3": "Rotation 0, columns 1-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_4": "Rotation 1, column 3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_5": "Rotation 0, columns 2-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_6": "Rotation 1, column 4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_7": "Rotation 0, columns 3-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_8": "Rotation 1, column 5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_9": "Rotation 0, columns 4-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_10": "Rotation 1, column 6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_11": "Rotation 0, columns 5-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_12": "Rotation 1, column 7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_13": "Rotation 0, columns 6-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.",
+          "option_14": "Rotation 1, column 8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_15": "Rotation 0, columns 7-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.",
+          "option_16": "Rotation 1, column 9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.",
+          "option_17": "Rotation 1, column 10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4."
+        },
+        "option_order": [
+          13,
+          14,
+          15,
+          16,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      }
+    }
+  },
+  "bedrock-forced-seed2": {
+    "modelId": "fake",
+    "system": [
+      {
+        "text": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat. Reply with JSON only, in the form {\"choice\": \"<option id>\"}."
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "text": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: I\nNext pieces: S, O, L\nLevel: 1\n\nOptions:\noption_1: Rotation 1, column 1, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4.\noption_2: Rotation 1, column 2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_3: Rotation 0, columns 1-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.\noption_4: Rotation 1, column 3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_5: Rotation 0, columns 2-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_6: Rotation 1, column 4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_7: Rotation 0, columns 3-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_8: Rotation 1, column 5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_9: Rotation 0, columns 4-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_10: Rotation 1, column 6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_11: Rotation 0, columns 5-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_12: Rotation 1, column 7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_13: Rotation 0, columns 6-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_14: Rotation 1, column 8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_15: Rotation 0, columns 7-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.\noption_16: Rotation 1, column 9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_17: Rotation 1, column 10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4."
+          }
+        ]
+      }
+    ],
+    "toolConfig": {
+      "tools": [
+        {
+          "toolSpec": {
+            "name": "choose_placement",
+            "description": "Report the chosen landing spot.",
+            "inputSchema": {
+              "json": {
+                "type": "object",
+                "properties": {
+                  "choice": {
+                    "type": "string",
+                    "enum": [
+                      "option_1",
+                      "option_2",
+                      "option_3",
+                      "option_4",
+                      "option_5",
+                      "option_6",
+                      "option_7",
+                      "option_8",
+                      "option_9",
+                      "option_10",
+                      "option_11",
+                      "option_12",
+                      "option_13",
+                      "option_14",
+                      "option_15",
+                      "option_16",
+                      "option_17"
+                    ]
+                  }
+                },
+                "required": [
+                  "choice"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
+      "toolChoice": {
+        "tool": {
+          "name": "choose_placement"
+        }
+      }
+    },
+    "inferenceConfig": {
+      "maxTokens": 1024
+    }
+  },
+  "bedrock-auto-seed2": {
+    "modelId": "fake",
+    "system": [
+      {
+        "text": "You are playing Tetris. Choose where the current piece should land. Good placements clear lines, avoid creating holes, and keep the stack low and flat. Reply with JSON only, in the form {\"choice\": \"<option id>\"}."
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "text": "Board, 10 columns by 20 rows, top row first (\"#\" filled, \".\" empty):\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n..........\n\nCurrent piece: I\nNext pieces: S, O, L\nLevel: 1\n\nOptions:\noption_1: Rotation 1, column 1, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4.\noption_2: Rotation 1, column 2, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_3: Rotation 0, columns 1-4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.\noption_4: Rotation 1, column 3, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_5: Rotation 0, columns 2-5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_6: Rotation 1, column 4, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_7: Rotation 0, columns 3-6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_8: Rotation 1, column 5, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_9: Rotation 0, columns 4-7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_10: Rotation 1, column 6, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_11: Rotation 0, columns 5-8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_12: Rotation 1, column 7, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_13: Rotation 0, columns 6-9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 2.\noption_14: Rotation 1, column 8, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_15: Rotation 0, columns 7-10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 1, bumpiness after: 1.\noption_16: Rotation 1, column 9, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 8.\noption_17: Rotation 1, column 10, lands 1 row above the floor; clears no lines, creates no holes; stack height after: 4, bumpiness after: 4."
+          }
+        ]
+      }
+    ],
+    "toolConfig": {
+      "tools": [
+        {
+          "toolSpec": {
+            "name": "choose_placement",
+            "description": "Report the chosen landing spot.",
+            "inputSchema": {
+              "json": {
+                "type": "object",
+                "properties": {
+                  "choice": {
+                    "type": "string",
+                    "enum": [
+                      "option_1",
+                      "option_2",
+                      "option_3",
+                      "option_4",
+                      "option_5",
+                      "option_6",
+                      "option_7",
+                      "option_8",
+                      "option_9",
+                      "option_10",
+                      "option_11",
+                      "option_12",
+                      "option_13",
+                      "option_14",
+                      "option_15",
+                      "option_16",
+                      "option_17"
+                    ]
+                  }
+                },
+                "required": [
+                  "choice"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      ],
+      "toolChoice": {
+        "auto": {}
+      }
+    },
+    "inferenceConfig": {
+      "maxTokens": 1024
+    }
+  }
+}
