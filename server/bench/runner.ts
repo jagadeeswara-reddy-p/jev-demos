@@ -9,8 +9,8 @@ import type { MatchPlan } from "./plan";
 // Plays the matches one at a time. A match's events are buffered and written to
 // <outDir>/<key>.jsonl when the match ends, so a crash mid-match loses that match's
 // log and the next run plays it again. A finished log is reused on the next run;
-// a cut-short one is played again from the start. The stop rule ends a match once
-// enough boards are done.
+// a cut-short one is played again from the start. The stop rule ends a realtime
+// match once enough boards are done; frozen matches play every board to the end.
 
 /** A finished log or folder that was made by a different bench: the run stops rather than mix results. */
 export class ResumeMismatchError extends Error {}
@@ -32,6 +32,7 @@ export interface RunOptions {
   agentsFor(plan: MatchPlan): TetrisAgent[];
   /** "fast": simulated time as fast as possible (mock-only line-ups). "wall": 1:1 with the wall clock. */
   pace: "fast" | "wall";
+  /** Recorded in settings.json, so a folder is not resumed with another value. The stop rule uses each plan's stopShare. */
   stopWhenFinished: number;
   maxCostUsd?: number;
   /** The ids of the agents whose costs are real spend (live models). Mock costs are play money and are left out of the cap. */
@@ -152,7 +153,7 @@ async function play(plan: MatchPlan, file: string, opts: RunOptions): Promise<Ar
   const writer = Bun.file(file).writer();
   const events: ArenaEvent[] = [];
   const done = new Set<string>();
-  const need = quorum(plan.config.agents.length, opts.stopWhenFinished);
+  const need = quorum(plan.config.agents.length, plan.stopShare);
   const emit = (batch: ArenaEvent[]) => {
     for (const e of batch) {
       events.push(e);

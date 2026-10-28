@@ -9,6 +9,8 @@ export interface MatchPlan {
   key: string;
   variant: string;
   config: RunConfig;
+  /** Share of boards that must be done for the stop rule. Frozen matches play to the end, so this is 1. */
+  stopShare: number;
 }
 
 export function planMatches(cfg: BenchConfig, entrants: BenchEntrant[]): MatchPlan[] {
@@ -17,6 +19,7 @@ export function planMatches(cfg: BenchConfig, entrants: BenchEntrant[]): MatchPl
   for (const variant of cfg.variants) {
     for (const clock of cfg.clocks) {
       for (const seed of cfg.seeds) {
+        const frozen = clock === "frozen";
         plans.push({
           key: `${variant}-${clock}-seed${seed}`,
           variant,
@@ -25,10 +28,11 @@ export function planMatches(cfg: BenchConfig, entrants: BenchEntrant[]): MatchPl
             seed,
             mode: clock,
             targetLines: cfg.goal === "sprint40" ? 40 : 0,
-            maxDurationMs: cfg.maxDurationMs,
-            maxPieces: cfg.maxPieces,
+            maxDurationMs: frozen ? cfg.frozenPieces * (DEFAULT_CONFIG.frozenTimeoutMs + 1000) : cfg.maxDurationMs,
+            maxPieces: frozen ? cfg.frozenPieces : cfg.maxPieces,
             agents: agents.map((a) => ({ ...a })),
           },
+          stopShare: frozen ? 1 : cfg.stopWhenFinished,
         });
       }
     }

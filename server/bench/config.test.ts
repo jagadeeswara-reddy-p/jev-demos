@@ -27,6 +27,7 @@ describe("parseBench defaults", () => {
     expect(c.goal).toBe("survive");
     expect(c.maxDurationMs).toBe(600000);
     expect(c.maxPieces).toBe(1000);
+    expect(c.frozenPieces).toBe(100);
     expect(c.stopWhenFinished).toBe(0.75);
     expect(c.maxCostUsd).toBeUndefined();
     expect(c.models).toEqual(["jev"]);
@@ -136,6 +137,9 @@ describe("limits and tetris settings", () => {
     expect(fieldOf(() => parseBench({ name: "a", tetris: { maxDurationMs: 3600001 }, models: ["jev"] }))).toBe("tetris.maxDurationMs");
     expect(fieldOf(() => parseBench({ name: "a", tetris: { maxPieces: 0 }, models: ["jev"] }))).toBe("tetris.maxPieces");
     expect(fieldOf(() => parseBench({ name: "a", tetris: { goal: "clear" }, models: ["jev"] }))).toBe("tetris.goal");
+    expect(fieldOf(() => parseBench({ name: "a", tetris: { frozenPieces: 9 }, models: ["jev"] }))).toBe("tetris.frozenPieces");
+    expect(fieldOf(() => parseBench({ name: "a", tetris: { frozenPieces: 1001 }, models: ["jev"] }))).toBe("tetris.frozenPieces");
+    expect(parseBench({ name: "a", tetris: { frozenPieces: 10 }, models: ["jev"] }).frozenPieces).toBe(10);
     const c = parseBench({ name: "a", tetris: { goal: "sprint40", maxDurationMs: 10000, maxPieces: 10000 }, models: ["jev"] });
     expect([c.goal, c.maxDurationMs, c.maxPieces]).toEqual(["sprint40", 10000, 10000]);
   });

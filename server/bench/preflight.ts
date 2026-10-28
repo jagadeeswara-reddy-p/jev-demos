@@ -48,19 +48,29 @@ async function check(e: BenchEntrant, test: (e: BenchEntrant) => Promise<TestRes
 }
 
 export function estimate(cfg: BenchConfig, entrants: BenchEntrant[], checks: Check[]): Estimate {
-  const matches = cfg.variants.length * cfg.clocks.length * cfg.seeds.length;
+  const perVariant = cfg.variants.length * cfg.seeds.length;
+  const frozenMatches = cfg.clocks.includes("frozen") ? perVariant : 0;
+  const realtimeMatches = cfg.clocks.includes("realtime") ? perVariant : 0;
+  const matches = frozenMatches + realtimeMatches;
   const pace = paceFor(entrants);
-  const maxMinutes = pace === "wall" ? (matches * cfg.maxDurationMs) / 60_000 : 0;
   const live = new Set(entrants.filter((e) => e.live).map((e) => e.id));
+  const liveChecks = checks.filter((c) => c.ok && live.has(c.id));
+  // A frozen match waits for its slowest model on every piece, so the slowest answer sets its pace.
+  const slowestMs = Math.max(0, ...liveChecks.map((c) => c.latencyMs ?? 0));
 
-  let perMatch = 0;
-  for (const c of checks) {
-    if (!c.ok || !live.has(c.id)) continue;
-    const turnMs = (c.latencyMs ?? 0) + DEFAULT_CONFIG.entryDelayMs;
-    const turns = Math.min(cfg.maxPieces, Math.ceil(cfg.maxDurationMs / turnMs));
-    perMatch += (c.costUsd ?? 0) * turns * matches;
+  let maxMinutes = 0;
+  if (pace === "wall") {
+    maxMinutes = (realtimeMatches * cfg.maxDurationMs) / 60_000 + (frozenMatches * cfg.frozenPieces * (slowestMs + 1000)) / 60_000;
   }
-  return { matches, pace, maxMinutes, maxCostUsd: perMatch };
+
+  let maxCostUsd = 0;
+  for (const c of liveChecks) {
+    const turnMs = (c.latencyMs ?? 0) + DEFAULT_CONFIG.entryDelayMs;
+    const realtimeTurns = Math.min(cfg.maxPieces, Math.ceil(cfg.maxDurationMs / turnMs));
+    const turns = frozenMatches * cfg.frozenPieces + realtimeMatches * realtimeTurns;
+    maxCostUsd += (c.costUsd ?? 0) * turns;
+  }
+  return { matches, pace, maxMinutes, maxCostUsd };
 }
 
 export function paceFor(entrants: BenchEntrant[]): "fast" | "wall" {

@@ -22,6 +22,9 @@ The game, what every model is shown, how answers are judged, and what the screen
 | Speed control | live: 1× only; mock and replay: 1–8× | same |
 
 Run both on the same seed. Real time shows speed, and frozen shows skill without speed.
+On the page, a frozen run still stops at the time limit. In `bun bench`, a frozen
+match gives every board the same number of pieces (`tetris.frozenPieces`, 100 by
+default), and runs until each board has placed them or topped out.
 
 ### Two goals: survive or sprint
 

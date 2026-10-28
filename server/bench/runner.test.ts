@@ -47,12 +47,31 @@ describe("planMatches", () => {
     expect(first.variant).toBe("described");
     expect(first.config.mode).toBe("frozen");
     expect(first.config.seed).toBe(1);
-    expect(first.config.maxPieces).toBe(40);
+    expect(first.config.maxPieces).toBe(100);
     expect(first.config.targetLines).toBe(0);
     expect(first.config.agents).toEqual([
       { id: "jev", name: "Jev", kind: "system-one", sourceId: "jev" },
       { id: "llm-fast", name: "LLM Fast", kind: "llm", sourceId: "llm-fast" },
     ]);
+  });
+
+  test("a frozen match gives every board frozenPieces and ends when all are done; a realtime one keeps the stop share", () => {
+    const sized = parseBench({
+      name: "t",
+      seeds: [1],
+      clocks: ["frozen", "realtime"],
+      tetris: { frozenPieces: 30 },
+      limits: { stopWhenFinished: 0.5 },
+      models: ["jev"],
+    });
+    const [frozen, realtime] = planMatches(sized, MOCKS.slice(0, 2));
+    expect(frozen.config.mode).toBe("frozen");
+    expect(frozen.config.maxPieces).toBe(30);
+    expect(frozen.config.maxDurationMs).toBe(30 * 31_000);
+    expect(frozen.stopShare).toBe(1);
+    expect(realtime.config.mode).toBe("realtime");
+    expect(realtime.config.maxPieces).toBe(sized.maxPieces);
+    expect(realtime.stopShare).toBe(0.5);
   });
 
   test("sprint40 sets the line target to 40", () => {
@@ -69,6 +88,25 @@ describe("quorum", () => {
     expect(quorum(2, 0.75)).toBe(2);
     expect(quorum(3, 1)).toBe(3);
   });
+});
+
+describe("frozen fairness", () => {
+  test("both boards place the same pieces on the frozen clock, and nobody is stopped early", async () => {
+    const fair = parseBench({ name: "t", seeds: [1], clocks: ["frozen"], tetris: { frozenPieces: 30 }, models: ["jev"] });
+    const pair = [entrant("jev", "Jev", "system-one"), entrant("llm-frontier", "Frontier LLM", "llm")];
+    const [plan] = planMatches(fair, pair);
+    const [outcome] = await runMatches([plan], fastOpts(tempDir()));
+    expect(outcome.status).toBe("played");
+    const events = readEvents(outcome.file);
+    expect(events[events.length - 1]).toMatchObject({ t: "run_finished" });
+    expect(events[events.length - 1]).not.toMatchObject({ reason: "stopped" });
+    for (const id of ["jev", "llm-frontier"]) {
+      const locks = events.filter((e) => e.t === "lock" && e.agentId === id).length;
+      const finished = events.find((e) => e.t === "episode_finished" && e.agentId === id);
+      expect(finished?.t === "episode_finished" && finished.outcome).toBe("survived");
+      expect(locks).toBe(30);
+    }
+  }, 20_000);
 });
 
 describe("runMatches", () => {

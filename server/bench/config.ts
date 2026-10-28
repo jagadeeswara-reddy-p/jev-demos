@@ -20,6 +20,8 @@ export interface BenchConfig {
   goal: "survive" | "sprint40";
   maxDurationMs: number;
   maxPieces: number;
+  /** Pieces every board places in a frozen match. */
+  frozenPieces: number;
   stopWhenFinished: number;
   maxCostUsd?: number;
   models: BenchModelEntry[];
@@ -35,7 +37,7 @@ export class BenchConfigError extends Error {
 }
 
 const TOP_KEYS = ["name", "environment", "seeds", "clocks", "variants", "tetris", "limits", "models"];
-const TETRIS_KEYS = ["goal", "maxDurationMs", "maxPieces"];
+const TETRIS_KEYS = ["goal", "maxDurationMs", "maxPieces", "frozenPieces"];
 const LIMIT_KEYS = ["stopWhenFinished", "maxCostUsd"];
 const CLOCKS: ClockMode[] = ["frozen", "realtime"];
 const GOALS = ["survive", "sprint40"] as const;
@@ -67,6 +69,7 @@ export function parseBench(raw: unknown): BenchConfig {
     goal: tet.goal === undefined ? "survive" : oneOf(tet.goal, "tetris.goal", GOALS),
     maxDurationMs: tet.maxDurationMs === undefined ? 600_000 : integer(tet.maxDurationMs, "tetris.maxDurationMs", 10_000, 3_600_000),
     maxPieces: tet.maxPieces === undefined ? 1000 : integer(tet.maxPieces, "tetris.maxPieces", 1, 10_000),
+    frozenPieces: tet.frozenPieces === undefined ? 100 : integer(tet.frozenPieces, "tetris.frozenPieces", 10, 1000),
     stopWhenFinished: lim.stopWhenFinished === undefined ? 0.75 : stopShare(lim.stopWhenFinished),
     models: models(raw.models),
   };

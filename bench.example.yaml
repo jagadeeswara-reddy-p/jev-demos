@@ -22,6 +22,8 @@ tetris:
   maxDurationMs: 600000
   # Most pieces a board may place (1 to 10000).
   maxPieces: 1000
+  # Pieces every board places in a frozen match (10 to 1000); the match runs until each board is done.
+  frozenPieces: 100
 
 # When a match stops, and an optional spend cap.
 limits:
