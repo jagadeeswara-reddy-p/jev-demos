@@ -7,7 +7,7 @@ import { mockSourceFor } from "../../src/mock/mockSource";
 import { parseBench } from "./config";
 import type { BenchEntrant } from "./entrants";
 import { type MatchPlan, planMatches } from "./plan";
-import { type MatchOutcome, outcomeOf, quorum, type RunOptions, runMatches, writeManifest } from "./runner";
+import { type MatchOutcome, outcomeOf, quorum, ResumeMismatchError, type RunOptions, runMatches, writeManifest } from "./runner";
 
 const entrant = (id: string, label: string, kind: BenchEntrant["kind"]): BenchEntrant => ({ id, label, kind, live: false });
 const MOCKS = [
@@ -136,6 +136,29 @@ describe("runMatches", () => {
     expect(JSON.parse(replayed[replayed.length - 1]).t).toBe("run_finished");
   });
 
+  test("a finished log played with other models is refused, and the file is not changed", async () => {
+    const outDir = tempDir();
+    const plans = planMatches(cfg, MOCKS);
+    await runMatches(plans, fastOpts(outDir));
+    const file = join(outDir, `${plans[0].key}.jsonl`);
+    const mtime = statSync(file).mtimeMs;
+
+    const other = planMatches(cfg, MOCKS.slice(0, 2));
+    const err = await runMatches(other, fastOpts(outDir)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ResumeMismatchError);
+    expect((err as Error).message).toBe(`${file} was played with different models or settings; use --out <new folder> or delete it`);
+    expect(statSync(file).mtimeMs).toBe(mtime);
+  });
+
+  test("a second run into the same folder with another stopWhenFinished is refused", async () => {
+    const outDir = tempDir();
+    const plans = planMatches(cfg, MOCKS);
+    await runMatches(plans, fastOpts(outDir));
+    const err = await runMatches(plans, fastOpts(outDir, { stopWhenFinished: 0.5 })).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ResumeMismatchError);
+    expect((err as Error).message).toBe(`${outDir} was run with stopWhenFinished 0.75; use --out <new folder> or delete it`);
+  });
+
   test("skips the matches after the cost limit is passed", async () => {
     const costly = parseBench({ name: "t", seeds: [1], clocks: ["frozen", "realtime"], tetris: { maxPieces: 40 }, models: ["jev"] });
     const plans = planMatches(costly, MOCKS);
@@ -148,10 +171,19 @@ describe("runMatches", () => {
       },
     };
     const agentsFor = (plan: MatchPlan): TetrisAgent[] => [payer, ...plan.config.agents.slice(1).map((s) => mockSourceFor(plan.config, s))];
-    const outcomes = await runMatches(plans, fastOpts(tempDir(), { agentsFor, maxCostUsd: 0.5 }));
+    const outcomes = await runMatches(plans, fastOpts(tempDir(), { agentsFor, maxCostUsd: 0.5, paidAgents: ["jev"] }));
     expect(outcomes[0].status).toBe("played");
     expect(outcomes[0].costUsd).toBeGreaterThan(0.5);
     expect(outcomes[1]).toMatchObject({ status: "skipped", costUsd: 0, unfinished: [], stoppedEarly: false });
+  });
+
+  test("mock costs do not count toward the cost limit when no agent is paid", async () => {
+    const costly = parseBench({ name: "t", seeds: [1], clocks: ["frozen", "realtime"], tetris: { maxPieces: 40 }, models: ["jev"] });
+    const plans = planMatches(costly, MOCKS);
+    const mock = (plan: MatchPlan) => plan.config.agents.map((s) => mockSourceFor(plan.config, s));
+    const outcomes = await runMatches(plans, fastOpts(tempDir(), { agentsFor: mock, maxCostUsd: 0.5, paidAgents: [] }));
+    expect(outcomes.map((o) => o.status)).toEqual(["played", "played"]);
+    expect(outcomes[0].costUsd).toBe(0);
   });
 });
 
@@ -168,6 +200,28 @@ describe("outcomeOf", () => {
     ] as ArenaEvent[];
     const o = outcomeOf("k", "f.jsonl", events);
     expect(o).toEqual({ key: "k", file: "f.jsonl", stoppedEarly: true, unfinished: ["c"], costUsd: 0.25 });
+  });
+
+  test("a match that hit the time limit lists no unfinished boards, since the engine says nothing per board", () => {
+    const config = { agents: [{ id: "a" }, { id: "b" }] };
+    const events = [
+      { t: "run_started", at: 0, config },
+      { t: "topout", at: 1, agentId: "a", level: 1 },
+      { t: "run_finished", at: 2, reason: "time_limit" },
+    ] as ArenaEvent[];
+    expect(outcomeOf("k", "f.jsonl", events)).toEqual({ key: "k", file: "f.jsonl", stoppedEarly: false, unfinished: [], costUsd: 0 });
+  });
+
+  test("with paid, only the listed agents' decision costs count", () => {
+    const config = { agents: [{ id: "a" }, { id: "b" }] };
+    const events = [
+      { t: "run_started", at: 0, config },
+      { t: "decision", at: 1, agentId: "a", pieceId: 1, status: "ok", latencyMs: 1, usage: { inputTokens: 0, outputTokens: 0, costUsd: 0.25 } },
+      { t: "decision", at: 2, agentId: "b", pieceId: 1, status: "ok", latencyMs: 1, usage: { inputTokens: 0, outputTokens: 0, costUsd: 1 } },
+      { t: "run_finished", at: 3, reason: "all_out" },
+    ] as ArenaEvent[];
+    expect(outcomeOf("k", "f.jsonl", events).costUsd).toBe(1.25);
+    expect(outcomeOf("k", "f.jsonl", events, new Set(["a"])).costUsd).toBe(0.25);
   });
 });
 

@@ -5,9 +5,14 @@ import type { ArenaEvent, TetrisAgent } from "../../src/arena/types";
 import type { BenchConfig } from "./config";
 import type { MatchPlan } from "./plan";
 
-// Plays the matches one at a time, writing each event to <outDir>/<key>.jsonl as
-// it happens. A finished log is reused on the next run; a cut-short one is played
-// again from the start. The stop rule ends a match once enough boards are done.
+// Plays the matches one at a time. A match's events are buffered and written to
+// <outDir>/<key>.jsonl when the match ends, so a crash mid-match loses that match's
+// log and the next run plays it again. A finished log is reused on the next run;
+// a cut-short one is played again from the start. The stop rule ends a match once
+// enough boards are done.
+
+/** A finished log or folder that was made by a different bench: the run stops rather than mix results. */
+export class ResumeMismatchError extends Error {}
 
 export interface MatchOutcome {
   key: string;
@@ -28,6 +33,8 @@ export interface RunOptions {
   pace: "fast" | "wall";
   stopWhenFinished: number;
   maxCostUsd?: number;
+  /** The ids of the agents whose costs are real spend (live models). Mock costs are play money and are left out of the cap. */
+  paidAgents?: readonly string[];
   /** `index` is the match's position in the plan list, counting from 0. */
   onMatch?(outcome: MatchOutcome, index: number, total: number): void;
 }
@@ -37,24 +44,29 @@ export function quorum(boards: number, share: number): number {
   return Math.max(1, Math.ceil(boards * share - 1e-9));
 }
 
-export function outcomeOf(key: string, file: string, events: ArenaEvent[]): Omit<MatchOutcome, "status"> {
+/** `paid`, when given, is the agents whose answer costs count; without it every agent's cost counts. */
+export function outcomeOf(key: string, file: string, events: ArenaEvent[], paid?: ReadonlySet<string>): Omit<MatchOutcome, "status"> {
   const started = events.find((e) => e.t === "run_started");
   const agents = started?.t === "run_started" ? started.config.agents.map((a) => a.id) : [];
   const done = new Set(events.flatMap((e) => (e.t === "topout" || e.t === "survived" || e.t === "goal" ? [e.agentId] : [])));
-  const unfinished = agents.filter((id) => !done.has(id));
   const last = events[events.length - 1];
+  const stopped = last?.t === "run_finished" && last.reason === "stopped";
+  // Only a stop says which boards were still playing; a time limit ends without a per-board event.
+  const unfinished = stopped ? agents.filter((id) => !done.has(id)) : [];
   return {
     key,
     file,
-    stoppedEarly: last?.t === "run_finished" && last.reason === "stopped" && unfinished.length > 0,
+    stoppedEarly: stopped && unfinished.length > 0,
     unfinished,
-    costUsd: events.reduce((sum, e) => (e.t === "decision" ? sum + (e.usage?.costUsd ?? 0) : sum), 0),
+    costUsd: events.reduce((sum, e) => (e.t === "decision" && (!paid || paid.has(e.agentId)) ? sum + (e.usage?.costUsd ?? 0) : sum), 0),
   };
 }
 
 export async function runMatches(plans: MatchPlan[], opts: RunOptions): Promise<MatchOutcome[]> {
   mkdirSync(opts.outDir, { recursive: true });
+  await checkSettings(opts.outDir, opts.stopWhenFinished);
   const outcomes: MatchOutcome[] = [];
+  const paid = opts.paidAgents ? new Set(opts.paidAgents) : undefined;
   let spent = 0;
   for (const [index, plan] of plans.entries()) {
     const file = join(opts.outDir, `${plan.key}.jsonl`);
@@ -64,10 +76,11 @@ export async function runMatches(plans: MatchPlan[], opts: RunOptions): Promise<
     } else {
       const saved = await readFinished(file);
       if (saved) {
-        outcome = { ...outcomeOf(plan.key, file, saved), status: "resumed" };
+        assertSameRun(file, saved, plan);
+        outcome = { ...outcomeOf(plan.key, file, saved, paid), status: "resumed" };
       } else {
         const events = await play(plan, file, opts);
-        outcome = { ...outcomeOf(plan.key, file, events), status: "played" };
+        outcome = { ...outcomeOf(plan.key, file, events, paid), status: "played" };
       }
     }
     spent += outcome.costUsd;
@@ -88,6 +101,28 @@ export async function writeManifest(outDir: string, cfg: BenchConfig, outcomes: 
     matches: outcomes,
   };
   await Bun.write(join(outDir, "bench.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
+const SETTINGS = "settings.json";
+
+/** Refuses a folder that was run with another stop share; otherwise records this one for the next run. */
+async function checkSettings(outDir: string, stopWhenFinished: number): Promise<void> {
+  const file = Bun.file(join(outDir, SETTINGS));
+  if (await file.exists()) {
+    const saved = (await file.json()) as { stopWhenFinished?: number };
+    if (saved.stopWhenFinished !== stopWhenFinished) {
+      throw new ResumeMismatchError(`${outDir} was run with stopWhenFinished ${saved.stopWhenFinished}; use --out <new folder> or delete it`);
+    }
+  }
+  await Bun.write(file, `${JSON.stringify({ stopWhenFinished }, null, 2)}\n`);
+}
+
+/** A finished log is only reused for the same line-up and settings; anything else is refused and left as it is. */
+function assertSameRun(file: string, events: ArenaEvent[], plan: MatchPlan): void {
+  const started = events[0];
+  if (started.t !== "run_started" || JSON.stringify(started.config) !== JSON.stringify(plan.config)) {
+    throw new ResumeMismatchError(`${file} was played with different models or settings; use --out <new folder> or delete it`);
+  }
 }
 
 /** The events of a log whose last line is run_finished, or null when it is missing or cut short. */

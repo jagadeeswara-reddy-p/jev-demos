@@ -6,7 +6,7 @@ import { type BenchConfig, BenchConfigError, loadBench, parseBench } from "./con
 import { agentFor, type BenchEntrant, resolveEntrants } from "./entrants";
 import { planMatches } from "./plan";
 import { type Check, estimate, formatChecks, formatEstimate, paceFor, preflight } from "./preflight";
-import { runMatches, writeManifest } from "./runner";
+import { type MatchOutcome, ResumeMismatchError, runMatches, writeManifest } from "./runner";
 
 // The `bun bench` command line: init writes the example files, doctor checks a bench
 // without playing it, run plays it (after the same checks), demo plays a built-in
@@ -138,13 +138,14 @@ async function run(args: Args, io: Io): Promise<number> {
     io.out("Not started.");
     return 0;
   }
-  return play(ins.cfg, ins.entrants, args.out ?? join("runs", "bench", ins.cfg.name), io);
+  const paid = ins.entrants.filter((e) => e.live).map((e) => e.id);
+  return play(ins.cfg, ins.entrants, args.out ?? join("runs", "bench", ins.cfg.name), io, paid);
 }
 
 async function runDemo(args: Args, io: Io, demo: BenchConfig): Promise<number> {
   const entrants = resolveEntrants(demo.models, listSources(), Bun.env);
   const outDir = args.out ?? join("runs", "bench", demo.name);
-  const code = await play(demo, entrants, outDir, io);
+  const code = await play(demo, entrants, outDir, io, []);
   if (code !== 0) return code;
   io.out(`Output folder: ${outDir}`);
   io.out(`Replay a match: bun dev, then open the page and load a .jsonl file from ${outDir}`);
@@ -178,16 +179,24 @@ async function inspect(file: string, io: Io): Promise<Inspection | null> {
   }
 }
 
-/** Plays every match, writes the manifest and prints the stats of the logs. */
-async function play(cfg: BenchConfig, entrants: BenchEntrant[], outDir: string, io: Io): Promise<number> {
-  const outcomes = await runMatches(planMatches(cfg, entrants), {
-    outDir,
-    pace: paceFor(entrants),
-    stopWhenFinished: cfg.stopWhenFinished,
-    maxCostUsd: cfg.maxCostUsd,
-    agentsFor: (plan) => plan.config.agents.map((spec, i) => agentFor(entrants[i], plan.config, spec, createSource)),
-    onMatch: (o, index, total) => io.out(`[${index + 1}/${total}] ${o.key}: ${o.status} (${o.unfinished.length} unfinished)`),
-  });
+/** Plays every match, writes the manifest and prints the stats of the logs. `paid` lists the live models, whose costs are real. */
+async function play(cfg: BenchConfig, entrants: BenchEntrant[], outDir: string, io: Io, paid: string[]): Promise<number> {
+  let outcomes: MatchOutcome[];
+  try {
+    outcomes = await runMatches(planMatches(cfg, entrants), {
+      outDir,
+      pace: paceFor(entrants),
+      stopWhenFinished: cfg.stopWhenFinished,
+      maxCostUsd: cfg.maxCostUsd,
+      paidAgents: paid,
+      agentsFor: (plan) => plan.config.agents.map((spec, i) => agentFor(entrants[i], plan.config, spec, createSource)),
+      onMatch: (o, index, total) => io.out(`[${index + 1}/${total}] ${o.key}: ${o.status} (${o.unfinished.length} unfinished)`),
+    });
+  } catch (err) {
+    if (!(err instanceof ResumeMismatchError)) throw err;
+    io.out(err.message);
+    return 1;
+  }
   await writeManifest(outDir, cfg, outcomes);
   io.out(`Wrote ${join(outDir, "bench.json")}`);
 

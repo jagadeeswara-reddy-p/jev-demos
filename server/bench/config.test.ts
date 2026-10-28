@@ -75,6 +75,17 @@ describe("models", () => {
     expect(fieldOf(() => parseBench({ name: "a", models: [{ id: "x", apiKey: "sk-live-123" }] }))).toBe("models[0].apiKey");
   });
 
+  test("an api key whose placeholder default is a literal key is refused", () => {
+    expect(fieldOf(() => parseBench({ name: "a", models: [{ id: "x", apiKey: "${K:-sk-live-abc}" }] }))).toBe("models[0].apiKey");
+  });
+
+  test("an api key may default to nothing, or to another placeholder", () => {
+    const empty = { id: "x", apiKey: "${K:-}" };
+    const nested = { id: "x", apiKey: "${K:-${J}}" };
+    expect(parseBench({ name: "a", models: [empty] }).models).toEqual([empty]);
+    expect(parseBench({ name: "a", models: [nested] }).models).toEqual([nested]);
+  });
+
   test("an inline model with an env placeholder is kept as written", () => {
     const entry = { id: "x", apiKey: "${OPENROUTER_API_KEY}", prices: { inputPerM: 1 } };
     expect(parseBench({ name: "a", models: [entry] }).models).toEqual([entry]);

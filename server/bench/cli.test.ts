@@ -204,6 +204,16 @@ describe("bench demo", () => {
   });
 });
 
+describe("bench demo resume", () => {
+  test("a second demo into the same folder with another stopWhenFinished prints the reason and exits 1", async () => {
+    const dir = tempDir();
+    expect(await main(["demo", "--out", dir], capture().io, { ...DEMO, maxPieces: 30 })).toBe(0);
+    const { io, text } = capture();
+    expect(await main(["demo", "--out", dir], io, { ...DEMO, maxPieces: 30, stopWhenFinished: 0.5 })).toBe(1);
+    expect(text()).toContain(`${dir} was run with stopWhenFinished 0.75; use --out <new folder> or delete it`);
+  });
+});
+
 describe("bench usage", () => {
   test("an unknown command prints usage and exits 1", async () => {
     const { io, text } = capture();

@@ -39,7 +39,8 @@ const TETRIS_KEYS = ["goal", "maxDurationMs", "maxPieces"];
 const LIMIT_KEYS = ["stopWhenFinished", "maxCostUsd"];
 const CLOCKS: ClockMode[] = ["frozen", "realtime"];
 const GOALS = ["survive", "sprint40"] as const;
-const ENV_PLACEHOLDER = /^\$\{[A-Z0-9_]+(:-[^}]*)?\}$/;
+// An api key is ${NAME}, ${NAME:-} or ${NAME:-${OTHER}}: a literal default could hold a key.
+const API_KEY_PLACEHOLDER = /^\$\{[A-Z0-9_]+(:-(\$\{[A-Z0-9_]+\})?)?\}$/;
 
 /** Checks a bench definition (already parsed from YAML or JSON) and fills in the defaults. */
 export function parseBench(raw: unknown): BenchConfig {
@@ -139,7 +140,7 @@ function models(v: unknown): BenchModelEntry[] {
       id = entry;
     } else if (isObject(entry)) {
       id = entry.id;
-      if (entry.apiKey !== undefined && !(typeof entry.apiKey === "string" && ENV_PLACEHOLDER.test(entry.apiKey))) {
+      if (entry.apiKey !== undefined && !(typeof entry.apiKey === "string" && API_KEY_PLACEHOLDER.test(entry.apiKey))) {
         throw new BenchConfigError(`${at}.apiKey`, "must be an ${ENV} placeholder; put the key itself in .env");
       }
     } else {
