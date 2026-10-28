@@ -46,8 +46,10 @@ const PANEL_W = (W - LABEL_W - 24 - GAP * 2) / 3;
 const TOP = 112;
 const ROW_H = 34;
 const BAR_H = 16;
-/** Room kept to the right of the longest bar for its value label. */
-const VALUE_ROOM = 70;
+/** Smallest room kept to the right of a panel's longest bar for its value labels. */
+const MIN_VALUE_ROOM = 70;
+/** Approximate advance of one character of the 12 px value labels. */
+const CHAR_W = 6.6;
 const LABEL_MAX = 20;
 const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
 const ARIA = "Benchmark comparison: judgement, speed and pieces landed in real time";
@@ -129,9 +131,11 @@ export function renderChart(summary: BenchSummary, theme: ChartTheme): string {
     parts.push(text(LABEL_W, y + BAR_H / 2 + 4, 13, 400, c.ink, shortLabel(m.label), 'text-anchor="end"'));
   });
 
-  const span = PANEL_W - VALUE_ROOM;
   panelsFor(realtimeMinutes).forEach((p, k) => {
     const x0 = LABEL_W + 24 + k * (PANEL_W + GAP);
+    // Leave room for this panel's widest value label, so it stays inside the chart.
+    const widest = Math.max(0, ...rows.map((m) => (p.value(m) === null ? 0 : Array.from(p.fmt(m)).length)));
+    const span = PANEL_W - Math.max(MIN_VALUE_ROOM, Math.ceil(widest * CHAR_W) + 10);
     parts.push(text(x0, TOP - 30, 14, 600, c.ink, p.title));
     parts.push(text(x0, TOP - 14, 11, 400, c.muted, p.sub));
     parts.push(`<line x1="${x0}" y1="${TOP - 6}" x2="${x0}" y2="${TOP + rows.length * ROW_H - 10}" stroke="${c.axis}" stroke-width="1"/>`);

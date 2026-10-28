@@ -155,4 +155,30 @@ describe("renderChart", () => {
   test("is deterministic for the same input", () => {
     expect(renderChart(fixture(), "dark")).toBe(renderChart(fixture(), "dark"));
   });
+
+  test("every value label fits inside the 880 px width, even after the longest bar", () => {
+    // The longest real-time bar carries a late clause, the widest value label.
+    const summary = fixture({
+      models: [
+        model({ id: "jev", label: "Jev", kind: "system-one", realtimeLanded: 21.5, tooLate: 40 }),
+        model({ id: "b", label: "Model B", kind: "llm", realtimeLanded: 9, tooLate: 70 }),
+      ],
+    });
+    for (const svg of [renderChart(summary, "light"), renderChart(fixture(), "light")]) {
+      for (const [x, content] of valueLabels(svg)) {
+        expect(x + Array.from(content).length * 6.6).toBeLessThanOrEqual(880);
+      }
+    }
+  });
+
+  test("short labels keep the original 70 px value room in the judgement panel", () => {
+    // Panel width 216.67 - 70 = 146.67 for a full bar.
+    const svg = renderChart(fixture(), "light");
+    expect(widthOf(svg, "Jev: 100%")).toBe(146.7);
+  });
 });
+
+/** Value labels (font-size 12) as [x, text], in document order. */
+function valueLabels(svg: string): [number, string][] {
+  return [...svg.matchAll(/<text x="([\d.]+)" y="[\d.]+" font-size="12"[^>]*>([^<]*)<\/text>/g)].map((m) => [Number(m[1]), m[2] ?? ""]);
+}
