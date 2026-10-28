@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFile
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEMO, type Io, main } from "./cli";
+import { summarizeBench } from "./results";
 
 const EXAMPLE = join(import.meta.dir, "../../bench.example.yaml");
 
@@ -283,8 +284,12 @@ describe("bench chart", () => {
       const svg = readFileSync(`${out}-${theme}.svg`, "utf8");
       expect(svg.startsWith("<svg")).toBe(true);
     }
+    const lines = text().split("\n");
+    const source = lines.find((l) => l.includes("srcset="));
+    const img = lines.find((l) => l.trim().startsWith("<img"));
+    expect(source).toMatch(/^\s*<source media="\(prefers-color-scheme: dark\)" srcset="[^"]*-dark\.svg">$/);
+    expect(img).toMatch(/^\s*<img alt="[^"]*" src="[^"]*-light\.svg">$/);
     expect(text()).toContain("<picture>");
-    expect(text()).toContain("srcset=");
   });
 
   test("a missing folder prints the reason and exits 1", async () => {
@@ -299,4 +304,34 @@ describe("bench chart", () => {
     expect(await main([], io)).toBe(0);
     expect(text()).toContain("bun bench chart");
   });
+
+  test("a bench with a real model is not refused without --allow-mock", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    // Rename the mock "jev" to a model id no mock profile has, in every log.
+    for (const name of readdirSync(tmp).filter((f) => f.endsWith(".jsonl"))) {
+      const file = join(tmp, name);
+      const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
+      const renamed = lines.map((line) => JSON.stringify(renameString(JSON.parse(line), "jev", "acme-model")));
+      writeFileSync(file, `${renamed.join("\n")}\n`);
+    }
+    expect((await summarizeBench(tmp)).models.map((m) => m.id)).toContain("acme-model");
+    const out = join(tempDir(), "media/results");
+    const { io, text } = capture();
+    expect(await main(["chart", tmp, "--out", out], io)).toBe(0);
+    expect(text()).not.toContain("--allow-mock");
+    expect(text()).toContain("<picture>");
+    expect(existsSync(`${out}-light.svg`)).toBe(true);
+    expect(existsSync(`${out}-dark.svg`)).toBe(true);
+  });
 });
+
+/** Returns a copy of a parsed JSON value with every string equal to `from` replaced by `to`. */
+function renameString(value: unknown, from: string, to: string): unknown {
+  if (value === from) return to;
+  if (Array.isArray(value)) return value.map((v) => renameString(v, from, to));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, renameString(v, from, to)]));
+  }
+  return value;
+}
