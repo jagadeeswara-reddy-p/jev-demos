@@ -80,8 +80,28 @@ describe("estimate", () => {
     const e = estimate(cfg, [live], checks);
     expect(e.pace).toBe("wall");
     expect(e.matches).toBe(6);
-    expect(e.maxMinutes).toBe(6);
-    expect(e.maxCostUsd).toBeCloseTo(0.72, 6);
+    // 3 realtime matches at 1 min, 3 frozen matches of 100 pieces at (300 + 1000) ms each.
+    expect(e.maxMinutes).toBeCloseTo(9.5, 6);
+    // 3 frozen matches x 100 turns + 3 realtime matches x 120 turns, at $0.001 a turn.
+    expect(e.maxCostUsd).toBeCloseTo(0.66, 6);
+  });
+
+  test("a frozen match is bounded by frozenPieces times the slowest live answer plus 1 s", () => {
+    const frozenOnly = parseBench({ name: "demo", seeds: 1, clocks: ["frozen"], tetris: { frozenPieces: 30 }, models: ["live-x"] });
+    const checks: Check[] = [{ id: "live-x", label: "Live X", ok: true, detail: "", latencyMs: 2000, costUsd: 0.001 }];
+    const e = estimate(frozenOnly, [live], checks);
+    expect(e.matches).toBe(1);
+    expect(e.maxMinutes).toBeCloseTo(1.5, 6);
+    expect(e.maxCostUsd).toBeCloseTo(0.03, 6);
+  });
+
+  test("a frozen sprint40 is bounded by maxPieces, not frozenPieces", () => {
+    const sprint = parseBench({ name: "demo", seeds: 1, clocks: ["frozen"], tetris: { goal: "sprint40", maxPieces: 200 }, models: ["live-x"] });
+    const checks: Check[] = [{ id: "live-x", label: "Live X", ok: true, detail: "", latencyMs: 2000, costUsd: 0.001 }];
+    const e = estimate(sprint, [live], checks);
+    // 200 pieces at (2000 + 1000) ms each.
+    expect(e.maxMinutes).toBeCloseTo(10, 6);
+    expect(e.maxCostUsd).toBeCloseTo(0.2, 6);
   });
 
   test("failed checks are left out of the cost", () => {
@@ -110,6 +130,11 @@ describe("formatEstimate", () => {
     const text = formatEstimate({ matches: 6, pace: "wall", maxMinutes: 6, maxCostUsd: 0.72 });
     expect(text).toContain("at most");
     expect(text).toBe("6 matches, wall-clock pace: at most 6 min and $0.72");
+  });
+
+  test("says 1 match, not 1 matches", () => {
+    expect(formatEstimate({ matches: 1, pace: "fast", maxMinutes: 0, maxCostUsd: 0 })).toContain("1 match,");
+    expect(formatEstimate({ matches: 1, pace: "fast", maxMinutes: 0, maxCostUsd: 0 })).not.toContain("1 matches");
   });
 
   test("fast pace needs no waiting and costs nothing", () => {

@@ -47,12 +47,46 @@ describe("planMatches", () => {
     expect(first.variant).toBe("described");
     expect(first.config.mode).toBe("frozen");
     expect(first.config.seed).toBe(1);
-    expect(first.config.maxPieces).toBe(40);
+    expect(first.config.maxPieces).toBe(100);
     expect(first.config.targetLines).toBe(0);
     expect(first.config.agents).toEqual([
       { id: "jev", name: "Jev", kind: "system-one", sourceId: "jev" },
       { id: "llm-fast", name: "LLM Fast", kind: "llm", sourceId: "llm-fast" },
     ]);
+  });
+
+  test("a frozen match gives every board frozenPieces and ends when all are done; a realtime one keeps the stop share", () => {
+    const sized = parseBench({
+      name: "t",
+      seeds: [1],
+      clocks: ["frozen", "realtime"],
+      tetris: { frozenPieces: 30 },
+      limits: { stopWhenFinished: 0.5 },
+      models: ["jev"],
+    });
+    const [frozen, realtime] = planMatches(sized, MOCKS.slice(0, 2));
+    expect(frozen.config.mode).toBe("frozen");
+    expect(frozen.config.maxPieces).toBe(30);
+    expect(frozen.config.maxDurationMs).toBe(30 * 31_000);
+    expect(frozen.stopShare).toBe(1);
+    expect(realtime.config.mode).toBe("realtime");
+    expect(realtime.config.maxPieces).toBe(sized.maxPieces);
+    expect(realtime.stopShare).toBe(0.5);
+  });
+
+  test("a frozen sprint40 keeps maxPieces, so 40 lines can be reached, and runs for that many pieces", () => {
+    const sprint = parseBench({
+      name: "t",
+      seeds: [1],
+      clocks: ["frozen", "realtime"],
+      tetris: { goal: "sprint40", maxPieces: 200, frozenPieces: 100 },
+      models: ["jev"],
+    });
+    const [frozen] = planMatches(sprint, MOCKS.slice(0, 2));
+    expect(frozen.config.targetLines).toBe(40);
+    expect(frozen.config.maxPieces).toBe(200);
+    expect(frozen.config.maxDurationMs).toBe(200 * 31_000);
+    expect(frozen.stopShare).toBe(1);
   });
 
   test("sprint40 sets the line target to 40", () => {
@@ -69,6 +103,25 @@ describe("quorum", () => {
     expect(quorum(2, 0.75)).toBe(2);
     expect(quorum(3, 1)).toBe(3);
   });
+});
+
+describe("frozen fairness", () => {
+  test("both boards place the same pieces on the frozen clock, and nobody is stopped early", async () => {
+    const fair = parseBench({ name: "t", seeds: [1], clocks: ["frozen"], tetris: { frozenPieces: 30 }, models: ["jev"] });
+    const pair = [entrant("jev", "Jev", "system-one"), entrant("llm-frontier", "Frontier LLM", "llm")];
+    const [plan] = planMatches(fair, pair);
+    const [outcome] = await runMatches([plan], fastOpts(tempDir()));
+    expect(outcome.status).toBe("played");
+    const events = readEvents(outcome.file);
+    expect(events[events.length - 1]).toMatchObject({ t: "run_finished" });
+    expect(events[events.length - 1]).not.toMatchObject({ reason: "stopped" });
+    for (const id of ["jev", "llm-frontier"]) {
+      const locks = events.filter((e) => e.t === "lock" && e.agentId === id).length;
+      const finished = events.find((e) => e.t === "episode_finished" && e.agentId === id);
+      expect(finished?.t === "episode_finished" && finished.outcome).toBe("survived");
+      expect(locks).toBe(30);
+    }
+  }, 20_000);
 });
 
 describe("runMatches", () => {
@@ -159,6 +212,34 @@ describe("runMatches", () => {
     expect((err as Error).message).toBe(`${outDir} was run with stopWhenFinished 0.75; use --out <new folder> or delete it`);
   });
 
+  test("refuses a folder made before the Tetris version was recorded", async () => {
+    const outDir = tempDir();
+    writeFileSync(join(outDir, "settings.json"), `${JSON.stringify({ stopWhenFinished: 0.75 }, null, 2)}\n`);
+    const plans = planMatches(cfg, MOCKS);
+    const err = await runMatches(plans, fastOpts(outDir)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ResumeMismatchError);
+    expect((err as Error).message).toBe(`${outDir} was run with tetris version 1; use --out <new folder> or delete it`);
+  });
+
+  test("refuses a folder made by another Tetris version", async () => {
+    const outDir = tempDir();
+    writeFileSync(
+      join(outDir, "settings.json"),
+      `${JSON.stringify({ stopWhenFinished: 0.75, environment: { id: "tetris", version: "1" } }, null, 2)}\n`,
+    );
+    const plans = planMatches(cfg, MOCKS);
+    const err = await runMatches(plans, fastOpts(outDir)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ResumeMismatchError);
+    expect((err as Error).message).toBe(`${outDir} was run with tetris version 1; use --out <new folder> or delete it`);
+  });
+
+  test("a fresh folder records the stop share and the Tetris version", async () => {
+    const outDir = tempDir();
+    await runMatches(planMatches(cfg, MOCKS), fastOpts(outDir));
+    const saved = JSON.parse(readFileSync(join(outDir, "settings.json"), "utf8"));
+    expect(saved).toEqual({ stopWhenFinished: 0.75, environment: { id: "tetris", version: "2" } });
+  });
+
   test("skips the matches after the cost limit is passed", async () => {
     const costly = parseBench({ name: "t", seeds: [1], clocks: ["frozen", "realtime"], tetris: { maxPieces: 40 }, models: ["jev"] });
     const plans = planMatches(costly, MOCKS);
@@ -194,19 +275,35 @@ describe("outcomeOf", () => {
       { t: "run_started", at: 0, config },
       { t: "decision", at: 1, agentId: "a", pieceId: 1, status: "ok", latencyMs: 1, usage: { inputTokens: 0, outputTokens: 0, costUsd: 0.25 } },
       { t: "decision", at: 2, agentId: "b", pieceId: 1, status: "ok", latencyMs: 1 },
-      { t: "topout", at: 3, agentId: "a", level: 1 },
-      { t: "survived", at: 4, agentId: "b", level: 1, pieces: 40 },
+      { t: "episode_finished", at: 3, agentId: "a", outcome: "topped_out" },
+      { t: "episode_finished", at: 4, agentId: "b", outcome: "survived" },
       { t: "run_finished", at: 5, reason: "stopped" },
     ] as ArenaEvent[];
     const o = outcomeOf("k", "f.jsonl", events);
     expect(o).toEqual({ key: "k", file: "f.jsonl", stoppedEarly: true, unfinished: ["c"], costUsd: 0.25 });
   });
 
+  test("counts a board done from episode_finished alone, and ignores a board that only has its Tetris event", () => {
+    const config = { agents: [{ id: "a" }, { id: "b" }] };
+    const onlyEpisode = [
+      { t: "run_started", at: 0, config },
+      { t: "episode_finished", at: 1, agentId: "a", outcome: "goal" },
+      { t: "run_finished", at: 2, reason: "stopped" },
+    ];
+    expect(outcomeOf("k", "f.jsonl", onlyEpisode).unfinished).toEqual(["b"]);
+    const onlyTetris = [
+      { t: "run_started", at: 0, config },
+      { t: "topout", at: 1, agentId: "a", level: 1 },
+      { t: "run_finished", at: 2, reason: "stopped" },
+    ];
+    expect(outcomeOf("k", "f.jsonl", onlyTetris).unfinished).toEqual(["a", "b"]);
+  });
+
   test("a match that hit the time limit lists no unfinished boards, since the engine says nothing per board", () => {
     const config = { agents: [{ id: "a" }, { id: "b" }] };
     const events = [
       { t: "run_started", at: 0, config },
-      { t: "topout", at: 1, agentId: "a", level: 1 },
+      { t: "episode_finished", at: 1, agentId: "a", outcome: "topped_out" },
       { t: "run_finished", at: 2, reason: "time_limit" },
     ] as ArenaEvent[];
     expect(outcomeOf("k", "f.jsonl", events)).toEqual({ key: "k", file: "f.jsonl", stoppedEarly: false, unfinished: [], costUsd: 0 });

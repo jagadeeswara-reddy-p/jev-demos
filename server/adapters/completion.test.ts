@@ -28,6 +28,7 @@ describe("completionBody", () => {
     expect(body.messages[1].content).toContain("option_1:");
     expect(body.response_format.type).toBe("json_schema");
     expect(body.response_format.json_schema.schema.properties.choice.enum).toHaveLength(req.action.options.length);
+    expect(body.response_format.json_schema.name).toBe("choice");
     expect(body).not.toHaveProperty("max_tokens");
   });
 

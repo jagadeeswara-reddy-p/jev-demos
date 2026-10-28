@@ -1,8 +1,67 @@
-# Earlier results
+# Results history
 
-The first rounds, kept for reference. Current results are in the [README](../README.md#benchmarks).
+Every published round, newest first, kept for reference. The latest results are in the [README](../README.md#latest-results).
 The `bun run stats` commands below were run on our own run logs, which aren't published; the
 2026-10-17 benchmark logs are, in [benchmarks/](../benchmarks/README.md).
+
+## 2026-10-17: six models, Tetris v1 and JevBench
+
+Measured on 2026-10-17. Laya and Strands Decider ran on one NVIDIA A10G in AWS us-east-1; every other model through its provider's API. All round trips are from the same machine in India, so latency includes about 0.2–0.3 s of network.
+
+The recording of the six-model run (seed 1, real-time clock, 6× speed) is [docs/media/demo-six-models.mp4](media/demo-six-models.mp4). Jev lands 148 pieces; Clef 106; GPT-6.1 Sol 32; Laya and Strands Decider top out within 25 seconds; Claude Opus 5.5 lands 9, too slow for the falling pieces. The results screen follows the game.
+
+### Tetris v1: under time pressure
+
+Six models on the same pieces, four live games (seeds 1–4, real-time clock),
+each stopped once four of the six boards had topped out. The winner of a game is
+the board with the most **pieces landed**: placed where the model chose, in time.
+Tetris v1, 4 seeds, no intervals yet.
+
+| Model | Type | Pieces landed per game | Games won | Best moves | Top-3 moves | Median answer | Too late | Cost (4 games) |
+|---|---|---|---|---|---|---|---|---|
+| **Jev** | decision model | **118.8** | **4 of 4** | 60% | 84% | **289 ms** | **0%** | $0.03 |
+| Cloudflare Clef | decision model | 69.3 | 0 | 49% | 80% | 438 ms | 1% | $0.11 |
+| GPT-6.1 Sol | language model | 23.3 | 0 | 72% | 95% | 2.04 s | 13% | $0.48 |
+| Strands Decider 2B | decision model | 21.0 | 0 | 15% | 39% | 435 ms | 1% | self-hosted |
+| Laya | decision model | 20.5 | 0 | 7% | 15% | 452 ms | 0% | self-hosted |
+| Claude Opus 5.5 | language model | 9.5 | 0 | **79%** | **96%** | 5.14 s | 46% | $1.02 |
+
+**Best moves** is the share of answers that picked the reference heuristic's
+top option, counted on every answer, late or not, so it measures judgement
+apart from speed. The column is called **Agreement with heuristic** in the
+README from v0.1 on; the numbers are the same. The large language models choose
+best but answer too slowly for the falling pieces; Laya and Strands answer fast
+but choose poorly; Jev is the only model that is both fast and good. The game logs are in
+[benchmarks/2026-10-17](../benchmarks/README.md); `bun run stats benchmarks/2026-10-17/tetris/*.jsonl` recomputes this table.
+
+### JevBench: typed decisions on text
+
+[JevBench](https://github.com/fstandhartinger/jevbench) (v1.0.0, commit `609a664`)
+is an independent benchmark for decision models: 231 public questions in 18
+families (yes/no, pick one, rate on a scale) about short texts, in three tiers.
+It is the home ground of Laya and Strands Decider, so it shows whether a weak
+Tetris score means a weak model or only a poor fit for Tetris. Each model
+answered every question once, through JevBench's own adapters.
+
+| Model | Accuracy | Easy | Original | Hard | Median time | Cost per 1,000 decisions |
+|---|---|---|---|---|---|---|
+| GPT-6.1 Sol | **99.6%** (230/231) | 48/48 | 72/72 | 110/111 | 1.7 s | $2.12 |
+| Claude Opus 5.5 | **99.6%** (230/231) | 48/48 | 72/72 | 110/111 | 2.5 s | $10.01 |
+| Cloudflare Clef | **87.9%** (203/231) | 48/48 | 71/72 | 84/111 | 393 ms | $0.17 |
+| Jev | **86.1%** (199/231) | 48/48 | 71/72 | 80/111 | 297 ms | $0.04 |
+| Strands Decider 2B | **77.9%** (180/231) | 48/48 | 67/72 | 65/111 | 516 ms | self-hosted |
+| Laya | **53.7%** (124/231) | 47/48 | 47/72 | 30/111 | 473 ms | self-hosted |
+
+GPT and Opus each missed one question; Jev and Clef lose most of their points on the hard tier. JevBench's own leaderboard lists Jev 1.13.0 at 96.3% on its scored 242-decision set; this table is the 231-question public set, one pass per model, run by us on 2026-10-17. Cost is per 1,000 decisions at list prices.
+
+Given time, the language models answer almost everything correctly; the
+decision models trade some accuracy for answers in a few hundred milliseconds,
+which is what the falling pieces reward. Strands Decider is a solid small
+decision model on text (it matches its own published 72–76%) yet poor at
+Tetris; Laya stays weak on both. Why each model scores what it does, and
+everything we tried, is in [findings.md](findings.md).
+
+The 2026-10-10 demo (three models) is [docs/media/demo.mp4](media/demo.mp4); its round is below.
 
 ## Results so far
 

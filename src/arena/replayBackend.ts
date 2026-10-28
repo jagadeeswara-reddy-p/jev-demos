@@ -40,7 +40,19 @@ export function toJsonl(events: ArenaEvent[]): string {
   return `${events.map((e) => JSON.stringify(e)).join("\n")}\n`;
 }
 
-const EVENT_TYPES = new Set(["run_started", "level", "spawn", "move", "decision", "lock", "topout", "survived", "goal", "run_finished"]);
+const EVENT_TYPES = new Set([
+  "run_started",
+  "level",
+  "spawn",
+  "move",
+  "decision",
+  "lock",
+  "topout",
+  "survived",
+  "goal",
+  "episode_finished",
+  "run_finished",
+]);
 const isCells = (v: unknown) => Array.isArray(v) && v.every((c) => Array.isArray(c) && c.length === 2 && c.every(Number.isFinite));
 
 /**

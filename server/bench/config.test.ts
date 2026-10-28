@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MOCK_SOURCES } from "../../src/mock/mockSource";
 import { BenchConfigError, loadBench, parseBench } from "./config";
+import { resolveEntrants } from "./entrants";
 
 const EXAMPLE = join(import.meta.dir, "../../bench.example.yaml");
 
@@ -27,6 +29,7 @@ describe("parseBench defaults", () => {
     expect(c.goal).toBe("survive");
     expect(c.maxDurationMs).toBe(600000);
     expect(c.maxPieces).toBe(1000);
+    expect(c.frozenPieces).toBe(100);
     expect(c.stopWhenFinished).toBe(0.75);
     expect(c.maxCostUsd).toBeUndefined();
     expect(c.models).toEqual(["jev"]);
@@ -136,6 +139,9 @@ describe("limits and tetris settings", () => {
     expect(fieldOf(() => parseBench({ name: "a", tetris: { maxDurationMs: 3600001 }, models: ["jev"] }))).toBe("tetris.maxDurationMs");
     expect(fieldOf(() => parseBench({ name: "a", tetris: { maxPieces: 0 }, models: ["jev"] }))).toBe("tetris.maxPieces");
     expect(fieldOf(() => parseBench({ name: "a", tetris: { goal: "clear" }, models: ["jev"] }))).toBe("tetris.goal");
+    expect(fieldOf(() => parseBench({ name: "a", tetris: { frozenPieces: 9 }, models: ["jev"] }))).toBe("tetris.frozenPieces");
+    expect(fieldOf(() => parseBench({ name: "a", tetris: { frozenPieces: 1001 }, models: ["jev"] }))).toBe("tetris.frozenPieces");
+    expect(parseBench({ name: "a", tetris: { frozenPieces: 10 }, models: ["jev"] }).frozenPieces).toBe(10);
     const c = parseBench({ name: "a", tetris: { goal: "sprint40", maxDurationMs: 10000, maxPieces: 10000 }, models: ["jev"] });
     expect([c.goal, c.maxDurationMs, c.maxPieces]).toEqual(["sprint40", 10000, 10000]);
   });
@@ -160,7 +166,15 @@ describe("loadBench", () => {
   test("parses the example file", async () => {
     const c = await loadBench(EXAMPLE);
     expect(c.name).toBe("my-first-bench");
-    expect(c.models).toHaveLength(3);
+    expect(c.models).toHaveLength(5);
+    expect(c.models.every((m) => typeof m === "string")).toBe(true);
+  });
+
+  test("the example file runs on mock models only, with no keys", async () => {
+    const c = await loadBench(EXAMPLE);
+    const entrants = resolveEntrants(c.models, MOCK_SOURCES, {});
+    expect(entrants.filter((e) => e.unavailable)).toEqual([]);
+    expect(entrants.filter((e) => e.live)).toEqual([]);
   });
 
   test("a JSON file with the same content gives the same config", async () => {

@@ -14,7 +14,7 @@ export function completionBody(model: ModelConfig, turn: Turn): Record<string, u
   const mode = model.jsonMode ?? "schema";
   const responseFormat =
     mode === "schema"
-      ? { type: "json_schema", json_schema: { name: "placement", strict: true, schema: choiceSchema(turn) } }
+      ? { type: "json_schema", json_schema: { name: "choice", strict: true, schema: choiceSchema(turn) } }
       : mode === "object"
         ? { type: "json_object" }
         : undefined;

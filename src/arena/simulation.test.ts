@@ -175,3 +175,34 @@ describe("ArenaSimulation", () => {
     console.log(rows.map((r) => r.join("\n")).join("\n---\n"));
   });
 });
+
+describe("episode_finished", () => {
+  const outcomeOfEnd = { topout: "topped_out", survived: "survived", goal: "goal" } as const;
+
+  it("follows each topout, survived and goal at once, for the same board and with the matching outcome", () => {
+    const runs = [
+      runToEnd(config(["jev", "random"])),
+      runToEnd({ ...config(["heuristic", "jev"], "frozen"), targetLines: 10 }),
+      runToEnd({ ...config(["heuristic"]), maxPieces: 5 }),
+    ];
+    let ends = 0;
+    for (const events of runs) {
+      events.forEach((e, i) => {
+        if (e.t !== "topout" && e.t !== "survived" && e.t !== "goal") return;
+        ends++;
+        expect(events[i + 1]).toEqual({ t: "episode_finished", at: e.at, agentId: e.agentId, outcome: outcomeOfEnd[e.t] });
+      });
+    }
+    const all = runs.flat();
+    expect(all.filter((e) => e.t === "episode_finished")).toHaveLength(ends);
+    expect(ends).toBeGreaterThan(0);
+  });
+
+  it("emits one episode_finished per finished board and no others", () => {
+    const events = runToEnd(config(["jev", "heuristic", "random"]));
+    const finished = events.filter((e) => e.t === "episode_finished");
+    const boards = events.filter((e) => e.t === "topout" || e.t === "survived" || e.t === "goal");
+    expect(finished.length).toBeGreaterThan(0);
+    expect(finished).toHaveLength(boards.length);
+  });
+});

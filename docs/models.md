@@ -95,7 +95,7 @@ Authorization: Bearer {apiKey}
     { "role": "system", "content": "You are playing Tetris. Choose where the current piece should land. ... Reply with JSON only, in the form {\"choice\": \"<option id>\"}." },
     { "role": "user", "content": "Board, 10 columns by 20 rows, ...\n\nOptions:\noption_1: Rotation 1, columns 1-2, ...\n..." }
   ],
-  "response_format": { "type": "json_schema", "json_schema": { "name": "placement", "strict": true, "schema": { ... "enum": ["option_1", ...] } } },
+  "response_format": { "type": "json_schema", "json_schema": { "name": "choice", "strict": true, "schema": { ... "enum": ["option_1", ...] } } },
   ...extraBody
 }
 ```
@@ -121,7 +121,7 @@ Authorization: Bearer {apiKey}
   "model": "{model}",
   "state": "Board, 10 columns by 20 rows, ...",
   "questions": {
-    "placement": {
+    "choice": {
       "type": "choice",
       "instructions": "You are playing Tetris. Choose where the current piece should land. ...",
       "criteria": { "option_1": "Rotation 1, columns 1-2, lands 1 row above the floor; ...", "option_2": "..." }
@@ -133,7 +133,7 @@ Authorization: Bearer {apiKey}
 
 ```json
 {
-  "answers": { "placement": { "choice": "option_2", "probabilities": { "option_1": 0.04, "option_2": 0.71 }, "confidence": 0.68 } },
+  "answers": { "choice": { "choice": "option_2", "probabilities": { "option_1": 0.04, "option_2": 0.71 }, "confidence": 0.68 } },
   "usage": { "input_tokens": 2235, "output_tokens": 350 }
 }
 ```
@@ -149,7 +149,7 @@ Authorization: Bearer {apiKey}
 Some decision models prefer options by where they are listed, not by what they
 say. Laya's README measures this on five options with identical text: the first
 slots win. With `rotations: N` the adapter sends N copies of the question in one
-request, `placement_0` … `placement_{N-1}`. Each copy carries an `option_order`,
+request, `choice_0` … `choice_{N-1}`. Each copy carries an `option_order`,
 a permutation in which slot `s` shows option `option_order[s]`, shifted evenly
 across the copies. The adapter averages the probabilities and picks the highest.
 
@@ -167,7 +167,7 @@ across the copies. The adapter averages the probabilities and picks the highest.
 `server/adapters/bedrock.ts`. For chat models on AWS Bedrock, through the
 Converse API, which has one request shape for every provider. It sends the same
 system and user text as the completion adapter, and asks for the answer as a call
-to a `choose_placement` tool whose input is limited to the offered option ids.
+to a `choose_option` tool whose input is limited to the offered option ids.
 
 Bedrock requests are signed with AWS credentials, so this adapter is for
 `models.json` only. Credentials and region come from the usual `AWS_*`

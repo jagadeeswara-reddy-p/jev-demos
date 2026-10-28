@@ -22,6 +22,10 @@ The game, what every model is shown, how answers are judged, and what the screen
 | Speed control | live: 1× only; mock and replay: 1–8× | same |
 
 Run both on the same seed. Real time shows speed, and frozen shows skill without speed.
+On the page, a frozen run still stops at the time limit. In `bun bench`, a frozen
+match gives every board the same number of pieces (`tetris.frozenPieces`, 100 by
+default; a frozen sprint uses `tetris.maxPieces`), and runs until each board has
+placed them or topped out.
 
 ### Two goals: survive or sprint
 
@@ -32,7 +36,7 @@ config, so replays and `bun run stats` use the same rules.
 |---|---|---|
 | A board stops when | it tops out (or places 1,000 pieces) | it tops out, or **clears 40 lines** (shown as FINISHED) |
 | Winner, real time | most pieces landed, then lines, then time survived | **first to 40 lines**; boards that fell short rank by lines, then pieces landed |
-| Winner, frozen clock | same as real time | **fewest pieces to 40 lines**, since time there mostly measures waiting |
+| Winner, frozen clock | most pieces landed, then lines, then pieces placed (time never breaks a tie) | **fewest pieces to 40 lines**, since time there mostly measures waiting |
 
 The rules live in one place, `src/arena/ranking.ts`, shared by the results
 chart and the stats script.
@@ -123,9 +127,10 @@ So this arena asks the question that kind of model is built for: *given clear
 descriptions of every legal move, how quickly and how well can you pick one?*
 The engine does the geometry, and the model does the choosing. The language
 model gets exactly the same descriptions, so neither side has more information.
-For that reason there is deliberately no "board only" variant, where options
-would carry just a rotation and columns: it would test spatial reasoning, which
-is not the comparison this project is about.
+That is the `described` variant, the one that runs today. A `board-only`
+variant is planned: there each option gives only a rotation and columns, so the
+model has to picture the result itself. That tests 2D reasoning, not just
+judgement. See the 2×2 in [the design doc](design/eval-engine.md#tetris-variants-the-22).
 
 ### 3. Sending it
 
@@ -153,7 +158,7 @@ per-model setting change how it is sent, never what it says:
 **AWS Bedrock models** (`server/adapters/bedrock.ts`) get the same system and
 user text as the completion adapter. They go through Bedrock's Converse API,
 which uses one request shape for every provider, and answer with a forced
-`choose_placement` tool call whose `choice` is limited to the offered ids.
+`choose_option` tool call whose `choice` is limited to the offered ids.
 Bedrock caches OpenAI prompts automatically and reports cache reads and writes
 separately, so those are counted as input tokens to keep the token columns comparable.
 
@@ -179,6 +184,8 @@ guessed from free text.
 **Cost** = tokens × the per-million prices from `.env`. The providers report the token counts.
 
 ### Move quality (best moves)
+
+The README calls this measure **Agreement with heuristic**. It is the same number.
 
 Speed alone can't tell a slow model with good judgement from a bad one, so every
 answer is also graded. When a piece appears, the game scores every offered

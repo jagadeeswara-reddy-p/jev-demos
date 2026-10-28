@@ -176,8 +176,9 @@ shows it.
 GPT-6.1 Sol and Claude Opus 5.5 choose best (72% and 79% best moves, 95–96% in
 the top three; 99.6% each on JevBench) but answer in 2–5 seconds, so under
 the real-time clock 13% and 46% of their answers arrive after the piece has
-landed. With the clock frozen they would rank first; under time pressure they
-rank last but one and last.
+landed. With the clock frozen, every answer counts, so their 72% and 79% best
+moves would decide the ranking. That is a projection from the best-move rates,
+not a measured frozen-clock result; under time pressure they rank last but one and last.
 
 ## Could we host Clef ourselves?
 

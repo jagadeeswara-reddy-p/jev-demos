@@ -2,14 +2,15 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tetris } from "../../src/arena/environment";
 import type { ArenaEvent, TetrisAgent } from "../../src/arena/types";
+import { isCoreEvent } from "../../src/core/types";
 import type { BenchConfig } from "./config";
 import type { MatchPlan } from "./plan";
 
 // Plays the matches one at a time. A match's events are buffered and written to
 // <outDir>/<key>.jsonl when the match ends, so a crash mid-match loses that match's
 // log and the next run plays it again. A finished log is reused on the next run;
-// a cut-short one is played again from the start. The stop rule ends a match once
-// enough boards are done.
+// a cut-short one is played again from the start. The stop rule ends a realtime
+// match once enough boards are done; frozen matches play every board to the end.
 
 /** A finished log or folder that was made by a different bench: the run stops rather than mix results. */
 export class ResumeMismatchError extends Error {}
@@ -31,6 +32,7 @@ export interface RunOptions {
   agentsFor(plan: MatchPlan): TetrisAgent[];
   /** "fast": simulated time as fast as possible (mock-only line-ups). "wall": 1:1 with the wall clock. */
   pace: "fast" | "wall";
+  /** Recorded in settings.json, so a folder is not resumed with another value. The stop rule uses each plan's stopShare. */
   stopWhenFinished: number;
   maxCostUsd?: number;
   /** The ids of the agents whose costs are real spend (live models). Mock costs are play money and are left out of the cap. */
@@ -45,11 +47,12 @@ export function quorum(boards: number, share: number): number {
 }
 
 /** `paid`, when given, is the agents whose answer costs count; without it every agent's cost counts. */
-export function outcomeOf(key: string, file: string, events: ArenaEvent[], paid?: ReadonlySet<string>): Omit<MatchOutcome, "status"> {
-  const started = events.find((e) => e.t === "run_started");
+export function outcomeOf(key: string, file: string, events: { t: string }[], paid?: ReadonlySet<string>): Omit<MatchOutcome, "status"> {
+  const core = events.filter(isCoreEvent);
+  const started = core.find((e) => e.t === "run_started");
   const agents = started?.t === "run_started" ? started.config.agents.map((a) => a.id) : [];
-  const done = new Set(events.flatMap((e) => (e.t === "topout" || e.t === "survived" || e.t === "goal" ? [e.agentId] : [])));
-  const last = events[events.length - 1];
+  const done = new Set(core.flatMap((e) => (e.t === "episode_finished" ? [e.agentId] : [])));
+  const last = core[core.length - 1];
   const stopped = last?.t === "run_finished" && last.reason === "stopped";
   // Only a stop says which boards were still playing; a time limit ends without a per-board event.
   const unfinished = stopped ? agents.filter((id) => !done.has(id)) : [];
@@ -58,7 +61,7 @@ export function outcomeOf(key: string, file: string, events: ArenaEvent[], paid?
     file,
     stoppedEarly: stopped && unfinished.length > 0,
     unfinished,
-    costUsd: events.reduce((sum, e) => (e.t === "decision" && (!paid || paid.has(e.agentId)) ? sum + (e.usage?.costUsd ?? 0) : sum), 0),
+    costUsd: core.reduce((sum, e) => (e.t === "decision" && (!paid || paid.has(e.agentId)) ? sum + (e.usage?.costUsd ?? 0) : sum), 0),
   };
 }
 
@@ -109,12 +112,18 @@ const SETTINGS = "settings.json";
 async function checkSettings(outDir: string, stopWhenFinished: number): Promise<void> {
   const file = Bun.file(join(outDir, SETTINGS));
   if (await file.exists()) {
-    const saved = (await file.json()) as { stopWhenFinished?: number };
+    const saved = (await file.json()) as { stopWhenFinished?: number; environment?: { version?: string } };
     if (saved.stopWhenFinished !== stopWhenFinished) {
       throw new ResumeMismatchError(`${outDir} was run with stopWhenFinished ${saved.stopWhenFinished}; use --out <new folder> or delete it`);
     }
+    // Folders made before the version was recorded were played with Tetris v1.
+    const savedVersion = saved.environment?.version ?? "1";
+    if (savedVersion !== tetris.version) {
+      throw new ResumeMismatchError(`${outDir} was run with tetris version ${savedVersion}; use --out <new folder> or delete it`);
+    }
   }
-  await Bun.write(file, `${JSON.stringify({ stopWhenFinished }, null, 2)}\n`);
+  const environment = { id: tetris.id, version: tetris.version };
+  await Bun.write(file, `${JSON.stringify({ stopWhenFinished, environment }, null, 2)}\n`);
 }
 
 /** A finished log is only reused for the same line-up and settings; anything else is refused and left as it is. */
@@ -144,12 +153,12 @@ async function play(plan: MatchPlan, file: string, opts: RunOptions): Promise<Ar
   const writer = Bun.file(file).writer();
   const events: ArenaEvent[] = [];
   const done = new Set<string>();
-  const need = quorum(plan.config.agents.length, opts.stopWhenFinished);
+  const need = quorum(plan.config.agents.length, plan.stopShare);
   const emit = (batch: ArenaEvent[]) => {
     for (const e of batch) {
       events.push(e);
       writer.write(`${JSON.stringify(e)}\n`);
-      if (e.t === "topout" || e.t === "survived" || e.t === "goal") done.add(e.agentId);
+      if (isCoreEvent(e) && e.t === "episode_finished") done.add(e.agentId);
     }
   };
   try {

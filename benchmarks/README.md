@@ -1,6 +1,6 @@
 # Benchmark data
 
-The raw results behind the tables in the [README](../README.md#benchmarks), so anyone can check or recompute them.
+The raw results behind the tables in the [README](../README.md#latest-results), so anyone can check or recompute them.
 
 ## 2026-10-17
 

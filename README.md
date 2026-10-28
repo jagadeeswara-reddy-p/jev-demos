@@ -1,101 +1,80 @@
-# Deadline Tetris
+# decision-bench
 
-A live benchmark for decision models and language models. Every model plays the
-same Tetris game, piece for piece, with the same prompt and rules, and **the
-pieces keep falling while it thinks**: an answer that arrives after the piece
-has landed doesn't count. It measures speed and judgement together, then
-separately.
+[![CI](https://github.com/jagadeeswara-reddy-p/jev-demos/actions/workflows/ci.yml/badge.svg)](https://github.com/jagadeeswara-reddy-p/jev-demos/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Six models, 2026-10-17** (seed 1, real-time clock, 6× speed; click for the full two-minute recording):
+Benchmark models on judgement and speed, separately, by making them play real-time games. 2D reasoning (a board-only variant) is coming.
 
-[![Live run of six models: Jev, Cloudflare Clef, Laya, Claude Opus 5.5, Strands Decider and GPT-6.1 Sol, at 6× speed](docs/media/demo-six-models.gif)](docs/media/demo-six-models.mp4)
+The first environment is *Deadline Tetris*, where pieces keep falling while the model thinks.
 
-*Jev lands 148 pieces; Clef 106; GPT-6.1 Sol 32; Laya and Strands Decider top
-out within 25 seconds; Claude Opus 5.5 lands 9, too slow for the falling pieces.
-The results screen follows the game.*
+[![Six models playing Deadline Tetris at 6× speed](docs/media/demo-six-models.gif)](docs/media/demo-six-models.mp4)
 
-**Three models, 2026-10-10** (seed 1, real-time clock, 4× speed): Jev, GPT-6.1 Sol and Claude Haiku 5.5.
+*Seed 1, real-time clock, 6× speed. Click for the full recording.*
 
-[![Live run of three models at 4× speed](docs/media/demo.gif)](docs/media/demo.mp4)
+## Latest results
 
-- [Benchmarks](#benchmarks)
-- [Setup](#setup)
-- [Documentation](#documentation)
+Deadline Tetris v1, 4 seeds, no intervals yet. Six models, four live games on a real-time clock, 2026-10-17.
 
----
-
-## Benchmarks
-
-Measured on 2026-10-17. Laya and Strands Decider ran on one NVIDIA A10G in AWS
-us-east-1; every other model through its provider's API. All round trips are
-from the same machine in India, so latency includes about 0.2–0.3 s of network.
-
-### Tetris under time pressure
-
-Six models on the same pieces, four live games (seeds 1–4, real-time clock),
-each stopped once four of the six boards had topped out. The winner of a game is
-the board with the most **pieces landed**: placed where the model chose, in time.
-
-| Model | Type | Pieces landed per game | Games won | Best moves | Top-3 moves | Median answer | Too late | Cost (4 games) |
-|---|---|---|---|---|---|---|---|---|
-| **Jev** | decision model | **118.8** | **4 of 4** | 60% | 84% | **289 ms** | **0%** | $0.03 |
-| Cloudflare Clef | decision model | 69.3 | 0 | 49% | 80% | 438 ms | 1% | $0.11 |
-| GPT-6.1 Sol | language model | 23.3 | 0 | 72% | 95% | 2.04 s | 13% | $0.48 |
-| Strands Decider 2B | decision model | 21.0 | 0 | 15% | 39% | 435 ms | 1% | self-hosted |
-| Laya | decision model | 20.5 | 0 | 7% | 15% | 452 ms | 0% | self-hosted |
-| Claude Opus 5.5 | language model | 9.5 | 0 | **79%** | **96%** | 5.14 s | 46% | $1.02 |
-
-**Best moves** is the share of answers that picked the reference heuristic's
-top option, counted on every answer, late or not, so it measures judgement
-apart from speed. The large language models choose best but answer too slowly
-for the falling pieces; Laya and Strands answer fast but choose poorly; Jev is
-the only model that is both fast and good. The game logs are in
-[benchmarks/2026-10-17](benchmarks/README.md); `bun run stats benchmarks/2026-10-17/tetris/*.jsonl` recomputes this table.
-
-### JevBench: typed decisions on text
-
-[JevBench](https://github.com/fstandhartinger/jevbench) (v1.0.0, commit `609a664`)
-is an independent benchmark for decision models: 231 public questions in 18
-families (yes/no, pick one, rate on a scale) about short texts, in three tiers.
-It is the home ground of Laya and Strands Decider, so it shows whether a weak
-Tetris score means a weak model or only a poor fit for Tetris. Each model
-answered every question once, through JevBench's own adapters.
-
-| Model | Accuracy | Easy | Original | Hard | Median time | Cost per 1,000 decisions |
+| Model | Type | Pieces landed | Agreement with heuristic | Median answer | Too late | Cost |
 |---|---|---|---|---|---|---|
-| GPT-6.1 Sol | **99.6%** (230/231) | 48/48 | 72/72 | 110/111 | 1.7 s | $2.12 |
-| Claude Opus 5.5 | **99.6%** (230/231) | 48/48 | 72/72 | 110/111 | 2.5 s | $10.01 |
-| Cloudflare Clef | **87.9%** (203/231) | 48/48 | 71/72 | 84/111 | 393 ms | $0.17 |
-| Jev | **86.1%** (199/231) | 48/48 | 71/72 | 80/111 | 297 ms | $0.04 |
-| Strands Decider 2B | **77.9%** (180/231) | 48/48 | 67/72 | 65/111 | 516 ms | self-hosted |
-| Laya | **53.7%** (124/231) | 47/48 | 47/72 | 30/111 | 473 ms | self-hosted |
+| Jev | decision model | 118.8 | 60% | 289 ms | 0% | $0.03 |
+| Cloudflare Clef | decision model | 69.3 | 49% | 438 ms | 1% | $0.11 |
+| GPT-6.1 Sol | language model | 23.3 | 72% | 2.04 s | 13% | $0.48 |
+| Strands Decider 2B | decision model | 21.0 | 15% | 435 ms | 1% | self-hosted |
+| Laya | decision model | 20.5 | 7% | 452 ms | 0% | self-hosted |
+| Claude Opus 5.5 | language model | 9.5 | 79% | 5.14 s | 46% | $1.02 |
 
-GPT and Opus each missed one question; Jev and Clef lose most of their points on the hard tier. JevBench's own leaderboard lists Jev 1.13.0 at 96.3% on its scored 242-decision set; this table is the 231-question public set, one pass per model, run by us on 2026-10-17. Cost is per 1,000 decisions at list prices.
+Pieces landed: average per game. Cost: all four games.
 
-Given time, the language models answer almost everything correctly; the
-decision models trade some accuracy for answers in a few hundred milliseconds,
-which is what the falling pieces reward. Strands Decider is a solid small
-decision model on text (it matches its own published 72–76%) yet poor at
-Tetris; Laya stays weak on both. Why each model scores what it does, and
-everything we tried, is in [docs/findings.md](docs/findings.md).
+**Agreement with heuristic** is the share of answers that picked the reference heuristic's top option. It counts every answer, late or not, so it measures judgement apart from speed ([how it works](docs/how-it-works.md#move-quality-best-moves)).
 
----
+The language models agree with the heuristic more often but answer more slowly, so more of their answers arrive after the piece has landed.
 
-## Setup
+More detail in [results history](docs/results-history.md) and [findings](docs/findings.md). The raw logs are in [benchmarks/](benchmarks/README.md), and `bun run stats benchmarks/2026-10-17/tetris/*.jsonl` recomputes this table.
 
-Requires [Bun](https://bun.sh) 1.4 or later. One Bun process serves the page and the API.
+## Quick start (no keys)
+
+Needs [Bun](https://bun.sh) 1.4 or later.
 
 ```sh
 git clone https://github.com/jagadeeswara-reddy-p/jev-demos && cd jev-demos
 bun install
-cp .env.example .env     # add the keys for the models you want (below)
-bun dev                  # http://localhost:5317
+bun bench demo      # six mock models, no API calls; finishes in about a second
 ```
 
-The server prints each model and whether it is ready. Open the page, press
-**Models** in the top bar, tick up to six models for the line-up (press **Test**
-on any of them for one real move), then **Start live run**. No keys yet? The
-**Line-up** menu has mock line-ups that run entirely in the browser.
+## Benchmark your models
+
+```sh
+bun bench init      # writes bench.yaml and .env from the examples
+bun bench doctor    # checks each model and its key
+bun bench run       # plays the bench and writes the logs
+```
+
+Edit `bench.yaml` to choose models, seeds, clocks and stop rule. The example
+uses mock models only; for a live model, put its key in `.env` ([keys](#keys-env)).
+Both files are git-ignored. Reference: [docs/bench.md](docs/bench.md).
+
+## What it measures
+
+Run both clocks on the same seed.
+
+| | Real time | Frozen |
+|---|---|---|
+| While a model thinks | pieces keep falling | the game waits |
+| An answer counts if | it arrives before the piece locks | it arrives within 30 s |
+| What it measures | is the model fast enough for a live loop? | does the model place pieces well? |
+
+- In `bun bench`, a frozen match gives every board the same number of pieces (`tetris.frozenPieces`, 100 by default; a frozen `sprint40` uses `tetris.maxPieces`) and has no early stop. On the page, a frozen run still stops at the time limit.
+- Every board gets the same pieces in the same order, the same prompt and the same rules. Real-time matches share one clock.
+- **Coming:** a board-only variant, to test 2D reasoning on its own. See [how it works](docs/how-it-works.md).
+
+## Watch it in the page
+
+```sh
+bun dev             # http://localhost:5317
+```
+
+Press **Models**, tick up to six models, press **Test** on any model for one real move, then **Start live run**. The **Line-up** menu has mock line-ups that need no keys. **Load log** replays a saved `.jsonl` run log.
 
 ### Keys (`.env`)
 
@@ -105,70 +84,21 @@ on any of them for one real move), then **Start live run**. No keys yet? The
 | Cloudflare Clef | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` (Workers AI permission) |
 | GPT-6.1 Sol, Claude Opus 5.5, Claude Haiku 5.5 (AWS Bedrock) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` or `AWS_PROFILE`; `AWS_REGION` (default `us-east-1`) |
 | Any OpenAI-compatible chat model | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, or add it in the Models panel |
-| Laya, Strands Decider | `LAYA_BASE_URL`, `STRANDS_BASE_URL`; `deploy/ec2/launch.sh` sets them (below) |
+| Laya, Strands Decider | `LAYA_BASE_URL`, `STRANDS_BASE_URL`; `deploy/ec2/launch.sh` sets them |
 
-Restart `bun dev` after editing `.env`. Keys stay on the server; the page never
-receives them. The server listens on `127.0.0.1` unless `HOST` is set.
+Restart `bun dev` after editing `.env`. Keys stay on the server; the page never receives them. The server listens on `127.0.0.1` unless `HOST` is set.
 
-### Adding a model
+Page-added models are saved in `models.local.json` (git-ignored). Laya and Strands Decider run on a GPU that costs money while it is up; [docs/self-hosting.md](docs/self-hosting.md) covers it.
 
-In the page: **Models** → **Add model**. Choose the adapter by the API the model speaks:
+## Extend it
 
-- **Completion**: an OpenAI-compatible Chat Completions API (OpenAI, OpenRouter, Groq, vLLM, Ollama, gateways).
-- **Decision**: the Decisions API, `POST /v1/systemone` (Jev, Laya, Clef, Strands Decider).
+- **Add a model:** [docs/models.md](docs/models.md). **Write an adapter:** [docs/models.md](docs/models.md#writing-a-new-adapter).
+- **Write an environment:** the contract is in `src/core/types.ts`; see [docs/design/eval-engine.md](docs/design/eval-engine.md#environment-plugin).
+- **Developer notes:** [development](docs/development.md), [API](docs/api.md), [configuration](docs/configuration.md).
 
-Give a name, the API address, the model name and a key; saving runs one test
-move. Models added this way are saved in `models.local.json` (git-ignored).
-Built-in models live in `models.json`. Every setting is in [docs/models.md](docs/models.md).
+## Contributing, security, citation, license
 
-### Self-hosted models (Laya and Strands Decider)
-
-```sh
-deploy/ec2/launch.sh        # g5.xlarge (A10G, about $1/hour); deletes itself after 1 hour
-deploy/ec2/wait-ready.sh    # waits until both answer real moves (about 4 minutes)
-bun dev                     # restart so the page uses the new address
-deploy/ec2/teardown.sh      # when you're done
-```
-
-Needs AWS credentials in `.env`. Details, costs and debugging: [docs/self-hosting.md](docs/self-hosting.md).
-
-### Benchmark from the command line
-
-```sh
-bun bench demo      # six mock models, no keys needed
-bun bench init      # writes bench.yaml and .env to edit
-bun bench doctor    # checks every model and its key
-bun bench run       # plays the bench and writes the logs
-```
-
-The full reference is in [docs/bench.md](docs/bench.md).
-
-### Checks
-
-```sh
-bun run lint && bun run typecheck && bun test
-bun run smoke               # one real move from every model that can run
-```
-
----
-
-## Documentation
-
-| | |
-|---|---|
-| [docs/findings.md](docs/findings.md) | What we found: why each model scores what it does, position bias, deploy lessons |
-| [docs/how-it-works.md](docs/how-it-works.md) | The game, the clocks and goals, what every model is shown, how answers are judged, the screens |
-| [docs/models.md](docs/models.md) | Model settings, the adapters and their wire formats, writing a new adapter |
-| [docs/configuration.md](docs/configuration.md) | Built-in models, every `.env` setting, prices |
-| [docs/self-hosting.md](docs/self-hosting.md) | Running Laya and Strands Decider on a GPU |
-| [docs/api.md](docs/api.md) | The server API and the run log format |
-| [docs/development.md](docs/development.md) | Project layout, tests and tools, known limitations |
-| [docs/results-history.md](docs/results-history.md) | Earlier rounds (2026-10-09 and 2026-10-10) |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
-
----
-
-## License
-
-[MIT](LICENSE). The benchmark data in `benchmarks/` comes from runs of third-party models and the
-[JevBench](https://github.com/fstandhartinger/jevbench) public set (MIT); each model and dataset keeps its own terms.
+- [CONTRIBUTING.md](CONTRIBUTING.md) lists the checks: `bun run lint && bun run typecheck && bun test`.
+- [SECURITY.md](SECURITY.md) covers reporting and how keys are handled.
+- [CITATION.cff](CITATION.cff) feeds GitHub's "Cite this repository" button.
+- [MIT](LICENSE). Third-party models and the [JevBench](https://github.com/fstandhartinger/jevbench) data in `benchmarks/` keep their own terms.

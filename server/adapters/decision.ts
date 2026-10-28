@@ -9,8 +9,8 @@ import type { Adapter } from "./types";
 // laya-serve, Cloudflare Clef and AWS Strands Decider all speak it.
 //
 //   POST {baseUrl}/v1/systemone   (or `url`)
-//   { model, state, questions: { placement: { type: "choice", instructions, criteria } }, ...extraBody }
-//   → { answers: { placement: { choice, probabilities, confidence } }, usage: { input_tokens, ... } }
+//   { model, state, questions: { choice: { type: "choice", instructions, criteria } }, ...extraBody }
+//   → { answers: { choice: { choice, probabilities, confidence } }, usage: { input_tokens, ... } }
 //
 // Cloudflare wraps the reply as { result: ... }; that is unwrapped here.
 // With `rotations` > 1 the question is asked that many times with the option
@@ -52,8 +52,8 @@ export function decisionBody(model: ModelConfig, turn: Turn): Record<string, unk
   const rotations = model.rotations ?? 1;
   const questions =
     rotations <= 1
-      ? { placement: question }
-      : Object.fromEntries(rotationOrders(options.length, rotations).map((order, r) => [`placement_${r}`, { ...question, option_order: order }]));
+      ? { choice: question }
+      : Object.fromEntries(rotationOrders(options.length, rotations).map((order, r) => [`choice_${r}`, { ...question, option_order: order }]));
   return { model: model.model, state: observationText(turn), questions, ...model.extraBody };
 }
 
@@ -68,11 +68,11 @@ export function readDecision(model: ModelConfig, raw: ReplyBody & { result?: Rep
     : undefined;
 
   const answers = Object.entries(body.answers ?? {})
-    .filter(([id]) => id === "placement" || id.startsWith("placement_"))
+    .filter(([id]) => id === "choice" || id.startsWith("choice_"))
     .map(([, a]) => a)
     .filter((a): a is ChoiceAnswer => Boolean(a));
   if (answers.length === 0 || answers.some((a) => typeof a.choice !== "string")) {
-    return { status: "invalid", usage, detail: "The response had no placement choice" };
+    return { status: "invalid", usage, detail: "The response had no choice" };
   }
   if (answers.length === 1) {
     const [a] = answers;
