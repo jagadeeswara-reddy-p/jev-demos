@@ -18,7 +18,7 @@ export interface BenchEntrant {
   live: boolean;
   /** Inline models from bench.yaml, placeholders filled. Id-only entries resolve through `sources` instead. */
   model?: ModelConfig;
-  /** Why it can't run, e.g. "set OPENROUTER_API_KEY in .env". */
+  /** Why it can't run, e.g. "Set OPENROUTER_API_KEY in .env". */
   unavailable?: string;
 }
 
@@ -60,7 +60,7 @@ function fromInline(entry: Record<string, unknown>, i: number, env: Env): BenchE
       label: typeof raw.label === "string" && raw.label ? raw.label : id,
       kind: adapter?.kind ?? "llm",
       live: true,
-      unavailable: `set ${filled.missing.join(", ")} in .env`,
+      unavailable: `Set ${filled.missing.join(" and ")} in .env`,
     };
   }
 

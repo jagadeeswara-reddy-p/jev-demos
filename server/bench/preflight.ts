@@ -88,8 +88,9 @@ export function formatChecks(checks: Check[]): string {
 }
 
 export function formatEstimate(e: Estimate): string {
-  if (e.pace === "fast") return `${e.matches} matches, fast pace: needs no waiting and costs nothing`;
-  return `${e.matches} matches, wall-clock pace: at most ${Math.ceil(e.maxMinutes)} min and ${usd(e.maxCostUsd)}`;
+  const matches = `${e.matches} ${e.matches === 1 ? "match" : "matches"}`;
+  if (e.pace === "fast") return `${matches}, fast pace: needs no waiting and costs nothing`;
+  return `${matches}, wall-clock pace: at most ${Math.ceil(e.maxMinutes)} min and ${usd(e.maxCostUsd)}`;
 }
 
 /** Rounds up to the next cent, so the printed figure never undershoots. */

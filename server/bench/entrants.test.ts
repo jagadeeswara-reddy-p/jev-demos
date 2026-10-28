@@ -55,7 +55,7 @@ describe("resolveEntrants: inline models", () => {
     expect(e.label).toBe("My Model");
     expect(e.kind).toBe("llm");
     expect(e.live).toBe(true);
-    expect(e.unavailable).toBe("set K in .env");
+    expect(e.unavailable).toBe("Set K in .env");
     expect(e.model).toBeUndefined();
   });
 

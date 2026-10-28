@@ -47,6 +47,10 @@ The output folder defaults to `runs/bench/<name>`, where `<name>` is the bench's
   option fails.
 - Mock models make no calls and always pass.
 
+Bedrock models use the AWS SDK's own credential chain: the `AWS_*` variables,
+`AWS_PROFILE`, or `~/.aws`. So `doctor` makes a real call for a Bedrock model
+when `~/.aws` exists, even with nothing set in `.env`.
+
 Self-hosted models with a `healthCheck` are pinged first; one that doesn't
 answer is listed as unavailable (see [models.md](models.md#settings)).
 
@@ -79,9 +83,13 @@ keys are an error, and every error names the field.
 
 **Model ids.** A plain id names a model that the page knows: a built-in from
 `models.json` (such as `live-jev`, `live-clef`, `bedrock-opus`), a model added
-in the page (saved in `models.local.json`), or a mock (`jev`, `llm-fast`,
-`llm-frontier`, `llm-flaky`, `heuristic`, `random`). An unknown id is an error
-that lists the known ids. Each id can appear once.
+in the page (saved in `models.local.json`), or a mock: `jev`, `llm-fast`,
+`llm-frontier`, `llm-flaky`, `heuristic`, `random`, `no-input` (never answers,
+so every piece falls), and the `preview-gpt`, `preview-opus`, `preview-laya`,
+`preview-cloudflare` and `preview-strands` stand-ins. The `preview-*` mocks
+imitate real models' speed and skill so the page can preview them; they are not
+those models. An unknown id is an error that lists the known ids. Each id can
+appear once.
 
 **Inline models.** An object takes the same settings as an entry in
 `models.json`, listed in [models.md](models.md#settings). Required: `id`,

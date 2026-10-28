@@ -123,6 +123,11 @@ describe("formatEstimate", () => {
     expect(text).toBe("6 matches, wall-clock pace: at most 6 min and $0.72");
   });
 
+  test("says 1 match, not 1 matches", () => {
+    expect(formatEstimate({ matches: 1, pace: "fast", maxMinutes: 0, maxCostUsd: 0 })).toContain("1 match,");
+    expect(formatEstimate({ matches: 1, pace: "fast", maxMinutes: 0, maxCostUsd: 0 })).not.toContain("1 matches");
+  });
+
   test("fast pace needs no waiting and costs nothing", () => {
     const text = formatEstimate({ matches: 6, pace: "fast", maxMinutes: 0, maxCostUsd: 0 });
     expect(text).toContain("needs no waiting");

@@ -33,6 +33,16 @@ describe("redact", () => {
   });
 });
 
+describe("redact: AWS ids", () => {
+  test("masks an ARN and a standalone 12-digit account number", () => {
+    const text = redact("User: arn:aws:iam::123456789012:user/x is not authorized");
+    expect(text).not.toContain("123456789012");
+    expect(text).not.toContain("user/x");
+    expect(text).toBe("User: arn:aws:[redacted] is not authorized");
+    expect(redact("account 123456789012 denied")).toBe("account [redacted] denied");
+  });
+});
+
 describe("usageOf", () => {
   test("prices tokens per million, and is free without prices", () => {
     expect(usageOf(500_000, 100_000, { inputPerM: 1, outputPerM: 5 }).costUsd).toBeCloseTo(1);
@@ -63,6 +73,15 @@ describe("liveSource", () => {
       throw new Error("connection refused");
     });
     expect(answer).toEqual({ status: "error", detail: "connection refused" });
+  });
+
+  test("a thrown error's text is redacted before it is delivered", async () => {
+    const { answer } = await ask(async () => {
+      throw new Error("arn:aws:iam::123456789012:user/x denied");
+    });
+    expect(answer.status).toBe("error");
+    expect(answer.detail).not.toContain("123456789012");
+    expect(answer.detail).toContain("denied");
   });
 
   test("gives up after the timeout", async () => {

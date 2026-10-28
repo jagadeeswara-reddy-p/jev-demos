@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { testModel } from "../sample";
 import { createSource, listSources, models, refreshHealth } from "../sources";
@@ -110,6 +110,7 @@ function init(args: Args, io: Io): number {
   const env = join(dirname(file), ".env");
   if (!existsSync(env)) {
     copyFileSync(ENV_EXAMPLE, env);
+    chmodSync(env, 0o600);
     io.out(`Wrote ${env} from .env.example`);
   }
   io.out(`Next: edit ${basename(file)}, put keys in .env, then run bun bench doctor`);
@@ -117,7 +118,7 @@ function init(args: Args, io: Io): number {
 }
 
 async function doctor(args: Args, io: Io): Promise<number> {
-  const ins = await inspect(args.positional[0] ?? "bench.yaml", io);
+  const ins = await inspect("doctor", args.positional[0] ?? "bench.yaml", io);
   if (!ins) return 1;
   io.out(formatChecks(ins.checks));
   io.out(formatEstimate(estimate(ins.cfg, ins.entrants, ins.checks)));
@@ -125,7 +126,7 @@ async function doctor(args: Args, io: Io): Promise<number> {
 }
 
 async function run(args: Args, io: Io): Promise<number> {
-  const ins = await inspect(args.positional[0] ?? "bench.yaml", io);
+  const ins = await inspect("run", args.positional[0] ?? "bench.yaml", io);
   if (!ins) return 1;
   io.out(formatChecks(ins.checks));
   io.out(formatEstimate(estimate(ins.cfg, ins.entrants, ins.checks)));
@@ -160,9 +161,13 @@ interface Inspection {
 }
 
 /** The steps doctor and run share. Prints the reason and returns null when the bench cannot be read. */
-async function inspect(file: string, io: Io): Promise<Inspection | null> {
+async function inspect(command: "doctor" | "run", file: string, io: Io): Promise<Inspection | null> {
   if (!Bun.semver.satisfies(Bun.version, ">=1.4.0")) {
     io.out(`bun bench needs Bun 1.4.0 or newer; this is Bun ${Bun.version}.`);
+    return null;
+  }
+  if (!existsSync(file)) {
+    io.out(`No ${file} found. Run "bun bench init" to create one, or pass a file: bun bench ${command} path/to/bench.yaml`);
     return null;
   }
   try {

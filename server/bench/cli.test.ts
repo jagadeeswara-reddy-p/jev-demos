@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEMO, type Io, main } from "./cli";
@@ -43,9 +43,24 @@ describe("bench init", () => {
     expect(await main(["init", file, "--force"], capture().io)).toBe(0);
     expect(readFileSync(file, "utf8")).toBe(readFileSync(EXAMPLE, "utf8"));
   });
+
+  test("the .env it creates is readable by its owner only", async () => {
+    const dir = tempDir();
+    expect(await main(["init", join(dir, "bench.yaml")], capture().io)).toBe(0);
+    expect(statSync(join(dir, ".env")).mode & 0o777).toBe(0o600);
+  });
 });
 
 describe("bench doctor", () => {
+  test("a missing bench file names init and exits 1, without a stack trace", async () => {
+    const file = join(tempDir(), "nope.yaml");
+    const { io, text } = capture();
+    expect(await main(["doctor", file], io)).toBe(1);
+    expect(text()).toContain(`No ${file} found.`);
+    expect(text()).toContain("bun bench init");
+    expect(text()).toContain("bun bench doctor path/to/bench.yaml");
+  });
+
   test("an unset key fails the check and names the variable; mocks say they make no calls", async () => {
     const dir = tempDir();
     const file = benchFile(
@@ -82,6 +97,13 @@ describe("bench doctor", () => {
 });
 
 describe("bench run", () => {
+  test("a missing bench file names the run command and exits 1", async () => {
+    const file = join(tempDir(), "nope.yaml");
+    const { io, text } = capture();
+    expect(await main(["run", file], io)).toBe(1);
+    expect(text()).toContain("bun bench run path/to/bench.yaml");
+  });
+
   test("refuses to start when a check fails, and writes nothing", async () => {
     const dir = tempDir();
     const file = benchFile(
@@ -215,9 +237,10 @@ describe("bench demo resume", () => {
 });
 
 describe("bench usage", () => {
-  test("an unknown command prints usage and exits 1", async () => {
+  test("an unknown command names it on its own line, before the usage, and exits 1", async () => {
     const { io, text } = capture();
     expect(await main(["fly"], io)).toBe(1);
+    expect(text().startsWith('Unknown command "fly".\n')).toBe(true);
     expect(text()).toContain("bun bench init");
   });
 

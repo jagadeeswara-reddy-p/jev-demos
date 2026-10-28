@@ -21,7 +21,7 @@ export function liveSource(call: (turn: Turn, signal: AbortSignal) => Promise<An
           if (ctx.signal.aborted) return; // the run was stopped; nobody is listening
           const timedOut = err instanceof DOMException && err.name === "TimeoutError";
           deliver(
-            { status: "error", detail: timedOut ? `No response within ${timeoutMs} ms` : errorText(err) },
+            { status: "error", detail: timedOut ? `No response within ${timeoutMs} ms` : redact(errorText(err)) },
             ctx.now(),
             performance.now() - started,
           );
@@ -41,6 +41,8 @@ export async function httpError(service: string, res: Response): Promise<Answer>
  */
 export function redact(text: string): string {
   return text
+    .replace(/arn:aws:[^\s"',]+/gi, "arn:aws:[redacted]")
+    .replace(/\b\d{12}\b/g, "[redacted]")
     .replace(/(bearer\s+)[^\s"',]+/gi, "$1[redacted]")
     .replace(/\b(sk|rk|pk)-[A-Za-z0-9_-]{8,}/g, "$1-[redacted]")
     .replace(/\b(AKIA|ASIA)[A-Z0-9]{12,}/g, "[redacted]")
