@@ -1,0 +1,49 @@
+# Benchmark definition. Copy it to bench.yaml (git-ignored, stays local) and edit that copy.
+
+# Name of this bench: lowercase letters, digits and dashes. Also names its output folder.
+name: my-first-bench
+# The environment to play. Only tetris exists so far.
+environment: tetris
+# Seeds per match: a number n means 1..n, or give a list such as [7, 9].
+seeds: 5
+# Clock modes to run: frozen (turn timer paused, repeatable) and realtime (live clock).
+clocks:
+  - frozen
+  - realtime
+# Rule variants to run. Tetris has "described" (see tetris.variants in src/arena/environment.ts).
+variants:
+  - described
+
+# Tetris match settings.
+tetris:
+  # survive: last as long as possible; sprint40: clear 40 lines as fast as possible.
+  goal: survive
+  # Longest a match may run, in milliseconds (10 seconds to 1 hour).
+  maxDurationMs: 600000
+  # Most pieces a board may place (1 to 10000).
+  maxPieces: 1000
+
+# When a match stops, and an optional spend cap.
+limits:
+  # A match stops once this share of its boards are finished: topped out, survived or reached the goal (more than 0, at most 1).
+  stopWhenFinished: 0.75
+  # Spend cap for the whole bench, in USD. Off by default; uncomment to set one.
+  # maxCostUsd: 5
+
+# Models to compare: 1 to 12 entries. A plain id names a model in models.json, or the
+# mock baseline. An inline model is written out in full.
+models:
+  # A model from models.json, called through its live API.
+  - live-jev
+  # A mock baseline: no API calls.
+  - heuristic  # a mock baseline: no API calls
+  # An inline model. Its key is read from .env: write ${NAME}, never the key itself.
+  - id: openrouter-example
+    label: OpenRouter example
+    adapter: completion
+    baseUrl: https://openrouter.ai/api/v1
+    model: vendor/model-name
+    apiKey: "${OPENROUTER_API_KEY}"
+    prices:
+      inputPerM: 0.5
+      outputPerM: 1.5
