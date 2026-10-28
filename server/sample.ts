@@ -1,4 +1,6 @@
-import type { DecisionAnswer, DecisionRequest } from "../src/arena/types";
+import { tetrisTurn } from "../src/arena/turn";
+import type { TetrisTurnDetail } from "../src/arena/types";
+import type { Answer, Turn } from "../src/core/types";
 import { encodeBoard } from "../src/engine/board";
 import { TetrisGame } from "../src/engine/game";
 import { sourceFor } from "./adapters";
@@ -7,10 +9,10 @@ import type { ModelConfig } from "./models/types";
 // One real decision outside a run: the first piece of a seeded game, with every
 // landing spot as an option. Used by the page's Test button and the smoke script.
 
-export function sampleRequest(seed = 1): DecisionRequest {
+export function sampleTurn(seed = 1): Turn<TetrisTurnDetail> {
   const game = new TetrisGame(seed);
   game.spawn();
-  return {
+  const detail: TetrisTurnDetail = {
     agentId: "test",
     pieceId: game.pieceId,
     type: game.active!.type,
@@ -19,29 +21,28 @@ export function sampleRequest(seed = 1): DecisionRequest {
     candidates: game.candidates().map(({ id, rot, x, y, cells }) => ({ id, rot, x, y, cells })),
     level: 1,
     mode: "frozen",
-    deadlineMs: 30_000,
-    requestedAt: 0,
   };
+  return tetrisTurn(detail, 30_000, 0);
 }
 
-export interface TestResult extends DecisionAnswer {
+export interface TestResult extends Answer {
   latencyMs: number;
   /** How many options the model was offered. */
   options: number;
 }
 
 /** Sends one decision and waits for the answer (errors and timeouts come back as answers too). */
-export function testModel(model: ModelConfig, req = sampleRequest()): Promise<TestResult> {
-  const offered = new Set(req.candidates.map((c) => c.id));
+export function testModel(model: ModelConfig, turn = sampleTurn()): Promise<TestResult> {
+  const offered = new Set(turn.action.options.map((o) => o.id));
   return new Promise((resolve) => {
     sourceFor(model).request(
-      req,
+      turn,
       (answer, _at, latencyMs) => {
         const named = answer.status !== "ok" || offered.has(answer.choice ?? "");
         resolve({
           ...(named ? answer : { ...answer, status: "invalid", detail: `"${answer.choice}" isn't one of the offered options` }),
           latencyMs: Math.round(latencyMs ?? 0),
-          options: req.candidates.length,
+          options: turn.action.options.length,
         });
       },
       { now: () => 0, signal: new AbortController().signal },

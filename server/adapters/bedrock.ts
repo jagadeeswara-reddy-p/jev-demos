@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { BedrockRuntimeClient, ConverseCommand, type ConverseCommandInput, type ConverseCommandOutput } from "@aws-sdk/client-bedrock-runtime";
-import type { DecisionAnswer, DecisionRequest } from "../../src/arena/types";
+import type { Answer, Turn } from "../../src/core/types";
 import type { ModelConfig } from "../models/types";
-import { choiceSchema, parseChoice, SYSTEM, userText } from "./shared";
+import { choiceSchema, parseChoice, systemText, userText } from "./shared";
 import type { Adapter } from "./types";
 
 // Bedrock adapter: chat models on AWS Bedrock (OpenAI, Anthropic, ...) through
@@ -14,13 +14,13 @@ import type { Adapter } from "./types";
 
 const TOOL = "choose_placement";
 
-export function converseInput(model: ModelConfig, req: DecisionRequest): ConverseCommandInput {
+export function converseInput(model: ModelConfig, turn: Turn): ConverseCommandInput {
   return {
     modelId: model.model,
-    system: [{ text: SYSTEM }],
-    messages: [{ role: "user", content: [{ text: userText(req) }] }],
+    system: [{ text: systemText(turn) }],
+    messages: [{ role: "user", content: [{ text: userText(turn) }] }],
     toolConfig: {
-      tools: [{ toolSpec: { name: TOOL, description: "Report the chosen landing spot.", inputSchema: { json: choiceSchema(req) } } }],
+      tools: [{ toolSpec: { name: TOOL, description: "Report the chosen landing spot.", inputSchema: { json: choiceSchema(turn) } } }],
       toolChoice: model.toolChoice === "auto" ? { auto: {} } : { tool: { name: TOOL } },
     },
     inferenceConfig: { maxTokens: model.maxTokens ?? 1024 },
@@ -33,7 +33,7 @@ export function converseInput(model: ModelConfig, req: DecisionRequest): Convers
  * prompts automatically). They count as input tokens so token columns compare
  * fairly, but each kind is priced at its own rate.
  */
-export function readConverse(model: ModelConfig, res: Partial<Pick<ConverseCommandOutput, "usage" | "output">>): DecisionAnswer {
+export function readConverse(model: ModelConfig, res: Partial<Pick<ConverseCommandOutput, "usage" | "output">>): Answer {
   const p = model.prices ?? { inputPerM: 0, outputPerM: 0 };
   const plain = res.usage?.inputTokens ?? 0;
   const cacheRead = res.usage?.cacheReadInputTokens ?? 0;
@@ -79,14 +79,14 @@ export const bedrockAdapter: Adapter = {
     return sources.some(Boolean) || awsConfigFileExists(env.HOME) ? undefined : "Set AWS credentials in .env";
   },
 
-  async decide(model, req, signal) {
+  async decide(model, turn, signal) {
     const r = region();
     let client = clients.get(r);
     if (!client) {
       client = new BedrockRuntimeClient({ region: r });
       clients.set(r, client);
     }
-    const res = await client.send(new ConverseCommand(converseInput(model, req)), { abortSignal: signal });
+    const res = await client.send(new ConverseCommand(converseInput(model, turn)), { abortSignal: signal });
     return readConverse(model, res);
   },
 };

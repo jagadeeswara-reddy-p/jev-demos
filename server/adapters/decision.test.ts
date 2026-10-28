@@ -1,9 +1,9 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import type { ModelConfig } from "../models/types";
-import { sampleRequest } from "../sample";
+import { sampleTurn } from "../sample";
 import { decisionAdapter, decisionBody, readDecision, rotationOrders } from "./decision";
 
-const req = sampleRequest();
+const req = sampleTurn();
 const base: ModelConfig = { id: "d", label: "Fake decisions", adapter: "decision", model: "fake", prices: { inputPerM: 1, outputPerM: 0 } };
 
 // A Decisions API that records what it was sent and answers with whatever the test sets.
@@ -27,7 +27,7 @@ describe("decisionBody", () => {
     expect(typeof body.state).toBe("string");
     expect(Object.keys(body.questions)).toEqual(["placement"]);
     expect(body.questions.placement.type).toBe("choice");
-    expect(Object.keys(body.questions.placement.criteria)).toEqual(req.candidates.map((c) => c.id));
+    expect(Object.keys(body.questions.placement.criteria)).toEqual(req.action.options.map((c) => c.id));
   });
 
   test("adds extraBody fields", () => {
@@ -38,7 +38,7 @@ describe("decisionBody", () => {
     const body = decisionBody({ ...base, rotations: 4 }, req) as any;
     expect(Object.keys(body.questions)).toEqual(["placement_0", "placement_1", "placement_2", "placement_3"]);
     expect(body.questions.placement_0.option_order[0]).toBe(0);
-    expect(body.questions.placement_1.option_order).toHaveLength(req.candidates.length);
+    expect(body.questions.placement_1.option_order).toHaveLength(req.action.options.length);
   });
 });
 

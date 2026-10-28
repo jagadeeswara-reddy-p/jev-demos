@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { ModelConfig } from "../models/types";
-import { sampleRequest } from "../sample";
+import { sampleTurn } from "../sample";
 import { bedrockAdapter, converseInput, readConverse } from "./bedrock";
 
-const req = sampleRequest();
+const req = sampleTurn();
 const model: ModelConfig = {
   id: "b",
   label: "Bedrock model",
@@ -18,7 +18,7 @@ describe("converseInput", () => {
     expect(input.modelId).toBe("us.openai.gpt-6.1-sol");
     expect(input.toolConfig?.toolChoice).toEqual({ tool: { name: "choose_placement" } });
     const schema = input.toolConfig?.tools?.[0]?.toolSpec?.inputSchema?.json as any;
-    expect(schema.properties.choice.enum).toHaveLength(req.candidates.length);
+    expect(schema.properties.choice.enum).toHaveLength(req.action.options.length);
     expect(input.inferenceConfig?.maxTokens).toBe(1024);
     expect(input).not.toHaveProperty("additionalModelRequestFields");
   });

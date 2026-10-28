@@ -1,4 +1,4 @@
-import type { AgentSpec, DecisionSource, RunConfig, SourceInfo } from "../arena/types";
+import type { AgentSpec, RunConfig, SourceInfo, TetrisAgent } from "../arena/types";
 import { decodeBoard } from "../engine/board";
 import { evaluatePlacement, softmax } from "../engine/heuristic";
 import { createRng, deriveSeed, type Rng } from "../engine/rng";
@@ -9,14 +9,15 @@ import { getProfile, MOCK_PROFILES, type MockProfile } from "./profiles";
  * and delivers in simulated time, so a mock run is reproducible from its seed
  * and can be played at any speed.
  */
-export function createMockSource(profile: MockProfile, seed: number): DecisionSource {
+export function createMockSource(profile: MockProfile, seed: number): TetrisAgent {
   const rng = createRng(seed);
   return {
-    request(req, deliver) {
+    request(turn, deliver) {
+      const req = turn.detail;
       if (rng() < profile.hangRate) return; // never answers
 
       const latency = Math.max(1, profile.latency.medianMs * Math.exp(profile.latency.spread * gaussian(rng)));
-      const arrivesAt = req.requestedAt + latency;
+      const arrivesAt = turn.requestedAt + latency;
       const usage = { ...profile.usage };
 
       const roll = rng();
@@ -60,7 +61,7 @@ export function isMockSource(sourceId: string): boolean {
 }
 
 /** A mock source for one board, seeded from the run seed and the board's position. */
-export function mockSourceFor(config: RunConfig, spec: AgentSpec): DecisionSource {
+export function mockSourceFor(config: RunConfig, spec: AgentSpec): TetrisAgent {
   const index = config.agents.indexOf(spec);
   return createMockSource(getProfile(spec.sourceId), deriveSeed(config.seed, `agent:${index}:${spec.sourceId}`));
 }

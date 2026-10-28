@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { mockSourceFor } from "../mock/mockSource";
 import { MOCK_PROFILES } from "../mock/profiles";
 import { ArenaSimulation } from "./simulation";
-import { type ArenaEvent, type ClockMode, DEFAULT_CONFIG, type DecisionSource, type RunConfig } from "./types";
+import { type ArenaEvent, type ClockMode, DEFAULT_CONFIG, type RunConfig, type TetrisAgent } from "./types";
 
 function config(sources: string[], mode: ClockMode = "realtime", seed = 1): RunConfig {
   return {
@@ -14,8 +14,8 @@ function config(sources: string[], mode: ClockMode = "realtime", seed = 1): RunC
   };
 }
 
-function runToEnd(cfg: RunConfig, sources?: DecisionSource[]): ArenaEvent[] {
-  const sim = new ArenaSimulation(cfg, sources ?? cfg.agents.map((a) => mockSourceFor(cfg, a)));
+function runToEnd(cfg: RunConfig, agents?: TetrisAgent[]): ArenaEvent[] {
+  const sim = new ArenaSimulation(cfg, agents ?? cfg.agents.map((a) => mockSourceFor(cfg, a)));
   const events = sim.start();
   while (!sim.finished) events.push(...sim.step(1000));
   return events;
@@ -56,9 +56,9 @@ describe("ArenaSimulation", () => {
   it("frozen clock: an answer that arrives after the time-out is late, even while the piece is still falling", () => {
     // Like a live model whose reply comes back just after the 1 s limit, while the released piece is falling.
     let reply: ((at: number) => void) | null = null;
-    const slow: DecisionSource = {
-      request(req, deliver) {
-        if (req.pieceId === 1) reply = (at) => deliver({ status: "ok", choice: req.candidates[0].id }, at, at - req.requestedAt);
+    const slow: TetrisAgent = {
+      request(turn, deliver) {
+        if (turn.detail.pieceId === 1) reply = (at) => deliver({ status: "ok", choice: turn.detail.candidates[0].id }, at, at - turn.requestedAt);
       },
     };
     const cfg = { ...config(["slow"], "frozen"), frozenTimeoutMs: 1000, maxPieces: 3 };
@@ -89,7 +89,7 @@ describe("ArenaSimulation", () => {
 
   it("rejects an answer that names an option that doesn't exist", () => {
     const cfg = { ...config(["jev"]), maxPieces: 3 };
-    const bogus: DecisionSource = { request: (req, deliver) => deliver({ status: "ok", choice: "option_999" }, req.requestedAt + 10) };
+    const bogus: TetrisAgent = { request: (turn, deliver) => deliver({ status: "ok", choice: "option_999" }, turn.requestedAt + 10) };
     const events = runToEnd(cfg, [bogus]);
     const decisions = events.filter((e) => e.t === "decision");
     expect(decisions.length).toBeGreaterThan(0);
@@ -99,9 +99,9 @@ describe("ArenaSimulation", () => {
   it("accepts answers delivered later, the way a live API call does", () => {
     const cfg = { ...config(["jev"]), maxPieces: 5 };
     const queue: (() => void)[] = [];
-    const live: DecisionSource = {
-      request: (req, deliver, ctx) => {
-        queue.push(() => deliver({ status: "ok", choice: req.candidates[0].id }, ctx.now(), 42));
+    const live: TetrisAgent = {
+      request: (turn, deliver, ctx) => {
+        queue.push(() => deliver({ status: "ok", choice: turn.detail.candidates[0].id }, ctx.now(), 42));
       },
     };
     const sim = new ArenaSimulation(cfg, [live]);
@@ -127,7 +127,7 @@ describe("ArenaSimulation", () => {
 
   it("leaves bad answers ungraded", () => {
     const cfg = { ...config(["jev"]), maxPieces: 3 };
-    const bogus: DecisionSource = { request: (req, deliver) => deliver({ status: "ok", choice: "option_999" }, req.requestedAt + 10) };
+    const bogus: TetrisAgent = { request: (turn, deliver) => deliver({ status: "ok", choice: "option_999" }, turn.requestedAt + 10) };
     const events = runToEnd(cfg, [bogus]);
     expect(events.some((e) => e.t === "decision" && e.bestRank !== undefined)).toBe(false);
   });

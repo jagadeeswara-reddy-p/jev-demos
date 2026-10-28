@@ -1,5 +1,5 @@
-import { optionDescriptions, stateText, TASK } from "../../src/arena/prompt";
-import type { DecisionAnswer, DecisionRequest } from "../../src/arena/types";
+import { observationText } from "../../src/core/turn";
+import type { Answer, Turn } from "../../src/core/types";
 import type { ModelConfig } from "../models/types";
 import { bearer, httpError, usageOf } from "./shared";
 import type { Adapter } from "./types";
@@ -45,21 +45,20 @@ export function rotationOrders(optionCount: number, rotations: number): number[]
   });
 }
 
-export function decisionBody(model: ModelConfig, req: DecisionRequest): Record<string, unknown> {
-  const criteria = optionDescriptions(req);
-  const question = { type: "choice", instructions: TASK, criteria };
+export function decisionBody(model: ModelConfig, turn: Turn): Record<string, unknown> {
+  const { options } = turn.action;
+  const criteria = Object.fromEntries(options.map((o) => [o.id, o.text]));
+  const question = { type: "choice", instructions: turn.instructions, criteria };
   const rotations = model.rotations ?? 1;
   const questions =
     rotations <= 1
       ? { placement: question }
-      : Object.fromEntries(
-          rotationOrders(req.candidates.length, rotations).map((order, r) => [`placement_${r}`, { ...question, option_order: order }]),
-        );
-  return { model: model.model, state: stateText(req), questions, ...model.extraBody };
+      : Object.fromEntries(rotationOrders(options.length, rotations).map((order, r) => [`placement_${r}`, { ...question, option_order: order }]));
+  return { model: model.model, state: observationText(turn), questions, ...model.extraBody };
 }
 
 /** Reads the reply; several rotated answers are averaged into one. */
-export function readDecision(model: ModelConfig, raw: ReplyBody & { result?: ReplyBody }): DecisionAnswer {
+export function readDecision(model: ModelConfig, raw: ReplyBody & { result?: ReplyBody }): Answer {
   const body: ReplyBody = raw.result ?? raw;
   const u = body.usage;
   const usage = usageOf(u?.input_tokens ?? u?.prompt_tokens ?? 0, u?.output_tokens ?? u?.completion_tokens ?? 0, model.prices);
@@ -96,11 +95,11 @@ export const decisionAdapter: Adapter = {
   kind: "system-one",
   defaultTimeoutMs: 30_000,
 
-  async decide(model, req, signal) {
+  async decide(model, turn, signal) {
     const res = await fetch(model.url ?? `${model.baseUrl}/v1/systemone`, {
       method: "POST",
       headers: { ...bearer(model.apiKey), "Content-Type": "application/json" },
-      body: JSON.stringify(decisionBody(model, req)),
+      body: JSON.stringify(decisionBody(model, turn)),
       signal,
     });
     if (!res.ok) return httpError(model.label, res);

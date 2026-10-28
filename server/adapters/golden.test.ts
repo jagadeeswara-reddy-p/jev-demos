@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { ModelConfig } from "../models/types";
-import { sampleRequest } from "../sample";
+import { sampleTurn } from "../sample";
 import { converseInput } from "./bedrock";
 import { completionBody } from "./completion";
 import { decisionBody } from "./decision";
@@ -16,7 +16,7 @@ const bedrock: ModelConfig = { id: "b", label: "Bedrock", adapter: "bedrock", mo
 test("adapter requests match the golden bodies", async () => {
   const actual: Record<string, unknown> = {};
   for (const seed of [1, 2]) {
-    const req = sampleRequest(seed);
+    const req = sampleTurn(seed);
     actual[`completion-schema-seed${seed}`] = completionBody({ ...chat, jsonMode: "schema" }, req);
     actual[`completion-object-seed${seed}`] = completionBody({ ...chat, jsonMode: "object" }, req);
     actual[`decision-rot1-seed${seed}`] = decisionBody(decision, req);

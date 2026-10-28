@@ -1,4 +1,4 @@
-import type { AgentSpec, DecisionSource, RunConfig, SourceInfo } from "../src/arena/types";
+import type { AgentSpec, RunConfig, SourceInfo, TetrisAgent } from "../src/arena/types";
 import { isMockSource, MOCK_SOURCES, mockSourceFor } from "../src/mock/mockSource";
 import { sourceFor } from "./adapters";
 import { config } from "./config";
@@ -32,7 +32,7 @@ export function listSources(): SourceInfo[] {
   return [...live, ...MOCK_SOURCES];
 }
 
-export function createSource(run: RunConfig, spec: AgentSpec): DecisionSource {
+export function createSource(run: RunConfig, spec: AgentSpec): TetrisAgent {
   if (isMockSource(spec.sourceId)) return mockSourceFor(run, spec);
   return sourceFor(models.resolve(spec.sourceId));
 }
