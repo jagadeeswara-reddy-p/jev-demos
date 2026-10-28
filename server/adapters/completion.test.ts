@@ -70,6 +70,17 @@ describe("completionAdapter.decide", () => {
     expect(a).toMatchObject({ status: "invalid", detail: "Reply cut off at the 256-token limit before an answer; raise maxTokens" });
   });
 
+  test("a complete JSON answer still counts when the reply hit the limit", async () => {
+    reply = { content: '{"choice":"option_4"}', finish: "length" };
+    expect(await completionAdapter.decide(model(), req, signal())).toMatchObject({ status: "ok", choice: "option_4" });
+  });
+
+  test("a cut-off reply without maxTokens names the provider's limit, also for max_tokens", async () => {
+    reply = { content: "", finish: "max_tokens" };
+    const a = await completionAdapter.decide(model(), req, signal());
+    expect(a.detail).toBe("Reply cut off at the provider's token limit before an answer; raise maxTokens");
+  });
+
   test("turns an HTTP error into an error answer naming the model", async () => {
     reply = { status: 429 };
     const a = await completionAdapter.decide(model(), req, signal());

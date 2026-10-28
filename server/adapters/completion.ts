@@ -49,6 +49,8 @@ export const completionAdapter: Adapter = {
     };
     const usage = usageOf(body.usage?.prompt_tokens ?? 0, body.usage?.completion_tokens ?? 0, model.prices);
     const answer = parseChoice(body.choices?.[0]?.message?.content ?? "", usage);
-    return answer.status === "invalid" && body.choices?.[0]?.finish_reason === "length" ? cutOff(usage, model.maxTokens) : answer;
+    return answer.status === "invalid" && ["length", "max_tokens"].includes(body.choices?.[0]?.finish_reason ?? "")
+      ? cutOff(usage, model.maxTokens)
+      : answer;
   },
 };

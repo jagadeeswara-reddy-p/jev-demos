@@ -14,6 +14,8 @@ import type { Adapter } from "./types";
 
 const TOOL = "choose_option";
 const DEFAULT_MAX_TOKENS = 1024;
+/** Stop reasons that mean the reply ran out of room before it could answer. */
+const CUT_OFF = new Set(["max_tokens", "model_context_window_exceeded"]);
 
 export function converseInput(model: ModelConfig, turn: Turn): ConverseCommandInput {
   return {
@@ -51,7 +53,7 @@ export function readConverse(model: ModelConfig, res: Partial<Pick<ConverseComma
   const choice = (content.find((c) => c.toolUse)?.toolUse?.input as { choice?: unknown } | undefined)?.choice;
   if (typeof choice === "string") return { status: "ok", choice, usage };
   const answer = parseChoice(content.find((c) => c.text)?.text ?? "", usage);
-  return answer.status === "invalid" && res.stopReason === "max_tokens" ? cutOff(usage, model.maxTokens ?? DEFAULT_MAX_TOKENS) : answer;
+  return answer.status === "invalid" && CUT_OFF.has(res.stopReason ?? "") ? cutOff(usage, model.maxTokens ?? DEFAULT_MAX_TOKENS) : answer;
 }
 
 const clients = new Map<string, BedrockRuntimeClient>();

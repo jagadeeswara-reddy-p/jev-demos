@@ -57,6 +57,22 @@ describe("readConverse", () => {
     expect(a.detail).toBe("Reply cut off at the 1024-token limit before an answer; raise maxTokens");
   });
 
+  test("a full tool answer still counts when the reply also hit the limit", () => {
+    const a = readConverse(model, {
+      stopReason: "max_tokens",
+      output: { message: { role: "assistant", content: [{ toolUse: { toolUseId: "t", name: "choose_option", input: { choice: "option_3" } } }] } },
+    } as any);
+    expect(a).toMatchObject({ status: "ok", choice: "option_3" });
+  });
+
+  test("a reply that overflowed the context window is reported as cut off too", () => {
+    const a = readConverse({ ...model, maxTokens: 4096 }, {
+      stopReason: "model_context_window_exceeded",
+      output: { message: { role: "assistant", content: [] } },
+    } as any);
+    expect(a.detail).toBe("Reply cut off at the 4096-token limit before an answer; raise maxTokens");
+  });
+
   test("cache prices default to the input price", () => {
     const a = readConverse(
       { ...model, prices: { inputPerM: 1, outputPerM: 0 } },
