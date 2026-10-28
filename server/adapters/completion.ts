@@ -1,6 +1,6 @@
 import type { Turn } from "../../src/core/types";
 import type { ModelConfig } from "../models/types";
-import { bearer, choiceSchema, httpError, parseChoice, systemText, usageOf, userText } from "./shared";
+import { bearer, choiceSchema, cutOff, httpError, parseChoice, systemText, usageOf, userText } from "./shared";
 import type { Adapter } from "./types";
 
 // Completion adapter: any OpenAI-compatible Chat Completions API (OpenAI,
@@ -44,10 +44,11 @@ export const completionAdapter: Adapter = {
     if (!res.ok) return httpError(model.label, res);
 
     const body = (await res.json()) as {
-      choices?: { message?: { content?: string | null } }[];
+      choices?: { message?: { content?: string | null }; finish_reason?: string | null }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
     const usage = usageOf(body.usage?.prompt_tokens ?? 0, body.usage?.completion_tokens ?? 0, model.prices);
-    return parseChoice(body.choices?.[0]?.message?.content ?? "", usage);
+    const answer = parseChoice(body.choices?.[0]?.message?.content ?? "", usage);
+    return answer.status === "invalid" && body.choices?.[0]?.finish_reason === "length" ? cutOff(usage, model.maxTokens) : answer;
   },
 };

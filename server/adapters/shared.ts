@@ -79,6 +79,15 @@ export function choiceSchema(turn: Turn) {
   };
 }
 
+/**
+ * A reply the provider stopped at the token limit, usually because a reasoning model
+ * spent the whole budget thinking. Says so instead of reporting an empty answer.
+ */
+export function cutOff(usage: Usage, maxTokens?: number): Answer {
+  const limit = maxTokens ? `the ${maxTokens}-token limit` : "the provider's token limit";
+  return { status: "invalid", usage, detail: `Reply cut off at ${limit} before an answer; raise maxTokens` };
+}
+
 /** Strict: the answer must be JSON naming an option. No guessing from free text. */
 export function parseChoice(text: string, usage: Usage): Answer {
   const cleaned = text

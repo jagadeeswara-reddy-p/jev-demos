@@ -48,6 +48,15 @@ describe("readConverse", () => {
     expect(a).toMatchObject({ status: "ok", choice: "option_1" });
   });
 
+  test("a reply cut off while reasoning names the token limit", () => {
+    const a = readConverse(model, {
+      stopReason: "max_tokens",
+      output: { message: { role: "assistant", content: [{ reasoningContent: { reasoningText: { text: "thinking..." } } }] } },
+    } as any);
+    expect(a.status).toBe("invalid");
+    expect(a.detail).toBe("Reply cut off at the 1024-token limit before an answer; raise maxTokens");
+  });
+
   test("cache prices default to the input price", () => {
     const a = readConverse(
       { ...model, prices: { inputPerM: 1, outputPerM: 0 } },

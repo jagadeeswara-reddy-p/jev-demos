@@ -71,6 +71,7 @@
       "description": "Language model us.anthropic.claude-opus-5-5, through AWS Bedrock",
       "model": "us.anthropic.claude-opus-5-5",
       "toolChoice": "auto",
+      "maxTokens": 4096,
       "prices": { "inputPerM": 4.4, "outputPerM": 22, "cacheReadPerM": 0.22, "cacheWritePerM": 5.5 }
     },
     {

@@ -72,7 +72,7 @@ be changed or removed from the page; models added in the page can.
 | `healthCheck` | completion, decision | A path on `baseUrl` that answers 200 when the server is up, e.g. `/health`. The server pings it (2 s timeout, cached 10 s) before listing models, before a run and before a Test move, and shows the model as unavailable when it doesn't answer. Set it for self-hosted models. | none |
 | `extraBody` | all | JSON object merged into every request body (bedrock: sent as `additionalModelRequestFields`). For provider options such as `{"reasoning_effort": "low"}` or Laya's token budgets. | none |
 | `jsonMode` | completion | How the answer is constrained: `schema` (strict JSON schema), `object` (JSON mode) or `none` (plain text containing the JSON). | `schema` |
-| `maxTokens` | completion, bedrock | Reply token limit. | provider default (bedrock: 1024) |
+| `maxTokens` | completion, bedrock | Reply token limit. Reasoning models spend it on thinking first; too low and the reply is cut off before an answer, which the run log reports as "Reply cut off at the N-token limit". `bedrock-opus` uses 4096. | provider default (bedrock: 1024) |
 | `rotations` | decision | Ask the question this many times with the option order shifted, and average. See [rotations](#rotations). 1 is off. | 1 |
 | `toolChoice` | bedrock | `tool` forces the answer tool; `auto` offers it without forcing, for models that refuse a forced tool. | `tool` |
 
