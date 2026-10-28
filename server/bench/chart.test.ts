@@ -11,6 +11,7 @@ function model(overrides: Partial<ModelSummary> & Pick<ModelSummary, "id" | "lab
     realtimeLanded: 10,
     tooLate: 0,
     costUsd: 0.1,
+    mock: false,
     ...overrides,
   };
 }
@@ -24,6 +25,7 @@ function fixture(overrides: Partial<BenchSummary> = {}): BenchSummary {
     frozenPieces: 30,
     realtimeSeconds: 120,
     totalCostUsd: 2.4216,
+    skipped: [],
     date: "2026-10-28",
     models: [
       model({ id: "jev", label: "Jev", kind: "system-one", agreement: 100, medianMs: 310, realtimeLanded: 88, costUsd: 0.12 }),
@@ -169,6 +171,38 @@ describe("renderChart", () => {
         expect(x + Array.from(content).length * 6.6).toBeLessThanOrEqual(880);
       }
     }
+  });
+
+  test("a mock model's label and tooltip say (mock), and a baseline's do not", () => {
+    const summary = fixture({
+      models: [model({ id: "m", label: "Fast LLM", kind: "llm", mock: true }), model({ id: "h", label: "Heuristic", kind: "baseline", mock: true })],
+    });
+    const svg = renderChart(summary, "light");
+    expect(svg).toContain(">Fast LLM (mock)</text>");
+    expect(svg).toContain("<title>Fast LLM (mock): 50%</title>");
+    expect(svg).toContain(">Heuristic</text>");
+    expect(svg).not.toContain("Heuristic (mock)");
+  });
+
+  test("a long mock label is cut before the (mock) tag, so the tag stays visible", () => {
+    const summary = fixture({ models: [model({ id: "m", label: "x".repeat(40), kind: "llm", mock: true })] });
+    expect(renderChart(summary, "light")).toContain(`>${"x".repeat(12)}… (mock)</text>`);
+  });
+
+  test("a real-time limit in whole minutes reads as minutes, and any other as seconds", () => {
+    const minutes = renderChart(fixture({ realtimeSeconds: 120 }), "light");
+    expect(minutes).toContain("Pieces landed per 2-minute game");
+    expect(minutes).toContain("real time: 2 minutes");
+    const seconds = renderChart(fixture({ realtimeSeconds: 100 }), "light");
+    expect(seconds).toContain("Pieces landed per 100-second game");
+    expect(seconds).toContain("real time: 100 seconds");
+    expect(seconds).not.toContain("1.66");
+  });
+
+  test("the footer names the unfinished matches left out, and says nothing when there are none", () => {
+    expect(renderChart(fixture({ skipped: ["a.jsonl", "b.jsonl"] }), "light")).toContain("· 2 unfinished matches left out ·");
+    expect(renderChart(fixture({ skipped: ["a.jsonl"] }), "light")).toContain("· 1 unfinished match left out ·");
+    expect(renderChart(fixture(), "light")).not.toContain("left out");
   });
 
   test("short labels keep the original 70 px value room in the judgement panel", () => {

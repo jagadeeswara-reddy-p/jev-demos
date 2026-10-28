@@ -213,3 +213,63 @@ describe("summarizeBench", () => {
     expect(jev?.realtimeLanded).not.toBeNull();
   }, 30_000);
 });
+
+describe("summarizeBench: unfinished logs, torn lines and mock models", () => {
+  /** Writes the events as they are, with no run_finished line: a run cut short. */
+  function writeCut(dir: string, file: string, events: Line[], tail = ""): void {
+    writeFileSync(join(dir, file), `${events.map((l) => JSON.stringify(l)).join("\n")}\n${tail}`);
+  }
+
+  test("a log cut short (no run_finished) is left out and named in skipped; the others still count", async () => {
+    const dir = tempDir();
+    const agents = [agent("a", "Model A", "llm")];
+    writeLog(dir, "described-realtime-seed1.jsonl", [startedLine("realtime", 1, agents), lock("a", [])]);
+    writeCut(dir, "described-realtime-seed2.jsonl", [startedLine("realtime", 2, agents), ...Array.from({ length: 50 }, () => lock("a", []))]);
+    const summary = await summarizeBench(dir);
+    expect(summary.skipped).toEqual(["described-realtime-seed2.jsonl"]);
+    expect(summary.seeds).toBe(1);
+    expect(summary.models.find((m) => m.id === "a")?.realtimeLanded).toBe(1);
+  });
+
+  test("a log whose last line is half written is skipped, not thrown", async () => {
+    const dir = tempDir();
+    const agents = [agent("a", "Model A", "llm")];
+    writeCut(dir, "described-realtime-seed1.jsonl", [startedLine("realtime", 1, agents), lock("a", [])], '{"t":"lock","at":0,"agentId":"a"');
+    writeLog(dir, "described-realtime-seed2.jsonl", [startedLine("realtime", 2, agents), lock("a", [])]);
+    const summary = await summarizeBench(dir);
+    expect(summary.skipped).toEqual(["described-realtime-seed1.jsonl"]);
+    expect(summary.seeds).toBe(1);
+  });
+
+  test("a line that is not JSON in the middle of a log throws, naming the file and the line", async () => {
+    const dir = tempDir();
+    const agents = [agent("a", "Model A", "llm")];
+    const lines = [startedLine("realtime", 1, agents), "not json", lock("a", []), { t: "run_finished", at: 0, reason: "all_out" }];
+    writeFileSync(join(dir, "described-realtime-seed1.jsonl"), `${lines.map((l) => (typeof l === "string" ? l : JSON.stringify(l))).join("\n")}\n`);
+    await expect(summarizeBench(dir)).rejects.toThrow("described-realtime-seed1.jsonl: line 2 is not valid JSON");
+  });
+
+  test("when every log is cut short, it throws that no log finished", async () => {
+    const dir = tempDir();
+    writeCut(dir, "described-realtime-seed1.jsonl", [startedLine("realtime", 1, [agent("a", "Model A", "llm")])]);
+    await expect(summarizeBench(dir)).rejects.toThrow(`${dir} has no finished match logs`);
+  });
+
+  test("a mock model is flagged, keeps its own cost, and is left out of the total cost", async () => {
+    const dir = tempDir();
+    const agents = [agent("jev", "Jev", "system-one"), agent("acme", "Acme", "llm"), agent("heuristic", "Heuristic", "baseline")];
+    writeLog(dir, "described-realtime-seed1.jsonl", [
+      startedLine("realtime", 1, agents),
+      decision("jev", 300, { usage: usage(0.5) }),
+      decision("acme", 900, { usage: usage(0.25) }),
+      lock("acme", []),
+    ]);
+    const summary = await summarizeBench(dir);
+    const byId = (id: string) => summary.models.find((m) => m.id === id);
+    expect(byId("jev")?.mock).toBe(true);
+    expect(byId("jev")?.costUsd).toBeCloseTo(0.5, 10);
+    expect(byId("acme")?.mock).toBe(false);
+    expect(byId("heuristic")?.mock).toBe(true);
+    expect(summary.totalCostUsd).toBeCloseTo(0.25, 10);
+  });
+});

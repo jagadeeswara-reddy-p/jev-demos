@@ -51,6 +51,8 @@ const MIN_VALUE_ROOM = 70;
 /** Approximate advance of one character of the 12 px value labels. */
 const CHAR_W = 6.6;
 const LABEL_MAX = 20;
+/** Marks a mock row when chart drew it (--allow-mock). Baselines are never marked. */
+const MOCK_TAG = " (mock)";
 const FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
 const ARIA = "Benchmark comparison: judgement, speed and pieces landed in real time";
 const TITLE = "Judgement, speed and the live game";
@@ -73,7 +75,20 @@ interface Panel {
   fmt: (m: ModelSummary) => string;
 }
 
-function panelsFor(realtimeMinutes: number | null): Panel[] {
+/** A real-time limit in words: "2-minute" before a noun and "2 minutes" on its own; whole minutes read as minutes. */
+interface GameLength {
+  adjective: string;
+  plain: string;
+}
+
+function gameLength(seconds: number): GameLength {
+  const minutes = seconds % 60 === 0;
+  const n = minutes ? seconds / 60 : seconds;
+  const unit = minutes ? "minute" : "second";
+  return { adjective: `${n}-${unit}`, plain: `${n} ${n === 1 ? unit : `${unit}s`}` };
+}
+
+function panelsFor(game: GameLength | null): Panel[] {
   return [
     {
       title: "Judgement",
@@ -94,7 +109,7 @@ function panelsFor(realtimeMinutes: number | null): Panel[] {
     },
     {
       title: "Real time",
-      sub: realtimeMinutes === null ? "Pieces landed per game" : `Pieces landed per ${realtimeMinutes}-minute game`,
+      sub: game === null ? "Pieces landed per game" : `Pieces landed per ${game.adjective} game`,
       max: (rows) => largest(rows.map((m) => m.realtimeLanded)),
       value: (m) => m.realtimeLanded,
       fmt: (m) => {
@@ -111,7 +126,7 @@ export function renderChart(summary: BenchSummary, theme: ChartTheme): string {
   const c = PALETTES[theme];
   const rows = summary.models;
   const H = TOP + rows.length * ROW_H + 36;
-  const realtimeMinutes = summary.realtimeSeconds === null ? null : summary.realtimeSeconds / 60;
+  const game = summary.realtimeSeconds === null ? null : gameLength(summary.realtimeSeconds);
   const present = new Set(rows.map(kindOf));
 
   const parts: string[] = [];
@@ -128,10 +143,10 @@ export function renderChart(summary: BenchSummary, theme: ChartTheme): string {
 
   rows.forEach((m, i) => {
     const y = TOP + i * ROW_H;
-    parts.push(text(LABEL_W, y + BAR_H / 2 + 4, 13, 400, c.ink, shortLabel(m.label), 'text-anchor="end"'));
+    parts.push(text(LABEL_W, y + BAR_H / 2 + 4, 13, 400, c.ink, rowLabel(m), 'text-anchor="end"'));
   });
 
-  panelsFor(realtimeMinutes).forEach((p, k) => {
+  panelsFor(game).forEach((p, k) => {
     const x0 = LABEL_W + 24 + k * (PANEL_W + GAP);
     // Leave room for this panel's widest value label, so it stays inside the chart.
     const widest = Math.max(0, ...rows.map((m) => (p.value(m) === null ? 0 : Array.from(p.fmt(m)).length)));
@@ -148,13 +163,13 @@ export function renderChart(summary: BenchSummary, theme: ChartTheme): string {
         return;
       }
       const w = value > 0 && max > 0 ? Math.max(2, (value / max) * span) : 0;
-      const title = `${esc(m.label)}: ${esc(p.fmt(m))}`;
+      const title = `${esc(m.label)}${isMockRow(m) ? MOCK_TAG : ""}: ${esc(p.fmt(m))}`;
       parts.push(`<rect x="${x0}" y="${y}" width="${w.toFixed(1)}" height="${BAR_H}" rx="4" fill="${c[kindOf(m)]}"><title>${title}</title></rect>`);
       parts.push(text((x0 + w + 6).toFixed(1), y + BAR_H / 2 + 4, 12, 400, c.ink2, p.fmt(m)));
     });
   });
 
-  parts.push(text(24, H - 14, 11, 400, c.muted, footer(summary, realtimeMinutes)));
+  parts.push(text(24, H - 14, 11, 400, c.muted, footer(summary, game)));
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}" role="img" aria-label="${esc(ARIA)}">\n${parts.join("\n")}\n</svg>\n`;
 }
@@ -165,17 +180,30 @@ function kindOf(m: ModelSummary): Kind {
   return "language";
 }
 
-function footer(summary: BenchSummary, realtimeMinutes: number | null): string {
+/** A mock model drawn with --allow-mock. Baselines are reference rows, so they are never marked. */
+function isMockRow(m: ModelSummary): boolean {
+  return m.mock && m.kind !== "baseline";
+}
+
+/** The label column: a mock row keeps its (mock) tag, cutting the name to make room for it. */
+function rowLabel(m: ModelSummary): string {
+  return isMockRow(m) ? `${shortLabel(m.label, LABEL_MAX - MOCK_TAG.length)}${MOCK_TAG}` : shortLabel(m.label, LABEL_MAX);
+}
+
+function footer(summary: BenchSummary, game: GameLength | null): string {
   const clauses = [summary.environment, `${summary.seeds} ${summary.seeds === 1 ? "seed" : "seeds"}`];
   if (summary.frozenPieces !== null) clauses.push(`frozen: ${summary.frozenPieces} pieces each`);
-  if (realtimeMinutes !== null) clauses.push(`real time: ${realtimeMinutes} minutes`);
-  clauses.push(`total cost $${summary.totalCostUsd.toFixed(2)}`, summary.date, "no confidence intervals yet");
+  if (game !== null) clauses.push(`real time: ${game.plain}`);
+  clauses.push(`total cost $${summary.totalCostUsd.toFixed(2)}`);
+  const left = summary.skipped.length;
+  if (left > 0) clauses.push(`${left} unfinished ${left === 1 ? "match" : "matches"} left out`);
+  clauses.push(summary.date, "no confidence intervals yet");
   return clauses.join(" · ");
 }
 
-function shortLabel(label: string): string {
+function shortLabel(label: string, max: number): string {
   const chars = Array.from(label);
-  return chars.length > LABEL_MAX ? `${chars.slice(0, LABEL_MAX - 1).join("")}…` : label;
+  return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : label;
 }
 
 function largest(values: (number | null)[]): number {

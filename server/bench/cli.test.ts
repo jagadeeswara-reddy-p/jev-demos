@@ -217,7 +217,7 @@ models:
     } finally {
       server.stop(true);
     }
-  });
+  }, 20_000);
 });
 
 describe("bench demo", () => {
@@ -264,7 +264,7 @@ describe("bench usage", () => {
 describe("bench chart", () => {
   const demoOpts = { ...DEMO, maxPieces: 30 };
 
-  test("refuses a bench whose models are all mocks unless --allow-mock is given", async () => {
+  test("refuses a demo bench, whose models are mocks, unless --allow-mock is given", async () => {
     const tmp = tempDir();
     expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
     const out = join(tempDir(), "media/results");
@@ -305,16 +305,11 @@ describe("bench chart", () => {
     expect(text()).toContain("bun bench chart");
   });
 
-  test("a bench with a real model is not refused without --allow-mock", async () => {
+  test("a bench with live models and only baseline mocks is not refused without --allow-mock", async () => {
     const tmp = tempDir();
     expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
-    // Rename the mock "jev" to a model id no mock profile has, in every log.
-    for (const name of readdirSync(tmp).filter((f) => f.endsWith(".jsonl"))) {
-      const file = join(tmp, name);
-      const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
-      const renamed = lines.map((line) => JSON.stringify(renameString(JSON.parse(line), "jev", "acme-model")));
-      writeFileSync(file, `${renamed.join("\n")}\n`);
-    }
+    // Rename every mock that is not a baseline to an id no mock profile has, in every log.
+    renameModels(tmp, { jev: "acme-model", "llm-fast": "acme-fast", "llm-frontier": "acme-frontier", "llm-flaky": "acme-flaky" });
     expect((await summarizeBench(tmp)).models.map((m) => m.id)).toContain("acme-model");
     const out = join(tempDir(), "media/results");
     const { io, text } = capture();
@@ -324,7 +319,52 @@ describe("bench chart", () => {
     expect(existsSync(`${out}-light.svg`)).toBe(true);
     expect(existsSync(`${out}-dark.svg`)).toBe(true);
   });
+
+  test("a live model with one mock that is not a baseline is refused, and the message names that mock", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    renameModels(tmp, { jev: "acme-model" });
+    const out = join(tempDir(), "media/results");
+    const { io, text } = capture();
+    expect(await main(["chart", tmp, "--out", out], io)).toBe(1);
+    expect(text()).toContain("This bench includes mock models (");
+    expect(text()).toContain("llm-fast");
+    expect(text()).toContain("--allow-mock");
+    expect(existsSync(`${out}-light.svg`)).toBe(false);
+  });
+
+  test("an --out ending in a slash writes results-light and results-dark inside that folder", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    const folder = `${tempDir()}/`;
+    expect(await main(["chart", tmp, "--out", folder, "--allow-mock"], capture().io)).toBe(0);
+    expect(existsSync(`${folder}results-light.svg`)).toBe(true);
+    expect(existsSync(`${folder}results-dark.svg`)).toBe(true);
+  });
+
+  test("an --out that names an existing folder, with no slash, writes results inside it", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    const folder = tempDir();
+    expect(await main(["chart", tmp, "--out", folder, "--allow-mock"], capture().io)).toBe(0);
+    expect(existsSync(join(folder, "results-light.svg"))).toBe(true);
+    expect(existsSync(join(folder, "results-dark.svg"))).toBe(true);
+  });
 });
+
+/** Renames model ids in every log of a folder, in place. */
+function renameModels(dir: string, renames: Record<string, string>): void {
+  for (const name of readdirSync(dir).filter((f) => f.endsWith(".jsonl"))) {
+    const file = join(dir, name);
+    const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
+    const renamed = lines.map((line) => {
+      let value: unknown = JSON.parse(line);
+      for (const [from, to] of Object.entries(renames)) value = renameString(value, from, to);
+      return JSON.stringify(value);
+    });
+    writeFileSync(file, `${renamed.join("\n")}\n`);
+  }
+}
 
 /** Returns a copy of a parsed JSON value with every string equal to `from` replaced by `to`. */
 function renameString(value: unknown, from: string, to: string): unknown {

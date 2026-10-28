@@ -1,6 +1,5 @@
-import { chmodSync, copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { MOCK_PROFILES } from "../../src/mock/profiles";
 import type { Env } from "../models/env";
 import { testModel } from "../sample";
 import { createSource, listSources, models, refreshHealth } from "../sources";
@@ -179,22 +178,35 @@ async function chart(args: Args, io: Io): Promise<number> {
     io.out(err instanceof Error ? err.message : String(err));
     return 1;
   }
-  const mocks = new Set<string>(MOCK_PROFILES.map((p) => p.id));
-  if (!args.flags.has("--allow-mock") && summary.models.every((m) => mocks.has(m.id))) {
-    io.out("This bench has only mock models; its chart isn't a model comparison. Use --allow-mock to draw it anyway.");
+  // A mock that is not a baseline would print simulated numbers beside real ones, so chart refuses it. Baselines are reference rows and always allowed.
+  const mocks = summary.models.filter((m) => m.mock && m.kind !== "baseline").map((m) => m.id);
+  if (mocks.length > 0 && !args.flags.has("--allow-mock")) {
+    io.out(`This bench includes mock models (${mocks.join(", ")}); their numbers are simulated. Use --allow-mock to draw it anyway.`);
     return 1;
   }
 
-  const prefix = resolve(args.out ?? CHART_OUT);
+  const prefix = outPrefix(args.out);
   mkdirSync(dirname(prefix), { recursive: true });
   const files: Record<ChartTheme, string> = { light: `${prefix}-light.svg`, dark: `${prefix}-dark.svg` };
   for (const theme of ["light", "dark"] as const) {
     await Bun.write(files[theme], renderChart(summary, theme));
     io.out(`Wrote ${relative(process.cwd(), files[theme])}`);
   }
+  const left = summary.skipped.length;
+  if (left > 0) io.out(`Left out ${left} unfinished match log${left === 1 ? "" : "s"}: ${summary.skipped.join(", ")}`);
   for (const m of summary.models) io.out(modelLine(m));
   io.out(pictureSnippet(relative(process.cwd(), files.dark), relative(process.cwd(), files.light)));
   return 0;
+}
+
+/**
+ * The prefix of the two chart files. An --out that ends in a slash, or names an existing folder, is a folder:
+ * the files go in it as results-light.svg and results-dark.svg.
+ */
+function outPrefix(out: string | undefined): string {
+  if (out === undefined) return resolve(CHART_OUT);
+  const folder = /[\\/]$/.test(out) || (existsSync(out) && statSync(out).isDirectory());
+  return folder ? resolve(out, "results") : resolve(out);
 }
 
 /** One line per model: label, agreement, median and real-time landed; "—" where there is no data. */

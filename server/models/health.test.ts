@@ -112,9 +112,12 @@ describe("HealthChecks", () => {
 
   test("a slow server times out", async () => {
     const slow = Bun.serve({ port: 0, fetch: () => Bun.sleep(500).then(() => new Response("ok")) });
-    const h = new HealthChecks({ timeoutMs: 50 });
-    await h.refresh([{ ...up, id: "slow", baseUrl: `http://localhost:${slow.port}` }]);
-    expect(h.problem("slow")).toContain("Not responding");
-    slow.stop(true);
+    try {
+      const h = new HealthChecks({ timeoutMs: 50 });
+      await h.refresh([{ ...up, id: "slow", baseUrl: `http://localhost:${slow.port}` }]);
+      expect(h.problem("slow")).toContain("Not responding");
+    } finally {
+      slow.stop(true);
+    }
   });
 });

@@ -1,15 +1,21 @@
 import { readdir, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import type { AgentSpec, ArenaEvent, ArenaEventOf, ClockMode, RunConfig } from "../../src/arena/types";
+import { MOCK_PROFILES } from "../../src/mock/profiles";
 
 // Summarizes one bench folder per model, averaged over seeds. Only run_started,
 // decision, lock and run_finished events are read; a log without run_started is
-// not a match and is skipped.
+// not a match and is skipped. A log whose run never finished (no run_finished as
+// its last event) is left out and listed in skipped.
+
+const MOCK_IDS = new Set<string>(MOCK_PROFILES.map((p) => p.id));
 
 export interface ModelSummary {
   id: string;
   label: string;
   kind: string;
+  /** True when the id is a mock profile's id, so its numbers are simulated. Baselines are mock profiles too. */
+  mock: boolean;
   /** Distinct seeds this model played. */
   seeds: number;
   /** Mean over frozen matches of (answers ranked 1 / graded answers), as a percentage; null without frozen matches. */
@@ -37,7 +43,10 @@ export interface BenchSummary {
   frozenPieces: number | null;
   /** maxDurationMs / 1000 of a realtime match, null if none. */
   realtimeSeconds: number | null;
+  /** Sum of the costs of the non-mock models, all matches. */
   totalCostUsd: number;
+  /** File names of the logs left out because their run never finished. */
+  skipped: string[];
   /** YYYY-MM-DD of bench.json createdAt, else of the newest log's mtime. */
   date: string;
   /** Ordered by real-time pieces landed, most first; the baseline last. */
@@ -59,16 +68,21 @@ const USED = new Set<ArenaEvent["t"]>(["run_started", "decision", "lock", "run_f
 export async function summarizeBench(dir: string): Promise<BenchSummary> {
   const names = (await readdir(dir)).filter((f) => f.endsWith(".jsonl")).sort();
   const matches: Match[] = [];
+  const skipped: string[] = [];
   let newest = 0;
   for (const name of names) {
     const file = join(dir, name);
-    const events = parseLog(await Bun.file(file).text());
+    const { events, complete } = parseLog(await Bun.file(file).text(), name);
     const started = events.find((e): e is RunStarted => e.t === "run_started");
     if (!started) continue;
+    if (!complete) {
+      skipped.push(name);
+      continue;
+    }
     matches.push({ mode: started.config.mode, config: started.config, events });
     newest = Math.max(newest, (await stat(file)).mtimeMs);
   }
-  if (matches.length === 0) throw new Error(`${dir} has no match logs`);
+  if (matches.length === 0) throw new Error(skipped.length > 0 ? `${dir} has no finished match logs` : `${dir} has no match logs`);
 
   const bench = await readJson<{ name?: string; environment?: Environment; createdAt?: string }>(join(dir, "bench.json"));
   const settings = await readJson<{ environment?: Environment }>(join(dir, "settings.json"));
@@ -90,7 +104,8 @@ export async function summarizeBench(dir: string): Promise<BenchSummary> {
     seeds: new Set(matches.map((m) => m.config.seed)).size,
     frozenPieces: frozen ? frozen.config.maxPieces : null,
     realtimeSeconds: realtime ? realtime.config.maxDurationMs / 1000 : null,
-    totalCostUsd: matches.reduce((sum, m) => sum + costOf(m.events, () => true), 0),
+    totalCostUsd: matches.reduce((sum, m) => sum + costOf(m.events, (agentId) => !MOCK_IDS.has(agentId ?? "")), 0),
+    skipped,
     date: stamp.slice(0, 10),
     models,
   };
@@ -120,6 +135,7 @@ function summarizeModel(spec: AgentSpec, all: Match[]): ModelSummary {
     id,
     label: spec.name,
     kind: spec.kind,
+    mock: MOCK_IDS.has(id),
     seeds: new Set(mine.map((m) => m.config.seed)).size,
     agreement: mean(agreements),
     frozenLines: mean(frozenLines),
@@ -158,12 +174,30 @@ function median(values: number[]): number | null {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-function parseLog(text: string): ArenaEvent[] {
-  return text
+/**
+ * The events of one log that the summary reads, and whether its run finished (its last event is run_finished).
+ * A line that is not JSON throws, naming the file and line. The exception is a torn last line of a log that
+ * never finished: it just marks the log as cut short.
+ */
+function parseLog(text: string, file: string): { events: ArenaEvent[]; complete: boolean } {
+  const lines = text
     .split("\n")
-    .filter((line) => line.trim() !== "")
-    .map((line) => JSON.parse(line) as ArenaEvent)
-    .filter((e) => USED.has(e.t));
+    .map((line, i) => ({ n: i + 1, line }))
+    .filter((l) => l.line.trim() !== "");
+  const events: ArenaEvent[] = [];
+  let last: ArenaEvent["t"] | undefined;
+  for (const [k, { n, line }] of lines.entries()) {
+    let event: ArenaEvent;
+    try {
+      event = JSON.parse(line) as ArenaEvent;
+    } catch {
+      if (k === lines.length - 1 && last !== "run_finished") break;
+      throw new Error(`${file}: line ${n} is not valid JSON`);
+    }
+    last = event.t;
+    if (USED.has(event.t)) events.push(event);
+  }
+  return { events, complete: last === "run_finished" };
 }
 
 async function readJson<T>(file: string): Promise<T | null> {

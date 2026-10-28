@@ -218,8 +218,8 @@ the `<picture>` snippet for the README.
 | Flag | Meaning |
 |---|---|
 | `<folder>` | Required. The output folder, with its `.jsonl` logs. |
-| `--out prefix` | Prefix for the two files. Default `docs/media/results`, which writes `docs/media/results-light.svg` and `docs/media/results-dark.svg`. Paths are relative to the folder you run the command from. |
-| `--allow-mock` | Draw a bench whose models are all mocks. Without it, `chart` refuses (see below). |
+| `--out prefix` | Where the two files go. Default `docs/media/results`, which writes `docs/media/results-light.svg` and `docs/media/results-dark.svg`. A value that ends in `/`, or names an existing folder, is a folder: the files go in it as `results-light.svg` and `results-dark.svg`. Paths are relative to the repository root, where `bun bench` always runs. |
+| `--allow-mock` | Draw a bench that has a mock model (see below). Without it, `chart` refuses. |
 
 **Panels.** Rows are the models, ordered by real-time pieces landed, most first.
 The reference (heuristic) row is last. The order is the same in every panel.
@@ -234,15 +234,25 @@ Colour shows the model kind: decision model, language model, or reference.
 Every row is also named, and every bar has its value.
 
 **Footer.** The footer states the environment and version, the number of seeds,
-the frozen pieces each model played, the real-time minutes per game, the total
-cost, the date, and "no confidence intervals yet". A panel with no data (for
-example, a bench with no frozen matches) shows `—` for each row instead of bars.
+the frozen pieces each model played, the real-time limit per game (in minutes
+when it is whole minutes, otherwise in seconds), the total cost, the date, and
+"no confidence intervals yet". A panel with no data (for example, a bench with
+no frozen matches) shows `—` for each row instead of bars.
 
-**Mock refusal.** A bench whose models are all mocks is not a model comparison,
-so `chart` refuses and writes nothing. It prints "This bench has only mock
-models; its chart isn't a model comparison. Use --allow-mock to draw it anyway."
-and exits with 1. A bench with at least one live model is drawn normally. To
-draw the demo, pass the flag:
+**Unfinished logs.** A match log whose run never finished (its last line is not
+`run_finished`, for example because the run was stopped) is left out, not
+charted as a full game. `chart` prints `Left out N unfinished match logs:` with
+their file names, and the footer says how many matches were left out. A log
+whose last line is half written counts as unfinished. If every log is
+unfinished, `chart` says so and writes nothing.
+
+**Mock refusal.** A mock model's numbers are simulated, so `chart` refuses a
+bench that includes one and writes nothing. It prints "This bench includes mock
+models (ids); their numbers are simulated. Use --allow-mock to draw it anyway."
+and exits with 1. Baseline models (`heuristic`, `random`) are reference rows and
+are always drawn. With `--allow-mock`, each mock row is labelled "(mock)", and
+the total cost leaves out the mock models' costs. To draw the demo, pass the
+flag:
 
 ```sh
 bun bench demo
@@ -260,5 +270,5 @@ image is the fallback:
 </picture>
 ```
 
-The paths in the snippet follow the `--out` prefix, relative to the folder you
-ran the command from.
+The paths in the snippet follow the `--out` prefix, relative to the repository
+root.
