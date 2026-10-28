@@ -326,7 +326,9 @@ Actions workflow on every push to `main`.
 |---|---|
 | `/` | What decision-bench measures, in one sentence; the latest run's 2×2 chart; the demo video; "Run your own" and "See results" buttons |
 | `/results/` | Every published run: date, environment, models, a verified badge (bundle hash and signer) |
-| `/results/<run>/` | One run: the 2×2 per model, speed vs judgement, cost vs score, per-seed tables, a replay of any game, download and verify instructions |
+| `/results/<run>/` | One run: the 2×2 per model, speed vs judgement, cost vs score, per-seed tables, a replay of any game, download and verify instructions (see [Results pages](#results-pages)) |
+| `/methodology/` | Rules, metrics, statistics; changelog per methodology version |
+| `/submit/` | How to publish a run: a PR with a signed bundle |
 | `/docs/` | The documentation (below) |
 | `/blog/` | Write-ups such as today's `findings.md` and posts in `docs/posts/` |
 
@@ -360,11 +362,141 @@ Today's docs map onto this directly:
 - `self-hosting.md` → guides.
 - `findings.md` → blog.
 
-The README shrinks to:
-- the one-line pitch;
-- the latest results table;
-- a three-command quick start;
-- a link to the site.
+### README
+
+Researched on 2026-10-28 against the READMEs of uv, ruff, Biome, Bun,
+promptfoo, Browser Use, Terminal-Bench, Harbor, inspect_ai and
+lm-evaluation-harness, plus GitHub's README guidance and makeareadme.com.
+
+What the good ones share:
+- **Short.** Benchmark READMEs such as Terminal-Bench and Harbor run to about
+  600 words and leave the rest to the docs site. lm-evaluation-harness, whose
+  README reads like a full docs site, is the counter-example.
+- **One visual that proves the claim, right under the pitch.** uv and ruff
+  show a speed chart; Browser Use shows a demo GIF.
+- **A quick start of 2–4 commands that ends by showing results**, as
+  promptfoo's `init → eval → view` does.
+
+Two traps to avoid:
+- Shipping a `.env` template that the README never mentions (Terminal-Bench
+  does this).
+- Putting a news list above the fold.
+
+GitHub builds a table of contents from the headings, so the README doesn't
+need one.
+
+The README, top to bottom (about 600 words):
+
+1. **Name, 4–5 badges and a one-line pitch.**
+   - Badges: CI, license, methodology version, latest release, Open in Codespaces.
+   - Pitch: *"Benchmark models on judgement, 2D reasoning and speed, separately,
+     by making them play real-time games."*
+2. **Hero GIF.** 12 boards playing live, cut to the results chart, linking to
+   the full video. This replaces today's two videos.
+3. **Latest results.** A table of at most 6 rows: judgement, 2D reasoning and
+   speed, each with a ±95% interval, plus cost. Below it, a link to the full
+   results page.
+4. **Quick start, no keys.** Three commands and the time to the first result:
+   ```sh
+   git clone https://github.com/decision-bench/decision-bench && cd decision-bench
+   bun install
+   bun bench demo            # 6 mock models, about 1 minute, opens the results page
+   ```
+5. **Use your own models.** `bun bench init` writes `bench.yaml` and
+   `.env.example`. You add keys to `.env`, run `bun bench doctor`, then
+   `bun bench run`.
+6. **What we measure, and why it's fair.**
+   - The 2×2: described or board-only options, on a frozen or real-time clock.
+   - The fairness rules: same pieces, same text, one shared clock.
+   - A link to the versioned methodology.
+7. **Published results and verification.**
+   - What a bundle contains.
+   - The two commands that check one: `bun bench verify` and
+     `gh attestation verify`.
+8. **Extend it.** Links to the guides: add a model, write an adapter, write an
+   environment.
+9. **Contributing, security, citation, license.**
+   - Security means how API keys are handled: they come only from `.env` and
+     are never written into logs or bundles.
+
+`CITATION.cff` gives the repo GitHub's "Cite this repository" button. Every
+benchmark repo studied has a citation section.
+
+### Getting started fast
+
+| Piece | What it does | When |
+|---|---|---|
+| `bun bench demo` | Runs the mock line-up on every variant and opens the results page. No keys, no cost. Uses the mocks that exist today, like promptfoo's no-API `echo` provider. | First version |
+| `bun bench init` | Writes a commented `bench.yaml` (two example models) and `.env.example` | First version |
+| `bun bench doctor` | Checks the Bun version, that every model's keys are set, and one real answer per model; then prints a time and cost estimate | First version (it's the runner's preflight on its own) |
+| Codespaces devcontainer | Opens the repo with Bun and dependencies ready, so the demo runs in the browser | Soon |
+| `llms.txt` on the site | Docs in a form coding agents read, as Inspect does | Soon |
+| `bunx decision-bench …` from npm | Use it without cloning | Once the CLI settles; the git clone is enough until then |
+
+### Results pages
+
+Researched against the leaderboards of Aider, SWE-bench, Terminal-Bench, Arena
+(formerly LMArena), HAL and Artificial Analysis. Kaggle Game Arena is the
+closest match to this project, but its page renders in the browser and
+couldn't be read, so its details are unconfirmed.
+
+Patterns worth copying:
+- **Aider:**
+  - one sortable table, where each row expands to show the run's metadata
+    (commit, date, version, tokens, errors);
+  - results arrive as PRs adding data files, so the whole page is static.
+- **Terminal-Bench:** 95% intervals drawn as whiskers.
+- **Arena:**
+  - a score ± interval plus a **rank spread**: the best and worst rank a model
+    could hold given everyone's intervals;
+  - a toggle between the ranking and a Pareto (score vs cost) view.
+- **HAL:** the cost-vs-accuracy Pareto frontier.
+- **Artificial Analysis:** a versioned methodology, with a warning that scores
+  aren't comparable across versions.
+- **SWE-bench:**
+  - a submission is a folder in the repo;
+  - CI re-grades it from the recorded outputs instead of re-running it, which
+    is what `bun bench verify` does here.
+
+Everything below is static Astro pages built from the bundles' JSON. No
+server is needed.
+
+**`/results/` (the leaderboard)**
+- **Header:** methodology version, runs and seeds per model, last updated,
+  and a "How to verify" link.
+- **Table:** one row per model, sortable.
+  - Columns: judgement, 2D reasoning, speed (median answer and too-late
+    rate), and the full game.
+  - Each score shows a ±95% interval and a rank spread (e.g. "2–4").
+  - Also: cost per game, number of games, and a verified badge.
+- **Filters:** model type (decision model or language model), provider,
+  methodology version.
+- **Toggle** between the table and a Pareto chart: judgement against median
+  latency, or score against cost.
+- **Expanding a row** shows the runs behind it: date, `bench.yaml` hash,
+  engine commit, seeds, signer, and a bundle download.
+
+**`/results/<run>/` (one run)**
+- The 2×2 grid per model.
+- Per-seed tables.
+- A list of games, each opening the replay viewer. The viewer is today's board
+  drawing plus a stepper showing every turn: the options, the model's pick,
+  its rank by the heuristic, and its latency.
+
+**`/methodology/`**
+- The rules, the metrics and the statistics, with a changelog per
+  methodology version.
+
+**`/submit/`**
+- Open a PR that adds a signed bundle folder under `results/`.
+- CI runs `bun bench verify` (hashes, signature, scores recomputed from the
+  logs) before the page rebuilds.
+
+Skipped for now:
+- a programme where maintainers re-run submissions;
+- encrypted traces, since live Tetris games can't leak answers into training
+  data;
+- a submission CLI.
 
 ## 12 boards on screen
 
@@ -398,16 +530,21 @@ runs a small Node worker that talks to the engine over stdio.
 1. **Done (branch `engine-core`).** Make the Tetris engine and arena an `Environment` plugin. The current UI
    keeps working through it.
 2. **Done (branch `engine-core`).** Generic `Turn`/`Answer`; adapters lose `DecisionRequest`.
-3. `bench.yaml` loader and the headless runner, with preflight and resume.
+3. `bench.yaml` loader and the headless runner, with preflight and resume,
+   plus `bun bench init`, `doctor` (the preflight on its own) and `demo`.
 4. Board-only variant.
 5. Results bundle, `stats`, `publish`, `verify`, with hashes and SSH
    signatures. The release workflow with attestations goes in once the
    real repo exists.
-7. Website: Astro and Starlight in `site/`, the docs reorganised into it,
-   results pages built from `results/`, and the Pages deploy workflow. This can
-   start in parallel with step 1. Its first version needs only the existing docs
-   and the 2026-10 results.
 6. 12-board layout.
+7. Website: Astro and Starlight in `site/`, the docs reorganised into it,
+   the results pages (leaderboard, run page, replay viewer, methodology,
+   submit) built from `results/`, and the Pages deploy workflow. This can start
+   alongside step 3. Its first version needs only the existing docs and the
+   2026-10 results.
+8. The new README (the layout under [README](#readme)), `CITATION.cff`,
+   `SECURITY.md` and a methodology version badge. This lands with step 3, so the
+   quick start's commands exist when the README shows them.
 
 Each step is its own PR with tests. Old JSONL logs stay readable through a
 converter, so the 2026-10-17 results keep replaying.
