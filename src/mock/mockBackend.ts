@@ -1,16 +1,17 @@
 import { ClockedBackend } from "../arena/clockedBackend";
-import { ArenaSimulation } from "../arena/simulation";
-import type { RunConfig } from "../arena/types";
+import { tetris } from "../arena/environment";
+import type { ArenaEvent, RunConfig } from "../arena/types";
+import type { Match } from "../core/types";
 import { mockSourceFor } from "./mockSource";
 
 // Runs a mock-only line-up in the browser. Because mock models answer in
 // simulated time, the whole run can be played at any speed.
 export class MockBackend extends ClockedBackend {
-  private sim: ArenaSimulation | null = null;
+  private sim: Match<ArenaEvent> | null = null;
 
   start(config: RunConfig) {
     this.pause();
-    this.sim = new ArenaSimulation(
+    this.sim = tetris.createMatch(
       config,
       config.agents.map((spec) => mockSourceFor(config, spec)),
     );

@@ -1,4 +1,4 @@
-import type { Answer, Usage } from "../core/types";
+import type { Answer, Match, Usage } from "../core/types";
 import { type Board, encodeBoard } from "../engine/board";
 import { type Candidate, gravityMsPerRow, type LockResult, MAX_LEVEL, TetrisGame } from "../engine/game";
 import { evaluatePlacement } from "../engine/heuristic";
@@ -44,7 +44,7 @@ interface Player {
   timedOutPiece: number | null;
 }
 
-export class ArenaSimulation {
+export class ArenaSimulation implements Match<ArenaEvent> {
   t = 0;
   level: number;
   finished = false;
