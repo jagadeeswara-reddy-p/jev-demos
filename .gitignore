@@ -8,3 +8,6 @@ runs/
 .DS_Store
 models.local.json
 .ec2-key.pem
+
+# personal benches stay local
+bench.yaml
