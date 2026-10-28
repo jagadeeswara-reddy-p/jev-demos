@@ -1,4 +1,4 @@
-import type { DecisionSource } from "../../src/arena/types";
+import type { Agent } from "../../src/core/types";
 import type { AdapterName, ModelConfig } from "../models/types";
 import { bedrockAdapter } from "./bedrock";
 import { completionAdapter } from "./completion";
@@ -14,8 +14,8 @@ export const ADAPTERS: Record<AdapterName, Adapter> = {
   bedrock: bedrockAdapter,
 };
 
-/** A board's decision source for a model whose ${ENV} placeholders are already filled. */
-export function sourceFor(model: ModelConfig): DecisionSource {
+/** The agent for a model whose ${ENV} placeholders are already filled. */
+export function sourceFor(model: ModelConfig): Agent {
   const adapter = ADAPTERS[model.adapter];
-  return liveSource((req, signal) => adapter.decide(model, req, signal), model.timeoutMs ?? adapter.defaultTimeoutMs);
+  return liveSource((turn, signal) => adapter.decide(model, turn, signal), model.timeoutMs ?? adapter.defaultTimeoutMs);
 }

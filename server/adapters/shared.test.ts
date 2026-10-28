@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import type { DecisionAnswer } from "../../src/arena/types";
-import { sampleRequest } from "../sample";
-import { liveSource, parseChoice, redact, usageOf } from "./shared";
+import { TASK } from "../../src/arena/prompt";
+import type { Answer } from "../../src/core/types";
+import { sampleTurn } from "../sample";
+import { choiceSchema, liveSource, parseChoice, redact, systemText, usageOf } from "./shared";
 
 const usage = usageOf(0, 0);
 
@@ -41,8 +42,8 @@ describe("usageOf", () => {
 
 describe("liveSource", () => {
   const ask = (call: Parameters<typeof liveSource>[0], timeoutMs = 1000) =>
-    new Promise<{ answer: DecisionAnswer; latencyMs?: number }>((resolve) =>
-      liveSource(call, timeoutMs).request(sampleRequest(), (answer, _at, latencyMs) => resolve({ answer, latencyMs }), {
+    new Promise<{ answer: Answer; latencyMs?: number }>((resolve) =>
+      liveSource(call, timeoutMs).request(sampleTurn(), (answer, _at, latencyMs) => resolve({ answer, latencyMs }), {
         now: () => 0,
         signal: new AbortController().signal,
       }),
@@ -67,5 +68,17 @@ describe("liveSource", () => {
   test("gives up after the timeout", async () => {
     const { answer } = await ask((_req, signal) => new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason))), 30);
     expect(answer).toEqual({ status: "error", detail: "No response within 30 ms" });
+  });
+});
+
+describe("the chat prompt", () => {
+  const turn = sampleTurn();
+
+  test("asks for the task and a JSON choice", () => {
+    expect(systemText(turn)).toBe(`${TASK} Reply with JSON only, in the form {"choice": "<option id>"}.`);
+  });
+
+  test("limits the answer to the offered option ids", () => {
+    expect(choiceSchema(turn).properties.choice.enum).toEqual(turn.action.options.map((o) => o.id));
   });
 });

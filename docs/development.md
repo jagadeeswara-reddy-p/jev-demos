@@ -17,12 +17,17 @@ server/                 Bun server: page + API, live runs
                         shared.ts (timing, errors, prices, the chat prompt), types.ts (the Adapter interface)
   models/               the model list: types.ts, validate.ts, env.ts (${ENV} placeholders), store.ts, health.ts (pings self-hosted models)
   routes/models.ts      /api/models and /api/lineup
+src/core/               the engine contract, independent of any game
+  types.ts              Turn, Answer, Agent, Match, Environment
+  turn.ts               helpers for turns (observationText)
 src/engine/             game rules: pieces, board, gravity, landing spots, the hand-written evaluator
-src/arena/              the shared core
-  simulation.ts         one run: clock, levels, deadlines, decisions, drops, events, grading
+src/arena/              Tetris as an environment
+  environment.ts        the `tetris` Environment: id, version, variants, createMatch
+  simulation.ts         one match: clock, levels, deadlines, decisions, drops, events, grading
+  turn.ts               builds the Turn for one piece
   ranking.ts            who wins: the survival and sprint rules
   prompt.ts             the text every model receives
-  types.ts              config, events, decision sources, DEFAULT_CONFIG
+  types.ts              config, events, TetrisTurnDetail and TetrisAgent, DEFAULT_CONFIG
   serverBackend.ts      browser ↔ server (live runs)
   replayBackend.ts      replays and JSONL import/export
 src/mock/               mock profiles and the in-browser mock backend

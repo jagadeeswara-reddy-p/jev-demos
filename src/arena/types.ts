@@ -1,3 +1,4 @@
+import type { Agent, Usage } from "../core/types";
 import type { Cell, PieceType } from "../engine/pieces";
 
 // The contract between a backend (mock, replay or the live server) and the UI.
@@ -66,12 +67,6 @@ export type DecisionStatus =
   | "error" // request failed
   | "timeout"; // frozen mode only: no answer within the per-turn limit
 
-export interface DecisionUsage {
-  inputTokens: number;
-  outputTokens: number;
-  costUsd: number;
-}
-
 export type ArenaEvent =
   | { t: "run_started"; at: number; config: RunConfig }
   | { t: "level"; at: number; level: number; gravityMs: number }
@@ -98,7 +93,7 @@ export type ArenaEvent =
       choice?: string;
       probabilities?: Record<string, number>;
       confidence?: number;
-      usage?: DecisionUsage;
+      usage?: Usage;
       detail?: string;
       /**
        * Where the chosen option ranks among the offered ones by the reference
@@ -127,10 +122,10 @@ export type ArenaEvent =
 
 export type ArenaEventOf<T extends ArenaEvent["t"]> = Extract<ArenaEvent, { t: T }>;
 
-// ---------- decision sources ----------
+// ---------- turns ----------
 
-/** Everything a model is shown for one piece. Identical for every board in a run. */
-export interface DecisionRequest {
+/** Tetris's own view of a turn: what mocks and baselines read. API adapters see only the generic Turn. */
+export interface TetrisTurnDetail {
   agentId: string;
   pieceId: number;
   type: PieceType;
@@ -140,38 +135,11 @@ export interface DecisionRequest {
   candidates: CandidateView[];
   level: number;
   mode: ClockMode;
-  deadlineMs: number;
-  /** Simulated time the request was made. */
-  requestedAt: number;
 }
 
-export interface DecisionAnswer {
-  status: "ok" | "invalid" | "error";
-  choice?: string;
-  probabilities?: Record<string, number>;
-  confidence?: number;
-  usage?: DecisionUsage;
-  detail?: string;
-}
+export type TetrisAgent = Agent<TetrisTurnDetail>;
 
-/**
- * Hands an answer back to the run. `arrivesAt` is in simulated time; pass the
- * measured wall-clock latency for live calls, or leave it out to use arrivesAt - requestedAt.
- */
-export type DeliverAnswer = (answer: DecisionAnswer, arrivesAt: number, latencyMs?: number) => void;
-
-export interface DecisionContext {
-  /** Current simulated time of the run. */
-  now(): number;
-  /** Aborted when the run stops, so in-flight HTTP calls can be cancelled. */
-  signal: AbortSignal;
-}
-
-/** Something that picks landing spots: a mock profile, Jev, or an LLM. */
-export interface DecisionSource {
-  /** Called once per piece. Call `deliver` once with the answer, or never to simulate a hang. */
-  request(req: DecisionRequest, deliver: DeliverAnswer, ctx: DecisionContext): void;
-}
+// ---------- sources ----------
 
 /** What the UI knows about a source. Never includes keys. */
 export interface SourceInfo {

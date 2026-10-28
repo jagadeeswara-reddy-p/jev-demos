@@ -1,9 +1,9 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import type { ModelConfig } from "../models/types";
-import { sampleRequest } from "../sample";
+import { sampleTurn } from "../sample";
 import { completionAdapter, completionBody } from "./completion";
 
-const req = sampleRequest();
+const req = sampleTurn();
 const base: ModelConfig = { id: "c", label: "Fake chat", adapter: "completion", model: "fake-1", prices: { inputPerM: 2, outputPerM: 10 } };
 
 // An OpenAI-compatible API that records requests and replies with the test's content.
@@ -27,7 +27,7 @@ describe("completionBody", () => {
     expect(body.messages.map((m: any) => m.role)).toEqual(["system", "user"]);
     expect(body.messages[1].content).toContain("option_1:");
     expect(body.response_format.type).toBe("json_schema");
-    expect(body.response_format.json_schema.schema.properties.choice.enum).toHaveLength(req.candidates.length);
+    expect(body.response_format.json_schema.schema.properties.choice.enum).toHaveLength(req.action.options.length);
     expect(body).not.toHaveProperty("max_tokens");
   });
 

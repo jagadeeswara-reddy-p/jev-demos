@@ -1,21 +1,21 @@
-import { optionDescriptions, stateText, TASK } from "../../src/arena/prompt";
-import type { DecisionAnswer, DecisionRequest, DecisionSource, DecisionUsage } from "../../src/arena/types";
+import { observationText } from "../../src/core/turn";
+import type { Agent, Answer, Turn, Usage } from "../../src/core/types";
 import type { Prices } from "../models/types";
 
-// Pieces every adapter uses: timing a call as a DecisionSource, reporting HTTP
+// Pieces every adapter uses: timing a call as an Agent, reporting HTTP
 // errors, pricing tokens, and the one prompt all chat models get.
 
 /**
- * Wraps an HTTP call to a model as a DecisionSource. Latency is measured on the
+ * Wraps an HTTP call to a model as an Agent. Latency is measured on the
  * server's wall clock from just before the request to just after the response
  * is parsed, so it includes the network round trip, as a real game loop would see it.
  */
-export function liveSource(call: (req: DecisionRequest, signal: AbortSignal) => Promise<DecisionAnswer>, timeoutMs: number): DecisionSource {
+export function liveSource(call: (turn: Turn, signal: AbortSignal) => Promise<Answer>, timeoutMs: number): Agent {
   return {
-    request(req, deliver, ctx) {
+    request(turn, deliver, ctx) {
       const started = performance.now();
       const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(timeoutMs)]);
-      call(req, signal)
+      call(turn, signal)
         .then((answer) => deliver(answer, ctx.now(), performance.now() - started))
         .catch((err: unknown) => {
           if (ctx.signal.aborted) return; // the run was stopped; nobody is listening
@@ -30,7 +30,7 @@ export function liveSource(call: (req: DecisionRequest, signal: AbortSignal) => 
   };
 }
 
-export async function httpError(service: string, res: Response): Promise<DecisionAnswer> {
+export async function httpError(service: string, res: Response): Promise<Answer> {
   const body = await res.text().catch(() => "");
   return { status: "error", detail: `${service} returned ${res.status}: ${redact(body).slice(0, 200)}` };
 }
@@ -47,7 +47,7 @@ export function redact(text: string): string {
     .replace(/("?(?:api[_-]?key|token|secret|password|authorization)"?\s*[:=]\s*"?)[^\s"',}]+/gi, "$1[redacted]");
 }
 
-export function usageOf(inputTokens: number, outputTokens: number, prices?: Prices): DecisionUsage {
+export function usageOf(inputTokens: number, outputTokens: number, prices?: Prices): Usage {
   const costUsd = prices ? (inputTokens * prices.inputPerM + outputTokens * prices.outputPerM) / 1_000_000 : 0;
   return { inputTokens, outputTokens, costUsd };
 }
@@ -58,27 +58,27 @@ export function bearer(apiKey?: string): Record<string, string> {
 
 // ---------- the chat prompt (completion and bedrock adapters) ----------
 
-export const SYSTEM = `${TASK} Reply with JSON only, in the form {"choice": "<option id>"}.`;
+export function systemText(turn: Turn): string {
+  return `${turn.instructions} Reply with JSON only, in the form {"choice": "<option id>"}.`;
+}
 
-export function userText(req: DecisionRequest): string {
-  const options = Object.entries(optionDescriptions(req))
-    .map(([id, text]) => `${id}: ${text}`)
-    .join("\n");
-  return `${stateText(req)}\n\nOptions:\n${options}`;
+export function userText(turn: Turn): string {
+  const options = turn.action.options.map((o) => `${o.id}: ${o.text}`).join("\n");
+  return `${observationText(turn)}\n\nOptions:\n${options}`;
 }
 
 /** JSON schema for the answer: one of the offered option ids. */
-export function choiceSchema(req: DecisionRequest) {
+export function choiceSchema(turn: Turn) {
   return {
     type: "object",
-    properties: { choice: { type: "string", enum: req.candidates.map((c) => c.id) } },
+    properties: { choice: { type: "string", enum: turn.action.options.map((o) => o.id) } },
     required: ["choice"],
     additionalProperties: false,
   };
 }
 
 /** Strict: the answer must be JSON naming an option. No guessing from free text. */
-export function parseChoice(text: string, usage: DecisionUsage): DecisionAnswer {
+export function parseChoice(text: string, usage: Usage): Answer {
   const cleaned = text
     .trim()
     .replace(/^```(?:json)?\s*/i, "")

@@ -209,21 +209,35 @@ export interface Adapter {
   kind: AgentKind;                // "system-one" or "llm": how its boards are classed in results
   defaultTimeoutMs: number;
   unavailable?(model: ModelConfig, env: Env): string | undefined;   // e.g. missing credentials
-  decide(model: ModelConfig, req: DecisionRequest, signal: AbortSignal): Promise<DecisionAnswer>;
+  decide(model: ModelConfig, turn: Turn, signal: AbortSignal): Promise<Answer>;
 }
 ```
 
-`decide` gets the model with its placeholders filled and one `DecisionRequest`
-(board, piece, next pieces, the candidate landing spots). It returns
-`{ status: "ok", choice, probabilities?, confidence?, usage }`, or `invalid` or
-`error` with a `detail`. It must pass `signal` to its HTTP call. A throw counts
-as an error answer, and latency is measured around the call for you.
+`decide` gets the model with its placeholders filled and one `Turn` from
+`src/core/types.ts`. An adapter builds its request from these fields only:
+
+| Field | What it holds |
+|---|---|
+| `instructions` | the task, e.g. "You are playing Tetris. Choose where the current piece should land. …" |
+| `observation` | what the model is shown, as text parts; `observationText(turn)` from `src/core/turn.ts` joins them |
+| `action.options` | the choices, in order, each `{ id, text }`: for Tetris, `option_N` and its description |
+| `deadlineMs` | how long until the answer stops counting |
+
+`turn.detail` is the environment's own view (for Tetris: the board, piece and
+landing spots). Mocks and baselines read it; **adapters must not**, so that
+every adapter works for every environment and every model gets the same text.
+
+`decide` returns `{ status: "ok", choice, probabilities?, confidence?, usage }`,
+or `invalid` or `error` with a `detail`. It must pass `signal` to its HTTP
+call. A throw counts as an error answer, and latency is measured around the
+call for you.
 
 Steps:
 
-1. Build the prompt from `src/arena/prompt.ts` (`stateText`, `optionDescriptions`)
-   or the chat helpers in `server/adapters/shared.ts`. Every model must get the
-   same information, or the comparison stops being fair.
+1. Build the request from the `Turn`, or with the chat helpers in
+   `server/adapters/shared.ts` (`systemText`, `userText`, `choiceSchema`,
+   `parseChoice`). Every model must get the same information, or the
+   comparison stops being fair.
 2. Add the file under `server/adapters/`, keeping request building and reply
    reading in exported functions so they can be tested without a network
    (see `decisionBody` / `readDecision`).

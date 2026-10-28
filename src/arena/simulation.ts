@@ -1,12 +1,14 @@
+import type { Answer, Match, Usage } from "../core/types";
 import { type Board, encodeBoard } from "../engine/board";
 import { type Candidate, gravityMsPerRow, type LockResult, MAX_LEVEL, TetrisGame } from "../engine/game";
 import { evaluatePlacement } from "../engine/heuristic";
 import type { PieceType } from "../engine/pieces";
 import { deriveSeed } from "../engine/rng";
-import type { AgentSpec, ArenaEvent, DecisionAnswer, DecisionSource, DecisionStatus, DecisionUsage, RunConfig } from "./types";
+import { tetrisTurn } from "./turn";
+import type { AgentSpec, ArenaEvent, DecisionStatus, RunConfig, TetrisAgent } from "./types";
 
 // One arena run on simulated time. The game rules are deterministic; where the
-// answers come from is up to each board's DecisionSource. Mock sources answer
+// answers come from is up to each board's agent. Mock sources answer
 // in simulated time (fully reproducible); live sources call a real API and
 // deliver whenever the response comes back. The browser MockBackend and the
 // Bun server both drive this class; tests drive it directly.
@@ -22,7 +24,7 @@ interface PendingDecision {
   choice?: string;
   probabilities?: Record<string, number>;
   confidence?: number;
-  usage?: DecisionUsage;
+  usage?: Usage;
   detail?: string;
   /** Heuristic rank of every option offered for this piece, to grade the answer. */
   ranks: Map<string, number>;
@@ -30,7 +32,7 @@ interface PendingDecision {
 
 interface Player {
   spec: AgentSpec;
-  source: DecisionSource;
+  agent: TetrisAgent;
   game: TetrisGame;
   candidates: Candidate[];
   requestedAt: number;
@@ -42,7 +44,7 @@ interface Player {
   timedOutPiece: number | null;
 }
 
-export class ArenaSimulation {
+export class ArenaSimulation implements Match<ArenaEvent> {
   t = 0;
   level: number;
   finished = false;
@@ -50,18 +52,18 @@ export class ArenaSimulation {
   private carry = 0;
   private abort = new AbortController();
 
-  /** `sources[i]` decides for `config.agents[i]`. */
+  /** `agents[i]` decides for `config.agents[i]`. */
   constructor(
     readonly config: RunConfig,
-    sources: DecisionSource[],
+    agents: TetrisAgent[],
   ) {
-    if (sources.length !== config.agents.length) throw new Error("Need exactly one decision source per board");
+    if (agents.length !== config.agents.length) throw new Error("Need exactly one agent per board");
     this.level = config.startLevel;
     // Same piece seed for everyone: every board gets the identical sequence.
     const pieceSeed = deriveSeed(config.seed, "pieces");
     this.players = config.agents.map((spec, i) => ({
       spec,
-      source: sources[i],
+      agent: agents[i],
       game: new TetrisGame(pieceSeed),
       candidates: [],
       requestedAt: 0,
@@ -270,7 +272,7 @@ export class ArenaSimulation {
     out.push({ t: "topout", at: this.t, agentId: p.spec.id, level: this.level });
   }
 
-  /** Asks this board's source for a decision on the piece that just appeared. */
+  /** Asks this board's agent for a decision on the piece that just appeared. */
   private request(p: Player, deadlineMs: number) {
     const { game, candidates } = p;
     if (candidates.length === 0) return;
@@ -278,20 +280,19 @@ export class ArenaSimulation {
     const requestedAt = this.t;
     const ranks = rankOptions(game.board, game.active!.type, candidates);
     let delivered = false;
-    p.source.request(
-      {
-        agentId: p.spec.id,
-        pieceId,
-        type: game.active!.type,
-        board: encodeBoard(game.board),
-        next: game.preview,
-        candidates: candidates.map(({ id, rot, x, y, cells }) => ({ id, rot, x, y, cells })),
-        level: this.level,
-        mode: this.config.mode,
-        deadlineMs,
-        requestedAt,
-      },
-      (answer: DecisionAnswer, arrivesAt: number, latencyMs?: number) => {
+    const detail = {
+      agentId: p.spec.id,
+      pieceId,
+      type: game.active!.type,
+      board: encodeBoard(game.board),
+      next: game.preview,
+      candidates: candidates.map(({ id, rot, x, y, cells }) => ({ id, rot, x, y, cells })),
+      level: this.level,
+      mode: this.config.mode,
+    };
+    p.agent.request(
+      tetrisTurn(detail, deadlineMs, requestedAt),
+      (answer: Answer, arrivesAt: number, latencyMs?: number) => {
         if (delivered || p.done || this.finished) return;
         delivered = true;
         p.pending.push({

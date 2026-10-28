@@ -1,5 +1,6 @@
 import { type Board, clearRows, decodeBoard, fullRows, HEIGHT, HIDDEN_ROWS, place, VISIBLE_HEIGHT, WIDTH } from "../engine/board";
-import type { CandidateView, DecisionRequest } from "./types";
+import type { PieceType } from "../engine/pieces";
+import type { CandidateView, TetrisTurnDetail } from "./types";
 
 // What every model is shown for one piece. Jev and the LLM get the same state
 // text and the same option descriptions, word for word; only the transport
@@ -36,7 +37,7 @@ export function boardText(board: Board): string {
   return rows.join("\n");
 }
 
-export function stateText(req: DecisionRequest): string {
+export function stateText(req: TetrisTurnDetail): string {
   const board = decodeBoard(req.board);
   return [
     `Board, ${WIDTH} columns by ${VISIBLE_HEIGHT} rows, top row first ("#" filled, "." empty):`,
@@ -48,7 +49,7 @@ export function stateText(req: DecisionRequest): string {
   ].join("\n");
 }
 
-export function candidateFeatures(board: Board, type: DecisionRequest["type"], c: CandidateView): CandidateFeatures {
+export function candidateFeatures(board: Board, type: PieceType, c: CandidateView): CandidateFeatures {
   const before = holes(board);
   const placed = place(board, c.cells, type);
   const rows = fullRows(placed);
@@ -79,7 +80,7 @@ export function describeCandidate(f: CandidateFeatures, c: CandidateView): strin
 }
 
 /** Option id → plain-language description, in the order the engine listed them. */
-export function optionDescriptions(req: DecisionRequest): Record<string, string> {
+export function optionDescriptions(req: TetrisTurnDetail): Record<string, string> {
   const board = decodeBoard(req.board);
   return Object.fromEntries(req.candidates.map((c) => [c.id, describeCandidate(candidateFeatures(board, req.type, c), c)]));
 }

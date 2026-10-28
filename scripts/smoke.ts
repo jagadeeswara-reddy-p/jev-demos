@@ -2,16 +2,16 @@
 // to configured models and prints what came back, the same check as the page's Test button.
 //   bun scripts/smoke.ts                       every model that can run, once
 //   bun scripts/smoke.ts live-laya live-jev -n 5   these models, five times each
-import { sampleRequest, testModel } from "../server/sample";
+import { sampleTurn, testModel } from "../server/sample";
 import { models } from "../server/sources";
 
 const args = process.argv.slice(2);
 const n = args.indexOf("-n");
 const repeats = n >= 0 ? Math.max(1, Number(args.splice(n, 2)[1]) || 1) : 1;
 const ids = args.length ? args : models.list().map((m) => m.id);
-const req = sampleRequest();
+const turn = sampleTurn();
 
-console.log(`${req.candidates.length} options for a ${req.type} piece\n`);
+console.log(`${turn.action.options.length} options for a ${turn.detail.type} piece\n`);
 for (const id of ids) {
   const info = models.get(id);
   if (!info) {
@@ -25,7 +25,7 @@ for (const id of ids) {
   const model = models.resolve(id);
   const times: number[] = [];
   for (let i = 0; i < repeats; i++) {
-    const r = await testModel(model, req);
+    const r = await testModel(model, turn);
     times.push(r.latencyMs);
     if (i > 0 && r.status === "ok") continue;
     const top = r.probabilities

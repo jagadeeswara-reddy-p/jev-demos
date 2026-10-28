@@ -19,7 +19,8 @@ import { decisionBody, readDecision } from "../server/adapters/decision";
 import { bearer } from "../server/adapters/shared";
 import type { ModelConfig } from "../server/models/types";
 import { models } from "../server/sources";
-import type { DecisionRequest } from "../src/arena/types";
+import { tetrisTurn } from "../src/arena/turn";
+import type { TetrisTurnDetail } from "../src/arena/types";
 import { encodeBoard } from "../src/engine/board";
 import { TetrisGame } from "../src/engine/game";
 import { evaluatePlacement } from "../src/engine/heuristic";
@@ -38,9 +39,9 @@ const ids = args;
 if (!ids.length) throw new Error("Usage: bun scripts/position-bias.ts <model-id>... [--states 12] [--shuffles 6]");
 
 /** Boards from a seeded game played by the heuristic, mostly its best move with every fourth its third best, so stacks get some shape. */
-function boards(count: number): { req: DecisionRequest; ranks: Map<string, number> }[] {
+function boards(count: number): { req: TetrisTurnDetail; ranks: Map<string, number> }[] {
   const game = new TetrisGame(7);
-  const out: { req: DecisionRequest; ranks: Map<string, number> }[] = [];
+  const out: { req: TetrisTurnDetail; ranks: Map<string, number> }[] = [];
   for (let piece = 1; out.length < count && game.spawn(); piece++) {
     const cands = game.candidates();
     const scored = cands.map((c) => ({ c, s: evaluatePlacement(game.board, game.active!.type, c) })).sort((a, b) => b.s - a.s);
@@ -55,8 +56,6 @@ function boards(count: number): { req: DecisionRequest; ranks: Map<string, numbe
           candidates: cands.map(({ id, rot, x, y, cells }) => ({ id, rot, x, y, cells })),
           level: 1,
           mode: "frozen",
-          deadlineMs: 30_000,
-          requestedAt: 0,
         },
         ranks: new Map(scored.map((e, i) => [e.c.id, i + 1])),
       });
@@ -76,7 +75,7 @@ function shuffled<T>(items: T[], rand: () => number): T[] {
   return a;
 }
 
-async function ask(model: ModelConfig, req: DecisionRequest, order: string[]) {
+async function ask(model: ModelConfig, req: TetrisTurnDetail, order: string[]) {
   // The same request the arena sends (rotations included), with the options listed in `order`.
   const byId = new Map(req.candidates.map((c) => [c.id, c]));
   const listed = { ...req, candidates: order.map((id) => byId.get(id)!) };
@@ -84,7 +83,7 @@ async function ask(model: ModelConfig, req: DecisionRequest, order: string[]) {
   const res = await fetch(model.url ?? `${model.baseUrl}/v1/systemone`, {
     method: "POST",
     headers: { ...bearer(model.apiKey), "Content-Type": "application/json" },
-    body: JSON.stringify(decisionBody(model, listed)),
+    body: JSON.stringify(decisionBody(model, tetrisTurn(listed, 30_000, 0))),
     signal: AbortSignal.timeout(model.timeoutMs ?? 30_000),
   });
   const ms = performance.now() - started;

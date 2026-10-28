@@ -1,8 +1,9 @@
 import { mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { FileSink } from "bun";
-import { ArenaSimulation } from "../src/arena/simulation";
+import { tetris } from "../src/arena/environment";
 import { type ArenaEvent, DEFAULT_CONFIG, MAX_BOARDS, type RunConfig } from "../src/arena/types";
+import type { Match } from "../src/core/types";
 import { config } from "./config";
 import { createSource, listSources } from "./sources";
 
@@ -21,7 +22,7 @@ const runs = new Map<string, LiveRun>();
 export class LiveRun {
   readonly events: ArenaEvent[] = [];
   finished = false;
-  private sim: ArenaSimulation;
+  private sim: Match<ArenaEvent>;
   private clients = new Set<ReadableStreamDefaultController<Uint8Array>>();
   private log: FileSink;
   private tickTimer: ReturnType<typeof setInterval> | null = null;
@@ -32,7 +33,7 @@ export class LiveRun {
     readonly id: string,
     readonly config: RunConfig,
   ) {
-    this.sim = new ArenaSimulation(
+    this.sim = tetris.createMatch(
       config,
       config.agents.map((spec) => createSource(config, spec)),
     );
