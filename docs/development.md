@@ -17,6 +17,13 @@ server/                 Bun server: page + API, live runs
                         shared.ts (timing, errors, prices, the chat prompt), types.ts (the Adapter interface)
   models/               the model list: types.ts, validate.ts, env.ts (${ENV} placeholders), store.ts, health.ts (pings self-hosted models)
   routes/models.ts      /api/models and /api/lineup
+  bench/                `bun bench`: the headless benchmark runner (see bench.md)
+    cli.ts              init, doctor, run, demo; the command-line entry point
+    config.ts           reads and checks bench.yaml, fills in its defaults
+    entrants.ts         resolves the listed models; fills ${ENV} placeholders from .env
+    plan.ts             the matches in order: variants, clocks, seeds
+    preflight.ts        the checks before a run, and the time and cost estimate
+    runner.ts           plays the matches one at a time; stop rule, resume, cost limit, bench.json
 src/core/               the engine contract, independent of any game
   types.ts              Turn, Answer, Agent, Match, Environment
   turn.ts               helpers for turns (observationText)

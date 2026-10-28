@@ -132,6 +132,17 @@ deploy/ec2/teardown.sh      # when you're done
 
 Needs AWS credentials in `.env`. Details, costs and debugging: [docs/self-hosting.md](docs/self-hosting.md).
 
+### Benchmark from the command line
+
+```sh
+bun bench demo      # six mock models, no keys needed
+bun bench init      # writes bench.yaml and .env to edit
+bun bench doctor    # checks every model and its key
+bun bench run       # plays the bench and writes the logs
+```
+
+The full reference is in [docs/bench.md](docs/bench.md).
+
 ### Checks
 
 ```sh

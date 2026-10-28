@@ -176,17 +176,28 @@ models:                          # 1 to 12
 2. **Preflight**: one real turn per model, then an estimate of time, tokens
    and cost for the whole run. Waits for confirmation (`--yes` skips).
 3. Schedules matches: for each environment × variant × clock × seed, start
-   all models together on one clock. Realtime matches run one at a time, so
-   models don't compete with other matches for network or rate limits. Frozen
-   matches may run in parallel.
+   all models together on one clock. Matches run one at a time, so models don't
+   compete with other matches for network or rate limits. Running frozen
+   matches in parallel is deferred.
 4. **Ends a match early** once `stopWhenFinished` of its models are done
    (default 3 of 4, i.e. 9 of 12): topped out, reached the goal, or hit the
    piece or time limit. The others stop where they are and are marked
    **unfinished** (see "Unfinished episodes" below). One slow model can't hold up
    a whole run, and the time and cost estimate stays honest.
-5. Writes each episode's events to `runs/<run>/<match>/<model>.jsonl` as it
-   goes. A crashed run resumes from the episodes not yet finished.
+5. Writes each match's events to `runs/<run>/<variant>-<clock>-seed<seed>.jsonl`
+   as it goes, and a `bench.json` manifest at the end. A crashed run resumes
+   from the matches not yet finished.
 6. Scores and writes the results bundle.
+
+Decisions made in step 3 (`bun bench`, branch `bench-runner`):
+
+- **One log per match, not per model**, in today's run-log format. `bun run
+  stats` and the page's replay read it unchanged.
+- **Matches run one at a time.** Running frozen matches in parallel is deferred.
+- **`repeats` and `concurrency` are deferred.** The loader rejects both until they
+  exist.
+- **`demo` prints the stats** until the results page exists. Replay is still the
+  page's job: load a log in `bun dev`.
 
 ### Unfinished episodes
 
@@ -530,7 +541,7 @@ runs a small Node worker that talks to the engine over stdio.
 1. **Done (branch `engine-core`).** Make the Tetris engine and arena an `Environment` plugin. The current UI
    keeps working through it.
 2. **Done (branch `engine-core`).** Generic `Turn`/`Answer`; adapters lose `DecisionRequest`.
-3. `bench.yaml` loader and the headless runner, with preflight and resume,
+3. **Done (branch `bench-runner`).** `bench.yaml` loader and the headless runner, with preflight and resume,
    plus `bun bench init`, `doctor` (the preflight on its own) and `demo`.
 4. Board-only variant.
 5. Results bundle, `stats`, `publish`, `verify`, with hashes and SSH
