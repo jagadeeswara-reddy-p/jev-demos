@@ -21,7 +21,7 @@ const model = (extra: Partial<ModelConfig> = {}): ModelConfig => ({ ...base, bas
 const signal = () => new AbortController().signal;
 
 describe("decisionBody", () => {
-  test("asks one choice question whose options are the landing spots", () => {
+  test("asks one choice question whose options are the turn's options", () => {
     const body = decisionBody(base, req) as any;
     expect(body.model).toBe("fake");
     expect(typeof body.state).toBe("string");

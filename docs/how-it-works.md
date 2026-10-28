@@ -153,7 +153,7 @@ per-model setting change how it is sent, never what it says:
 **AWS Bedrock models** (`server/adapters/bedrock.ts`) get the same system and
 user text as the completion adapter. They go through Bedrock's Converse API,
 which uses one request shape for every provider, and answer with a forced
-`choose_placement` tool call whose `choice` is limited to the offered ids.
+`choose_option` tool call whose `choice` is limited to the offered ids.
 Bedrock caches OpenAI prompts automatically and reports cache reads and writes
 separately, so those are counted as input tokens to keep the token columns comparable.
 
