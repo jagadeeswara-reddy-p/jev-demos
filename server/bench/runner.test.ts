@@ -237,7 +237,7 @@ describe("runMatches", () => {
     const outDir = tempDir();
     await runMatches(planMatches(cfg, MOCKS), fastOpts(outDir));
     const saved = JSON.parse(readFileSync(join(outDir, "settings.json"), "utf8"));
-    expect(saved).toEqual({ stopWhenFinished: 0.75, environment: { id: "tetris", version: "2" } });
+    expect(saved).toEqual({ stopWhenFinished: 0.75, environment: { id: "tetris", version: "3" } });
   });
 
   test("skips the matches after the cost limit is passed", async () => {

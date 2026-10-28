@@ -72,6 +72,13 @@ describe("ArenaSimulation", () => {
     expect(events.some((e) => e.t === "lock" && e.pieceId === 1 && e.byDecision)).toBe(false);
   });
 
+  it("keeps the start level on the frozen clock, where time is only waiting", () => {
+    const frozen = runToEnd(config(["llm-frontier", "jev"], "frozen"));
+    expect(frozen.filter((e) => e.t === "level").map((e) => (e.t === "level" ? e.level : 0))).toEqual([1]);
+    const realtime = runToEnd(config(["heuristic"]));
+    expect(realtime.filter((e) => e.t === "level").length).toBeGreaterThan(1);
+  });
+
   it("removes the speed penalty when the clock is frozen", () => {
     const events = runToEnd(config(["llm-frontier"], "frozen"));
     expect(events.some((e) => e.t === "decision" && e.status === "late")).toBe(false);

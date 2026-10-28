@@ -47,7 +47,7 @@ chart and the stats script.
 |---|---|---|
 | Board | 10 × 20, plus 2 hidden rows above | pieces appear in the top visible row |
 | Gravity | `(0.8 − (level−1)·0.007)^(level−1)` seconds per row | the standard Tetris speed curve: 1 s/row at level 1, under 1 ms/row by level 20 |
-| Levels | +1 every **15 s** of game time, up to 20 | time-based, not line-based, so the deadline shrinks for everyone at the same pace |
+| Levels | +1 every **15 s** of game time, up to 20 (real-time clock only) | time-based, not line-based, so the deadline shrinks for everyone at the same pace. On the frozen clock the level stays at the start level: time there is only waiting, and every model should see the same state |
 | Lock delay | **500 ms** | a resting piece locks after this long |
 | Entry delay | **200 ms** | pause between a lock and the next piece |
 | Drop after a decision | **30 ms per row**, never slower than gravity | see below |
