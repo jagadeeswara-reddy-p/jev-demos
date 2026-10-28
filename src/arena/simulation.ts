@@ -109,7 +109,8 @@ export class ArenaSimulation implements Match<ArenaEvent> {
     this.t += dt;
     const cfg = this.config;
 
-    const level = Math.min(MAX_LEVEL, cfg.startLevel + Math.floor(this.t / (cfg.levelSeconds * 1000)));
+    // On the frozen clock time is only waiting, so the level (shown to the models) stays put.
+    const level = cfg.mode === "frozen" ? cfg.startLevel : Math.min(MAX_LEVEL, cfg.startLevel + Math.floor(this.t / (cfg.levelSeconds * 1000)));
     if (level !== this.level) {
       this.level = level;
       out.push({ t: "level", at: this.t, level, gravityMs: this.gravityMs });

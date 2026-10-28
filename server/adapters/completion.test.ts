@@ -7,14 +7,14 @@ const req = sampleTurn();
 const base: ModelConfig = { id: "c", label: "Fake chat", adapter: "completion", model: "fake-1", prices: { inputPerM: 2, outputPerM: 10 } };
 
 // An OpenAI-compatible API that records requests and replies with the test's content.
-let reply: { status?: number; content?: string | null; usage?: object } = {};
+let reply: { status?: number; content?: string | null; usage?: object; finish?: string } = {};
 const seen: { path: string; auth: string | null; body: any }[] = [];
 const server = Bun.serve({
   port: 0,
   async fetch(r) {
     seen.push({ path: new URL(r.url).pathname, auth: r.headers.get("authorization"), body: await r.json() });
     if (reply.status) return new Response("rate limited", { status: reply.status });
-    return Response.json({ choices: [{ message: { content: reply.content } }], usage: reply.usage });
+    return Response.json({ choices: [{ message: { content: reply.content }, finish_reason: reply.finish }], usage: reply.usage });
   },
 });
 afterAll(() => server.stop(true));
@@ -62,6 +62,23 @@ describe("completionAdapter.decide", () => {
   test("an empty reply is invalid, not an error", async () => {
     reply = { content: null };
     expect((await completionAdapter.decide(model(), req, signal())).status).toBe("invalid");
+  });
+
+  test("a reply cut off at the token limit says so", async () => {
+    reply = { content: "", finish: "length" };
+    const a = await completionAdapter.decide(model({ maxTokens: 256 }), req, signal());
+    expect(a).toMatchObject({ status: "invalid", detail: "Reply cut off at the 256-token limit before an answer; raise maxTokens" });
+  });
+
+  test("a complete JSON answer still counts when the reply hit the limit", async () => {
+    reply = { content: '{"choice":"option_4"}', finish: "length" };
+    expect(await completionAdapter.decide(model(), req, signal())).toMatchObject({ status: "ok", choice: "option_4" });
+  });
+
+  test("a cut-off reply without maxTokens names the provider's limit, also for max_tokens", async () => {
+    reply = { content: "", finish: "max_tokens" };
+    const a = await completionAdapter.decide(model(), req, signal());
+    expect(a.detail).toBe("Reply cut off at the provider's token limit before an answer; raise maxTokens");
   });
 
   test("turns an HTTP error into an error answer naming the model", async () => {

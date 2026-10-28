@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { BedrockRuntimeClient, ConverseCommand, type ConverseCommandInput, type ConverseCommandOutput } from "@aws-sdk/client-bedrock-runtime";
 import type { Answer, Turn } from "../../src/core/types";
 import type { ModelConfig } from "../models/types";
-import { choiceSchema, parseChoice, systemText, userText } from "./shared";
+import { choiceSchema, cutOff, parseChoice, systemText, userText } from "./shared";
 import type { Adapter } from "./types";
 
 // Bedrock adapter: chat models on AWS Bedrock (OpenAI, Anthropic, ...) through
@@ -13,6 +13,9 @@ import type { Adapter } from "./types";
 // Credentials and region come from the usual AWS_* variables (or AWS_PROFILE).
 
 const TOOL = "choose_option";
+const DEFAULT_MAX_TOKENS = 1024;
+/** Stop reasons that mean the reply ran out of room before it could answer. */
+const CUT_OFF = new Set(["max_tokens", "model_context_window_exceeded"]);
 
 export function converseInput(model: ModelConfig, turn: Turn): ConverseCommandInput {
   return {
@@ -23,7 +26,7 @@ export function converseInput(model: ModelConfig, turn: Turn): ConverseCommandIn
       tools: [{ toolSpec: { name: TOOL, description: "Report the chosen option.", inputSchema: { json: choiceSchema(turn) } } }],
       toolChoice: model.toolChoice === "auto" ? { auto: {} } : { tool: { name: TOOL } },
     },
-    inferenceConfig: { maxTokens: model.maxTokens ?? 1024 },
+    inferenceConfig: { maxTokens: model.maxTokens ?? DEFAULT_MAX_TOKENS },
     ...(model.extraBody && { additionalModelRequestFields: model.extraBody as ConverseCommandInput["additionalModelRequestFields"] }),
   };
 }
@@ -33,7 +36,7 @@ export function converseInput(model: ModelConfig, turn: Turn): ConverseCommandIn
  * prompts automatically). They count as input tokens so token columns compare
  * fairly, but each kind is priced at its own rate.
  */
-export function readConverse(model: ModelConfig, res: Partial<Pick<ConverseCommandOutput, "usage" | "output">>): Answer {
+export function readConverse(model: ModelConfig, res: Partial<Pick<ConverseCommandOutput, "usage" | "output" | "stopReason">>): Answer {
   const p = model.prices ?? { inputPerM: 0, outputPerM: 0 };
   const plain = res.usage?.inputTokens ?? 0;
   const cacheRead = res.usage?.cacheReadInputTokens ?? 0;
@@ -49,7 +52,8 @@ export function readConverse(model: ModelConfig, res: Partial<Pick<ConverseComma
   const content = res.output?.message?.content ?? [];
   const choice = (content.find((c) => c.toolUse)?.toolUse?.input as { choice?: unknown } | undefined)?.choice;
   if (typeof choice === "string") return { status: "ok", choice, usage };
-  return parseChoice(content.find((c) => c.text)?.text ?? "", usage);
+  const answer = parseChoice(content.find((c) => c.text)?.text ?? "", usage);
+  return answer.status === "invalid" && CUT_OFF.has(res.stopReason ?? "") ? cutOff(usage, model.maxTokens ?? DEFAULT_MAX_TOKENS) : answer;
 }
 
 const clients = new Map<string, BedrockRuntimeClient>();

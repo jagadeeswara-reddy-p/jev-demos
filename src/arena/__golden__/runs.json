@@ -8,11 +8,11 @@
     "sha256": "86ebe167f4ec1fab5f05599f68e54f0e759cee498619acd6d8d8401a5319542c"
   },
   "frozen-seed1": {
-    "events": 37485,
-    "sha256": "e125aa876de097f0f94e3901e855d1c7a57eee3ee4cb04187823750a2b4d4351"
+    "events": 43776,
+    "sha256": "76b4999d8e3304df2c88d6c1d1a6e62299440dd01ed0dfd111ff42804bcae940"
   },
   "frozen-seed2": {
-    "events": 37186,
-    "sha256": "029d07753461acfb5f28180cd79a3e629993b056c994d4bc3bbb86eb09d6cea8"
+    "events": 43182,
+    "sha256": "3acf47773d14687e3687da11063bafb9b3d294bfdc9a7b6eeebb1d6eb23eb8cf"
   }
 }

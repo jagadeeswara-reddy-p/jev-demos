@@ -8,7 +8,7 @@ import type { ArenaEventOf } from "./types";
 describe("tetris environment", () => {
   test("names itself and its variants", () => {
     expect(tetris.id).toBe("tetris");
-    expect(tetris.version).toBe("2");
+    expect(tetris.version).toBe("3");
     expect(tetris.variants).toEqual(["described"]);
   });
 
