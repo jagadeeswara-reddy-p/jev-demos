@@ -50,6 +50,8 @@ bun bench doctor    # checks each model and its key
 bun bench run       # plays the bench and writes the logs
 ```
 
+`bun bench chart runs/bench/<name>` draws the comparison chart.
+
 Edit `bench.yaml` to choose models, seeds, clocks and stop rule. The example
 uses mock models only; for a live model, put its key in `.env` ([keys](#keys-env)).
 Both files are git-ignored. Reference: [docs/bench.md](docs/bench.md).

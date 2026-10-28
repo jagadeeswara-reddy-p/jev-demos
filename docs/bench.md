@@ -12,6 +12,7 @@ page writes. The page is only needed to watch a replay.
 - [Resuming and the cost limit](#resuming-and-the-cost-limit)
 - [Output](#output)
 - [The estimate](#the-estimate)
+- [Charting results](#charting-results)
 
 ## Quick start
 
@@ -201,3 +202,63 @@ printed figure never undershoots.
 The check itself is one real move, so the latency and the cost per move come from
 a single answer. Treat the cost as a ceiling for that latency, and the frozen time
 as an estimate, not a forecast.
+
+## Charting results
+
+`bun bench chart` draws a finished bench as an SVG chart. Pass it the bench's
+output folder:
+
+```sh
+bun bench chart runs/bench/<name>
+```
+
+It writes two files, one light and one dark, and prints one line per model and
+the `<picture>` snippet for the README.
+
+| Flag | Meaning |
+|---|---|
+| `<folder>` | Required. The output folder, with its `.jsonl` logs. |
+| `--out prefix` | Prefix for the two files. Default `docs/media/results`, which writes `docs/media/results-light.svg` and `docs/media/results-dark.svg`. Paths are relative to the folder you run the command from. |
+| `--allow-mock` | Draw a bench whose models are all mocks. Without it, `chart` refuses (see below). |
+
+**Panels.** Rows are the models, ordered by real-time pieces landed, most first.
+The reference (heuristic) row is last. The order is the same in every panel.
+
+| Panel | Shows | How it is averaged |
+|---|---|---|
+| Judgement | Agreement with the heuristic on frozen matches: the share of graded answers ranked 1 by the heuristic. | Per-seed mean: one value per seed, then the mean of those. |
+| Speed | Median answer time. Shorter is faster. | Pooled median of every answer latency, all matches. |
+| Real time | Pieces landed per real-time game, with `· N% late` when at least 1% of the real-time pieces were not placed by decision. | Per-seed mean of pieces landed by decision. The late share is pooled over every real-time piece. |
+
+Colour shows the model kind: decision model, language model, or reference.
+Every row is also named, and every bar has its value.
+
+**Footer.** The footer states the environment and version, the number of seeds,
+the frozen pieces each model played, the real-time minutes per game, the total
+cost, the date, and "no confidence intervals yet". A panel with no data (for
+example, a bench with no frozen matches) shows `—` for each row instead of bars.
+
+**Mock refusal.** A bench whose models are all mocks is not a model comparison,
+so `chart` refuses and writes nothing. It prints "This bench has only mock
+models; its chart isn't a model comparison. Use --allow-mock to draw it anyway."
+and exits with 1. A bench with at least one live model is drawn normally. To
+draw the demo, pass the flag:
+
+```sh
+bun bench demo
+bun bench chart runs/bench/demo --allow-mock
+```
+
+**The picture snippet.** After the files are written, `chart` prints a
+`<picture>` element. The dark image is the source for dark mode, and the light
+image is the fallback:
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/results-dark.svg">
+  <img alt="Benchmark results: judgement, speed and pieces landed in real time" src="docs/media/results-light.svg">
+</picture>
+```
+
+The paths in the snippet follow the `--out` prefix, relative to the folder you
+ran the command from.
