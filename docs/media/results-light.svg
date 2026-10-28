@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="318" viewBox="0 0 880 318" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-label="Benchmark comparison: judgement, speed and pieces landed in real time">
+<rect width="880" height="318" rx="8" fill="#fcfcfb"/>
+<text x="24" y="36" font-size="18" font-weight="600" fill="#0b0b0b">Judgement, speed and the live game</text>
+<rect x="24" y="50" width="12" height="12" rx="3" fill="#2a78d6"/>
+<text x="42" y="60" font-size="12" fill="#52514e">Decision model</text>
+<rect x="156.39999999999998" y="50" width="12" height="12" rx="3" fill="#eb6834"/>
+<text x="174.39999999999998" y="60" font-size="12" fill="#52514e">Language model</text>
+<rect x="288.79999999999995" y="50" width="12" height="12" rx="3" fill="#b5b3ab"/>
+<text x="306.79999999999995" y="60" font-size="12" fill="#52514e">Reference (heuristic)</text>
+<text x="150" y="124" font-size="13" text-anchor="end" fill="#0b0b0b">Jev</text>
+<text x="150" y="158" font-size="13" text-anchor="end" fill="#0b0b0b">claude-haiku-5-5</text>
+<text x="150" y="192" font-size="13" text-anchor="end" fill="#0b0b0b">gpt-6.1-sol</text>
+<text x="150" y="226" font-size="13" text-anchor="end" fill="#0b0b0b">claude-opus-5-5</text>
+<text x="150" y="260" font-size="13" text-anchor="end" fill="#0b0b0b">Heuristic bot</text>
+<text x="174" y="82" font-size="14" font-weight="600" fill="#0b0b0b">Judgement</text>
+<text x="174" y="98" font-size="11" fill="#898781">Agreement with the heuristic, frozen clock</text>
+<line x1="174" y1="106" x2="174" y2="272" stroke="#c3c2b7" stroke-width="1"/>
+<rect x="174" y="112" width="73.3" height="16" rx="4" fill="#2a78d6"><title>Jev: 50%</title></rect>
+<text x="253.3" y="124" font-size="12" fill="#52514e">50%</text>
+<rect x="174" y="146" width="79.4" height="16" rx="4" fill="#eb6834"><title>claude-haiku-5-5: 54%</title></rect>
+<text x="259.4" y="158" font-size="12" fill="#52514e">54%</text>
+<rect x="174" y="180" width="101.4" height="16" rx="4" fill="#eb6834"><title>gpt-6.1-sol: 69%</title></rect>
+<text x="281.4" y="192" font-size="12" fill="#52514e">69%</text>
+<rect x="174" y="214" width="113.7" height="16" rx="4" fill="#eb6834"><title>claude-opus-5-5: 78%</title></rect>
+<text x="293.7" y="226" font-size="12" fill="#52514e">78%</text>
+<rect x="174" y="248" width="146.7" height="16" rx="4" fill="#b5b3ab"><title>Heuristic bot: 100%</title></rect>
+<text x="326.7" y="260" font-size="12" fill="#52514e">100%</text>
+<text x="418.66666666666663" y="82" font-size="14" font-weight="600" fill="#0b0b0b">Speed</text>
+<text x="418.66666666666663" y="98" font-size="11" fill="#898781">Median answer time (shorter is faster)</text>
+<line x1="418.66666666666663" y1="106" x2="418.66666666666663" y2="272" stroke="#c3c2b7" stroke-width="1"/>
+<rect x="418.66666666666663" y="112" width="7.1" height="16" rx="4" fill="#2a78d6"><title>Jev: 281 ms</title></rect>
+<text x="431.8" y="124" font-size="12" fill="#52514e">281 ms</text>
+<rect x="418.66666666666663" y="146" width="47.7" height="16" rx="4" fill="#eb6834"><title>claude-haiku-5-5: 1.9 s</title></rect>
+<text x="472.3" y="158" font-size="12" fill="#52514e">1.9 s</text>
+<rect x="418.66666666666663" y="180" width="60.3" height="16" rx="4" fill="#eb6834"><title>gpt-6.1-sol: 2.4 s</title></rect>
+<text x="485.0" y="192" font-size="12" fill="#52514e">2.4 s</text>
+<rect x="418.66666666666663" y="214" width="146.7" height="16" rx="4" fill="#eb6834"><title>claude-opus-5-5: 5.8 s</title></rect>
+<text x="571.3" y="226" font-size="12" fill="#52514e">5.8 s</text>
+<rect x="418.66666666666663" y="248" width="2.0" height="16" rx="4" fill="#b5b3ab"><title>Heuristic bot: 3 ms</title></rect>
+<text x="426.7" y="260" font-size="12" fill="#52514e">3 ms</text>
+<text x="663.3333333333333" y="82" font-size="14" font-weight="600" fill="#0b0b0b">Real time</text>
+<text x="663.3333333333333" y="98" font-size="11" fill="#898781">Pieces landed per 2-minute game</text>
+<line x1="663.3333333333333" y1="106" x2="663.3333333333333" y2="272" stroke="#c3c2b7" stroke-width="1"/>
+<rect x="663.3333333333333" y="112" width="55.3" height="16" rx="4" fill="#2a78d6"><title>Jev: 86.7</title></rect>
+<text x="724.7" y="124" font-size="12" fill="#52514e">86.7</text>
+<rect x="663.3333333333333" y="146" width="29.4" height="16" rx="4" fill="#eb6834"><title>claude-haiku-5-5: 46 · 3% late</title></rect>
+<text x="698.7" y="158" font-size="12" fill="#52514e">46 · 3% late</text>
+<rect x="663.3333333333333" y="180" width="13.4" height="16" rx="4" fill="#eb6834"><title>gpt-6.1-sol: 21 · 32% late</title></rect>
+<text x="682.7" y="192" font-size="12" fill="#52514e">21 · 32% late</text>
+<rect x="663.3333333333333" y="214" width="8.1" height="16" rx="4" fill="#eb6834"><title>claude-opus-5-5: 12.7 · 46% late</title></rect>
+<text x="677.4" y="226" font-size="12" fill="#52514e">12.7 · 46% late</text>
+<rect x="663.3333333333333" y="248" width="107.7" height="16" rx="4" fill="#b5b3ab"><title>Heuristic bot: 168.7</title></rect>
+<text x="777.0" y="260" font-size="12" fill="#52514e">168.7</text>
+<text x="24" y="304" font-size="11" fill="#898781">tetris v3 · 3 seeds · frozen: 40 pieces each · real time: 2 minutes · total cost $4.48 · 2026-10-28 · no confidence intervals yet</text>
+</svg>

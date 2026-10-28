@@ -1,0 +1,90 @@
+{
+  "name": "readme-2026-10-28",
+  "environment": {
+    "id": "tetris",
+    "version": "3"
+  },
+  "createdAt": "2026-10-28T12:10:03.300Z",
+  "gitCommit": "1017a86a90780976e3a40bb4d03f1a8d86a5d71d",
+  "config": {
+    "name": "readme-2026-10-28",
+    "environment": "tetris",
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "clocks": [
+      "frozen",
+      "realtime"
+    ],
+    "variants": [
+      "described"
+    ],
+    "goal": "survive",
+    "maxDurationMs": 120000,
+    "maxPieces": 1000,
+    "frozenPieces": 40,
+    "stopWhenFinished": 0.75,
+    "models": [
+      "live-jev",
+      "bedrock-gpt",
+      "bedrock-opus",
+      "bedrock-haiku",
+      "heuristic"
+    ],
+    "maxCostUsd": 15
+  },
+  "matches": [
+    {
+      "key": "described-frozen-seed1",
+      "file": "benchmarks/2026-10-28/bench/described-frozen-seed1.jsonl",
+      "stoppedEarly": false,
+      "unfinished": [],
+      "costUsd": 0.9979584199999997,
+      "status": "played"
+    },
+    {
+      "key": "described-frozen-seed2",
+      "file": "benchmarks/2026-10-28/bench/described-frozen-seed2.jsonl",
+      "stoppedEarly": false,
+      "unfinished": [],
+      "costUsd": 1.077567836,
+      "status": "played"
+    },
+    {
+      "key": "described-frozen-seed3",
+      "file": "benchmarks/2026-10-28/bench/described-frozen-seed3.jsonl",
+      "stoppedEarly": false,
+      "unfinished": [],
+      "costUsd": 0.9292077999999998,
+      "status": "played"
+    },
+    {
+      "key": "described-realtime-seed1",
+      "file": "benchmarks/2026-10-28/bench/described-realtime-seed1.jsonl",
+      "stoppedEarly": false,
+      "unfinished": [],
+      "costUsd": 0.48534614000000026,
+      "status": "played"
+    },
+    {
+      "key": "described-realtime-seed2",
+      "file": "benchmarks/2026-10-28/bench/described-realtime-seed2.jsonl",
+      "stoppedEarly": false,
+      "unfinished": [],
+      "costUsd": 0.502931864,
+      "status": "played"
+    },
+    {
+      "key": "described-realtime-seed3",
+      "file": "benchmarks/2026-10-28/bench/described-realtime-seed3.jsonl",
+      "stoppedEarly": true,
+      "unfinished": [
+        "heuristic"
+      ],
+      "costUsd": 0.4906435539999998,
+      "status": "played"
+    }
+  ]
+}

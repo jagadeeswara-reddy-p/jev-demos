@@ -4,6 +4,10 @@ Every published round, newest first, kept for reference. The latest results are 
 The `bun run stats` commands below were run on our own run logs, which aren't published; the
 2026-10-17 benchmark logs are, in [benchmarks/](../benchmarks/README.md).
 
+## 2026-10-28: four models, Tetris v3
+
+The first `bun bench` round, with equal pieces on the frozen clock. The chart and table are in the [README](../README.md#latest-results); the logs are in [benchmarks/2026-10-28](../benchmarks/README.md).
+
 ## 2026-10-17: six models, Tetris v1 and JevBench
 
 Measured on 2026-10-17. Laya and Strands Decider ran on one NVIDIA A10G in AWS us-east-1; every other model through its provider's API. All round trips are from the same machine in India, so latency includes about 0.2–0.3 s of network.

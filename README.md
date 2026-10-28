@@ -13,24 +13,28 @@ The first environment is *Deadline Tetris*, where pieces keep falling while the 
 
 ## Latest results
 
-Deadline Tetris v1, 4 seeds, no intervals yet. Six models, four live games on a real-time clock, 2026-10-17.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/results-dark.svg">
+  <img alt="Benchmark results: judgement, speed and pieces landed in real time" src="docs/media/results-light.svg">
+</picture>
 
-| Model | Type | Pieces landed | Agreement with heuristic | Median answer | Too late | Cost |
-|---|---|---|---|---|---|---|
-| Jev | decision model | 118.8 | 60% | 289 ms | 0% | $0.03 |
-| Cloudflare Clef | decision model | 69.3 | 49% | 438 ms | 1% | $0.11 |
-| GPT-6.1 Sol | language model | 23.3 | 72% | 2.04 s | 13% | $0.48 |
-| Strands Decider 2B | decision model | 21.0 | 15% | 435 ms | 1% | self-hosted |
-| Laya | decision model | 20.5 | 7% | 452 ms | 0% | self-hosted |
-| Claude Opus 5.5 | language model | 9.5 | 79% | 5.14 s | 46% | $1.02 |
+Deadline Tetris v3, 2026-10-28. Four models and the reference heuristic, 3 seeds on each clock: on the frozen clock every model places the same 40 pieces, so it measures judgement alone; in real time the pieces keep falling for 2 minutes while the model thinks. No confidence intervals yet.
 
-Pieces landed: average per game. Cost: all four games.
+| Model | Type | Agreement with heuristic (frozen) | Lines in 40 pieces (frozen) | Median answer | Pieces landed (real time) | Too late (real time) | Cost |
+|---|---|---|---|---|---|---|---|
+| Jev | decision model | 50% | 8.0 | 281 ms | 86.7 | 0% | $0.03 |
+| Claude Haiku 5.5 | language model | 54% | 12.3 | 1.9 s | 46.0 | 3% | $0.07 |
+| GPT-6.1 Sol | language model | 69% | 12.3 | 2.4 s | 21.0 | 32% | $0.95 |
+| Claude Opus 5.5 | language model | 78% | 12.7 | 5.8 s | 12.7 | 46% | $3.44 |
+| Heuristic (reference) | baseline | 100% | 14.7 | 3 ms | 168.7 | 0% | — |
 
-**Agreement with heuristic** is the share of answers that picked the reference heuristic's top option. It counts every answer, late or not, so it measures judgement apart from speed ([how it works](docs/how-it-works.md#move-quality-best-moves)).
+Averages over the 3 seeds; median answer over every answer; cost for all six games ($4.48 in total).
 
-The language models agree with the heuristic more often but answer more slowly, so more of their answers arrive after the piece has landed.
+**Agreement with heuristic** is the share of answers that picked the reference heuristic's top option ([how it works](docs/how-it-works.md#move-quality-best-moves)). The heuristic is a yardstick, not the truth.
 
-More detail in [results history](docs/results-history.md) and [findings](docs/findings.md). The raw logs are in [benchmarks/](benchmarks/README.md), and `bun run stats benchmarks/2026-10-17/tetris/*.jsonl` recomputes this table.
+The slower models choose better on the frozen clock, but in real time more of their answers arrive after the piece has landed, so they land fewer pieces.
+
+The logs are in [benchmarks/2026-10-28](benchmarks/README.md); `bun bench chart benchmarks/2026-10-28/bench` redraws the chart and `bun run stats benchmarks/2026-10-28/bench/*.jsonl` prints every number. Earlier rounds are in the [results history](docs/results-history.md) and [findings](docs/findings.md).
 
 ## Quick start (no keys)
 

@@ -1,0 +1,7 @@
+{
+  "stopWhenFinished": 0.75,
+  "environment": {
+    "id": "tetris",
+    "version": "3"
+  }
+}
