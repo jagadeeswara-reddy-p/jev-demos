@@ -126,9 +126,10 @@ So this arena asks the question that kind of model is built for: *given clear
 descriptions of every legal move, how quickly and how well can you pick one?*
 The engine does the geometry, and the model does the choosing. The language
 model gets exactly the same descriptions, so neither side has more information.
-For that reason there is deliberately no "board only" variant, where options
-would carry just a rotation and columns: it would test spatial reasoning, which
-is not the comparison this project is about.
+That is the `described` variant, the one that runs today. A `board-only`
+variant is planned: there each option gives only a rotation and columns, so the
+model has to picture the result itself. That tests 2D reasoning, not just
+judgement. See the 2×2 in [the design doc](design/eval-engine.md#tetris-variants-the-22).
 
 ### 3. Sending it
 
@@ -182,6 +183,8 @@ guessed from free text.
 **Cost** = tokens × the per-million prices from `.env`. The providers report the token counts.
 
 ### Move quality (best moves)
+
+The README calls this measure **Agreement with heuristic**. It is the same number.
 
 Speed alone can't tell a slow model with good judgement from a bad one, so every
 answer is also graded. When a piece appears, the game scores every offered
