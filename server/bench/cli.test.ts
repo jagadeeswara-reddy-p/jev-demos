@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFile
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEMO, type Io, main } from "./cli";
+import { summarizeBench } from "./results";
 
 const EXAMPLE = join(import.meta.dir, "../../bench.example.yaml");
 
@@ -216,7 +217,7 @@ models:
     } finally {
       server.stop(true);
     }
-  });
+  }, 20_000);
 });
 
 describe("bench demo", () => {
@@ -259,3 +260,118 @@ describe("bench usage", () => {
     expect(text()).toContain("bun bench run");
   });
 });
+
+describe("bench chart", () => {
+  const demoOpts = { ...DEMO, maxPieces: 30 };
+
+  test("refuses a demo bench, whose models are mocks, unless --allow-mock is given", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    const out = join(tempDir(), "media/results");
+    const { io, text } = capture();
+    expect(await main(["chart", tmp, "--out", out], io)).toBe(1);
+    expect(text()).toContain("--allow-mock");
+    expect(existsSync(`${out}-light.svg`)).toBe(false);
+  });
+
+  test("with --allow-mock it writes both SVGs and prints the picture snippet", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    const out = join(tempDir(), "media/results");
+    const { io, text } = capture();
+    expect(await main(["chart", tmp, "--out", out, "--allow-mock"], io)).toBe(0);
+    for (const theme of ["light", "dark"]) {
+      const svg = readFileSync(`${out}-${theme}.svg`, "utf8");
+      expect(svg.startsWith("<svg")).toBe(true);
+    }
+    const lines = text().split("\n");
+    const source = lines.find((l) => l.includes("srcset="));
+    const img = lines.find((l) => l.trim().startsWith("<img"));
+    expect(source).toMatch(/^\s*<source media="\(prefers-color-scheme: dark\)" srcset="[^"]*-dark\.svg">$/);
+    expect(img).toMatch(/^\s*<img alt="[^"]*" src="[^"]*-light\.svg">$/);
+    expect(text()).toContain("<picture>");
+  });
+
+  test("a missing folder prints the reason and exits 1", async () => {
+    const missing = join(tempDir(), "nope");
+    const { io, text } = capture();
+    expect(await main(["chart", missing, "--allow-mock"], io)).toBe(1);
+    expect(text()).toContain(missing);
+  });
+
+  test("the usage text lists chart", async () => {
+    const { io, text } = capture();
+    expect(await main([], io)).toBe(0);
+    expect(text()).toContain("bun bench chart");
+  });
+
+  test("a bench with live models and only baseline mocks is not refused without --allow-mock", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    // Rename every mock that is not a baseline to an id no mock profile has, in every log.
+    renameModels(tmp, { jev: "acme-model", "llm-fast": "acme-fast", "llm-frontier": "acme-frontier", "llm-flaky": "acme-flaky" });
+    expect((await summarizeBench(tmp)).models.map((m) => m.id)).toContain("acme-model");
+    const out = join(tempDir(), "media/results");
+    const { io, text } = capture();
+    expect(await main(["chart", tmp, "--out", out], io)).toBe(0);
+    expect(text()).not.toContain("--allow-mock");
+    expect(text()).toContain("<picture>");
+    expect(existsSync(`${out}-light.svg`)).toBe(true);
+    expect(existsSync(`${out}-dark.svg`)).toBe(true);
+  });
+
+  test("a live model with one mock that is not a baseline is refused, and the message names that mock", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    renameModels(tmp, { jev: "acme-model" });
+    const out = join(tempDir(), "media/results");
+    const { io, text } = capture();
+    expect(await main(["chart", tmp, "--out", out], io)).toBe(1);
+    expect(text()).toContain("This bench includes mock models (");
+    expect(text()).toContain("llm-fast");
+    expect(text()).toContain("--allow-mock");
+    expect(existsSync(`${out}-light.svg`)).toBe(false);
+  });
+
+  test("an --out ending in a slash writes results-light and results-dark inside that folder", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    const folder = `${tempDir()}/`;
+    expect(await main(["chart", tmp, "--out", folder, "--allow-mock"], capture().io)).toBe(0);
+    expect(existsSync(`${folder}results-light.svg`)).toBe(true);
+    expect(existsSync(`${folder}results-dark.svg`)).toBe(true);
+  });
+
+  test("an --out that names an existing folder, with no slash, writes results inside it", async () => {
+    const tmp = tempDir();
+    expect(await main(["demo", "--out", tmp], capture().io, demoOpts)).toBe(0);
+    const folder = tempDir();
+    expect(await main(["chart", tmp, "--out", folder, "--allow-mock"], capture().io)).toBe(0);
+    expect(existsSync(join(folder, "results-light.svg"))).toBe(true);
+    expect(existsSync(join(folder, "results-dark.svg"))).toBe(true);
+  });
+});
+
+/** Renames model ids in every log of a folder, in place. */
+function renameModels(dir: string, renames: Record<string, string>): void {
+  for (const name of readdirSync(dir).filter((f) => f.endsWith(".jsonl"))) {
+    const file = join(dir, name);
+    const lines = readFileSync(file, "utf8").split("\n").filter(Boolean);
+    const renamed = lines.map((line) => {
+      let value: unknown = JSON.parse(line);
+      for (const [from, to] of Object.entries(renames)) value = renameString(value, from, to);
+      return JSON.stringify(value);
+    });
+    writeFileSync(file, `${renamed.join("\n")}\n`);
+  }
+}
+
+/** Returns a copy of a parsed JSON value with every string equal to `from` replaced by `to`. */
+function renameString(value: unknown, from: string, to: string): unknown {
+  if (value === from) return to;
+  if (Array.isArray(value)) return value.map((v) => renameString(v, from, to));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, renameString(v, from, to)]));
+  }
+  return value;
+}

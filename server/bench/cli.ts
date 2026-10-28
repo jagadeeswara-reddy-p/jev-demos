@@ -1,12 +1,14 @@
-import { chmodSync, copyFileSync, existsSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import type { Env } from "../models/env";
 import { testModel } from "../sample";
 import { createSource, listSources, models, refreshHealth } from "../sources";
+import { type ChartTheme, renderChart } from "./chart";
 import { type BenchConfig, BenchConfigError, loadBench, parseBench } from "./config";
 import { agentFor, type BenchEntrant, resolveEntrants } from "./entrants";
 import { planMatches } from "./plan";
 import { type Check, estimate, formatChecks, formatEstimate, paceFor, preflight } from "./preflight";
+import { type BenchSummary, type ModelSummary, summarizeBench } from "./results";
 import { type MatchOutcome, ResumeMismatchError, runMatches, writeManifest } from "./runner";
 
 // The `bun bench` command line: init writes the example files, doctor checks a bench
@@ -30,6 +32,7 @@ const USAGE = `Usage:
   bun bench doctor [file]                      check every model, its key and the estimate
   bun bench run [file] [--yes] [--out dir]     play the bench (asks first when it uses live models)
   bun bench demo [--out dir]                   play the demo bench with mock models, no keys needed
+  bun bench chart <folder> [--out prefix] [--allow-mock]   write the results chart (light and dark SVG)
 The file defaults to bench.yaml. The output folder defaults to runs/bench/<name>.`;
 
 /** The built-in bench: every mock profile, both clocks, one seed. */
@@ -55,7 +58,7 @@ export async function main(argv: string[], io: Io, demo: BenchConfig = DEMO): Pr
     io.out(USAGE);
     return 0;
   }
-  const args = parseArgs(rest);
+  const args = parseArgs(rest, command);
   if (args.error) {
     io.out(`${args.error}\n${USAGE}`);
     return 1;
@@ -69,6 +72,8 @@ export async function main(argv: string[], io: Io, demo: BenchConfig = DEMO): Pr
       return run(args, io);
     case "demo":
       return runDemo(args, io, demo);
+    case "chart":
+      return chart(args, io);
     default:
       io.out(`Unknown command "${command}".\n${USAGE}`);
       return 1;
@@ -82,11 +87,11 @@ interface Args {
   error?: string;
 }
 
-function parseArgs(rest: string[]): Args {
+function parseArgs(rest: string[], command: string): Args {
   const args: Args = { positional: [], flags: new Set() };
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i];
-    if (arg === "--force" || arg === "--yes") {
+    if (arg === "--force" || arg === "--yes" || (arg === "--allow-mock" && command === "chart")) {
       args.flags.add(arg);
     } else if (arg === "--out") {
       const dir = rest[++i];
@@ -155,6 +160,68 @@ async function runDemo(args: Args, io: Io, demo: BenchConfig): Promise<number> {
   io.out(`Replay a match: bun dev, then open the page and load a .jsonl file from ${outDir}`);
   io.out("Next: bun bench init");
   return 0;
+}
+
+/** The default --out prefix of chart: docs/media/results-light.svg and results-dark.svg. */
+const CHART_OUT = join("docs", "media", "results");
+
+async function chart(args: Args, io: Io): Promise<number> {
+  const folder = args.positional[0];
+  if (folder === undefined) {
+    io.out(`chart needs a bench folder.\n${USAGE}`);
+    return 1;
+  }
+  let summary: BenchSummary;
+  try {
+    summary = await summarizeBench(folder);
+  } catch (err) {
+    io.out(err instanceof Error ? err.message : String(err));
+    return 1;
+  }
+  // A mock that is not a baseline would print simulated numbers beside real ones, so chart refuses it. Baselines are reference rows and always allowed.
+  const mocks = summary.models.filter((m) => m.mock && m.kind !== "baseline").map((m) => m.id);
+  if (mocks.length > 0 && !args.flags.has("--allow-mock")) {
+    io.out(`This bench includes mock models (${mocks.join(", ")}); their numbers are simulated. Use --allow-mock to draw it anyway.`);
+    return 1;
+  }
+
+  const prefix = outPrefix(args.out);
+  mkdirSync(dirname(prefix), { recursive: true });
+  const files: Record<ChartTheme, string> = { light: `${prefix}-light.svg`, dark: `${prefix}-dark.svg` };
+  for (const theme of ["light", "dark"] as const) {
+    await Bun.write(files[theme], renderChart(summary, theme));
+    io.out(`Wrote ${relative(process.cwd(), files[theme])}`);
+  }
+  const left = summary.skipped.length;
+  if (left > 0) io.out(`Left out ${left} unfinished match log${left === 1 ? "" : "s"}: ${summary.skipped.join(", ")}`);
+  for (const m of summary.models) io.out(modelLine(m));
+  io.out(pictureSnippet(relative(process.cwd(), files.dark), relative(process.cwd(), files.light)));
+  return 0;
+}
+
+/**
+ * The prefix of the two chart files. An --out that ends in a slash, or names an existing folder, is a folder:
+ * the files go in it as results-light.svg and results-dark.svg.
+ */
+function outPrefix(out: string | undefined): string {
+  if (out === undefined) return resolve(CHART_OUT);
+  const folder = /[\\/]$/.test(out) || (existsSync(out) && statSync(out).isDirectory());
+  return folder ? resolve(out, "results") : resolve(out);
+}
+
+/** One line per model: label, agreement, median and real-time landed; "—" where there is no data. */
+function modelLine(m: ModelSummary): string {
+  const agreement = m.agreement === null ? "—" : `${Math.round(m.agreement)}%`;
+  const median = m.medianMs === null ? "—" : m.medianMs < 1000 ? `${Math.round(m.medianMs)} ms` : `${(m.medianMs / 1000).toFixed(1)} s`;
+  const landed = m.realtimeLanded === null ? "—" : Number.isInteger(m.realtimeLanded) ? String(m.realtimeLanded) : m.realtimeLanded.toFixed(1);
+  return `${m.label}: agreement ${agreement}, median ${median}, real-time landed ${landed}`;
+}
+
+function pictureSnippet(dark: string, light: string): string {
+  return `<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="${dark}">
+  <img alt="Benchmark results: judgement, speed and pieces landed in real time" src="${light}">
+</picture>`;
 }
 
 interface Inspection {

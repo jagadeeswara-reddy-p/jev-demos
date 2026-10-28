@@ -12,6 +12,7 @@ page writes. The page is only needed to watch a replay.
 - [Resuming and the cost limit](#resuming-and-the-cost-limit)
 - [Output](#output)
 - [The estimate](#the-estimate)
+- [Charting results](#charting-results)
 
 ## Quick start
 
@@ -201,3 +202,73 @@ printed figure never undershoots.
 The check itself is one real move, so the latency and the cost per move come from
 a single answer. Treat the cost as a ceiling for that latency, and the frozen time
 as an estimate, not a forecast.
+
+## Charting results
+
+`bun bench chart` draws a finished bench as an SVG chart. Pass it the bench's
+output folder:
+
+```sh
+bun bench chart runs/bench/<name>
+```
+
+It writes two files, one light and one dark, and prints one line per model and
+the `<picture>` snippet for the README.
+
+| Flag | Meaning |
+|---|---|
+| `<folder>` | Required. The output folder, with its `.jsonl` logs. |
+| `--out prefix` | Where the two files go. Default `docs/media/results`, which writes `docs/media/results-light.svg` and `docs/media/results-dark.svg`. A value that ends in `/`, or names an existing folder, is a folder: the files go in it as `results-light.svg` and `results-dark.svg`. Paths are relative to the repository root, where `bun bench` always runs. |
+| `--allow-mock` | Draw a bench that has a mock model (see below). Without it, `chart` refuses. |
+
+**Panels.** Rows are the models, ordered by real-time pieces landed, most first.
+The reference (heuristic) row is last. The order is the same in every panel.
+
+| Panel | Shows | How it is averaged |
+|---|---|---|
+| Judgement | Agreement with the heuristic on frozen matches: the share of graded answers ranked 1 by the heuristic. | Per-seed mean: one value per seed, then the mean of those. |
+| Speed | Median answer time. Shorter is faster. | Pooled median of every answer latency, all matches. |
+| Real time | Pieces landed per real-time game, with `· N% late` when at least 1% of the real-time pieces were not placed by decision. | Per-seed mean of pieces landed by decision. The late share is pooled over every real-time piece. |
+
+Colour shows the model kind: decision model, language model, or reference.
+Every row is also named, and every bar has its value.
+
+**Footer.** The footer states the environment and version, the number of seeds,
+the frozen pieces each model played, the real-time limit per game (in minutes
+when it is whole minutes, otherwise in seconds), the total cost, the date, and
+"no confidence intervals yet". A panel with no data (for example, a bench with
+no frozen matches) shows `—` for each row instead of bars.
+
+**Unfinished logs.** A match log whose run never finished (its last line is not
+`run_finished`, for example because the run was stopped) is left out, not
+charted as a full game. `chart` prints `Left out N unfinished match logs:` with
+their file names, and the footer says how many matches were left out. A log
+whose last line is half written counts as unfinished. If every log is
+unfinished, `chart` says so and writes nothing.
+
+**Mock refusal.** A mock model's numbers are simulated, so `chart` refuses a
+bench that includes one and writes nothing. It prints "This bench includes mock
+models (ids); their numbers are simulated. Use --allow-mock to draw it anyway."
+and exits with 1. Baseline models (`heuristic`, `random`) are reference rows and
+are always drawn. With `--allow-mock`, each mock row is labelled "(mock)", and
+the total cost leaves out the mock models' costs. To draw the demo, pass the
+flag:
+
+```sh
+bun bench demo
+bun bench chart runs/bench/demo --allow-mock
+```
+
+**The picture snippet.** After the files are written, `chart` prints a
+`<picture>` element. The dark image is the source for dark mode, and the light
+image is the fallback:
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/results-dark.svg">
+  <img alt="Benchmark results: judgement, speed and pieces landed in real time" src="docs/media/results-light.svg">
+</picture>
+```
+
+The paths in the snippet follow the `--out` prefix, relative to the repository
+root.

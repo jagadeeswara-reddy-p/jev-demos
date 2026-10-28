@@ -2,6 +2,17 @@
 
 The raw results behind the tables in the [README](../README.md#latest-results), so anyone can check or recompute them.
 
+## 2026-10-28
+
+**`bench/`**: a `bun bench run` of Jev, GPT-6.1 Sol, Claude Opus 5.5, Claude Haiku 5.5 and the reference heuristic on Deadline Tetris v3: 3 seeds on each clock, 40 pieces per model on the frozen clock, 2-minute games in real time. One log per match, plus `bench.json` (the config as run, with every match's outcome and cost) and `settings.json`.
+
+```sh
+bun bench chart benchmarks/2026-10-28/bench           # the README chart (docs/media/results-*.svg)
+bun run stats benchmarks/2026-10-28/bench/*.jsonl      # every number per match and per model
+```
+
+All requests came from the same machine in India, through each provider's API (Bedrock in us-east-1 for GPT and Claude), so latencies include about 0.2–0.3 s of network. Total cost $4.48.
+
 ## 2026-10-17
 
 **`tetris/`**: the four live games (seeds 1–4, real-time clock, six models), one event per line, exactly as the server logged them. Each game was stopped once four of the six boards had topped out.
