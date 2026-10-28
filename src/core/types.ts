@@ -82,3 +82,19 @@ export interface Environment<C, E, D = unknown> {
   variants: readonly string[];
   createMatch(config: C, agents: Agent<D>[]): Match<E>;
 }
+
+/**
+ * Events every environment's log carries. The runner, results and stats read only these,
+ * so they work for any environment; an environment adds its own events alongside.
+ */
+export type CoreEvent =
+  | { t: "run_started"; at: number; config: { agents: { id: string; name: string }[] } }
+  | { t: "decision"; at: number; agentId: string; status: string; latencyMs: number; usage?: Usage }
+  | { t: "episode_finished"; at: number; agentId: string; outcome: string }
+  | { t: "run_finished"; at: number; reason: "all_out" | "time_limit" | "stopped" };
+
+const CORE_EVENTS: ReadonlySet<string> = new Set(["run_started", "decision", "episode_finished", "run_finished"]);
+
+export function isCoreEvent(e: { t: string }): e is CoreEvent {
+  return CORE_EVENTS.has(e.t);
+}

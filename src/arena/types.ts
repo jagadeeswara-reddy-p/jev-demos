@@ -118,6 +118,8 @@ export type ArenaEvent =
   | { t: "survived"; at: number; agentId: string; level: number; pieces: number }
   /** Sprint mode: the board reached the line target. */
   | { t: "goal"; at: number; agentId: string; level: number; lines: number; pieces: number }
+  /** A board is done, whatever the game's own event says. Follows topout, survived or goal. */
+  | { t: "episode_finished"; at: number; agentId: string; outcome: "topped_out" | "survived" | "goal" }
   | { t: "run_finished"; at: number; reason: "all_out" | "time_limit" | "stopped" };
 
 export type ArenaEventOf<T extends ArenaEvent["t"]> = Extract<ArenaEvent, { t: T }>;

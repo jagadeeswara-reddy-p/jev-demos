@@ -232,12 +232,14 @@ export class ArenaSimulation implements Match<ArenaEvent> {
       p.done = true;
       p.pending = [];
       out.push({ t: "goal", at: this.t, agentId: p.spec.id, level: this.level, lines: p.game.lines, pieces: p.game.pieces });
+      out.push({ t: "episode_finished", at: this.t, agentId: p.spec.id, outcome: "goal" });
       return;
     }
     if (p.game.pieces >= this.config.maxPieces) {
       p.done = true;
       p.pending = [];
       out.push({ t: "survived", at: this.t, agentId: p.spec.id, level: this.level, pieces: p.game.pieces });
+      out.push({ t: "episode_finished", at: this.t, agentId: p.spec.id, outcome: "survived" });
       return;
     }
     p.spawnAt = this.t + this.config.entryDelayMs;
@@ -270,6 +272,7 @@ export class ArenaSimulation implements Match<ArenaEvent> {
     p.done = true;
     p.pending = [];
     out.push({ t: "topout", at: this.t, agentId: p.spec.id, level: this.level });
+    out.push({ t: "episode_finished", at: this.t, agentId: p.spec.id, outcome: "topped_out" });
   }
 
   /** Asks this board's agent for a decision on the piece that just appeared. */

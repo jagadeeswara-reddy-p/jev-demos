@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tetris } from "../../src/arena/environment";
 import type { ArenaEvent, TetrisAgent } from "../../src/arena/types";
+import { isCoreEvent } from "../../src/core/types";
 import type { BenchConfig } from "./config";
 import type { MatchPlan } from "./plan";
 
@@ -45,11 +46,12 @@ export function quorum(boards: number, share: number): number {
 }
 
 /** `paid`, when given, is the agents whose answer costs count; without it every agent's cost counts. */
-export function outcomeOf(key: string, file: string, events: ArenaEvent[], paid?: ReadonlySet<string>): Omit<MatchOutcome, "status"> {
-  const started = events.find((e) => e.t === "run_started");
+export function outcomeOf(key: string, file: string, events: { t: string }[], paid?: ReadonlySet<string>): Omit<MatchOutcome, "status"> {
+  const core = events.filter(isCoreEvent);
+  const started = core.find((e) => e.t === "run_started");
   const agents = started?.t === "run_started" ? started.config.agents.map((a) => a.id) : [];
-  const done = new Set(events.flatMap((e) => (e.t === "topout" || e.t === "survived" || e.t === "goal" ? [e.agentId] : [])));
-  const last = events[events.length - 1];
+  const done = new Set(core.flatMap((e) => (e.t === "episode_finished" ? [e.agentId] : [])));
+  const last = core[core.length - 1];
   const stopped = last?.t === "run_finished" && last.reason === "stopped";
   // Only a stop says which boards were still playing; a time limit ends without a per-board event.
   const unfinished = stopped ? agents.filter((id) => !done.has(id)) : [];
@@ -58,7 +60,7 @@ export function outcomeOf(key: string, file: string, events: ArenaEvent[], paid?
     file,
     stoppedEarly: stopped && unfinished.length > 0,
     unfinished,
-    costUsd: events.reduce((sum, e) => (e.t === "decision" && (!paid || paid.has(e.agentId)) ? sum + (e.usage?.costUsd ?? 0) : sum), 0),
+    costUsd: core.reduce((sum, e) => (e.t === "decision" && (!paid || paid.has(e.agentId)) ? sum + (e.usage?.costUsd ?? 0) : sum), 0),
   };
 }
 
@@ -149,7 +151,7 @@ async function play(plan: MatchPlan, file: string, opts: RunOptions): Promise<Ar
     for (const e of batch) {
       events.push(e);
       writer.write(`${JSON.stringify(e)}\n`);
-      if (e.t === "topout" || e.t === "survived" || e.t === "goal") done.add(e.agentId);
+      if (isCoreEvent(e) && e.t === "episode_finished") done.add(e.agentId);
     }
   };
   try {

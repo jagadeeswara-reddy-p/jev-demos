@@ -7,7 +7,7 @@ import type { ArenaEvent, RunConfig, TetrisTurnDetail } from "./types";
 
 export const tetris: Environment<RunConfig, ArenaEvent, TetrisTurnDetail> = {
   id: "tetris",
-  version: "1",
+  version: "2",
   variants: ["described"],
   createMatch: (config, agents) => new ArenaSimulation(config, agents),
 };

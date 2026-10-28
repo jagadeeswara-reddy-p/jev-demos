@@ -194,19 +194,35 @@ describe("outcomeOf", () => {
       { t: "run_started", at: 0, config },
       { t: "decision", at: 1, agentId: "a", pieceId: 1, status: "ok", latencyMs: 1, usage: { inputTokens: 0, outputTokens: 0, costUsd: 0.25 } },
       { t: "decision", at: 2, agentId: "b", pieceId: 1, status: "ok", latencyMs: 1 },
-      { t: "topout", at: 3, agentId: "a", level: 1 },
-      { t: "survived", at: 4, agentId: "b", level: 1, pieces: 40 },
+      { t: "episode_finished", at: 3, agentId: "a", outcome: "topped_out" },
+      { t: "episode_finished", at: 4, agentId: "b", outcome: "survived" },
       { t: "run_finished", at: 5, reason: "stopped" },
     ] as ArenaEvent[];
     const o = outcomeOf("k", "f.jsonl", events);
     expect(o).toEqual({ key: "k", file: "f.jsonl", stoppedEarly: true, unfinished: ["c"], costUsd: 0.25 });
   });
 
+  test("counts a board done from episode_finished alone, and ignores a board that only has its Tetris event", () => {
+    const config = { agents: [{ id: "a" }, { id: "b" }] };
+    const onlyEpisode = [
+      { t: "run_started", at: 0, config },
+      { t: "episode_finished", at: 1, agentId: "a", outcome: "goal" },
+      { t: "run_finished", at: 2, reason: "stopped" },
+    ];
+    expect(outcomeOf("k", "f.jsonl", onlyEpisode).unfinished).toEqual(["b"]);
+    const onlyTetris = [
+      { t: "run_started", at: 0, config },
+      { t: "topout", at: 1, agentId: "a", level: 1 },
+      { t: "run_finished", at: 2, reason: "stopped" },
+    ];
+    expect(outcomeOf("k", "f.jsonl", onlyTetris).unfinished).toEqual(["a", "b"]);
+  });
+
   test("a match that hit the time limit lists no unfinished boards, since the engine says nothing per board", () => {
     const config = { agents: [{ id: "a" }, { id: "b" }] };
     const events = [
       { t: "run_started", at: 0, config },
-      { t: "topout", at: 1, agentId: "a", level: 1 },
+      { t: "episode_finished", at: 1, agentId: "a", outcome: "topped_out" },
       { t: "run_finished", at: 2, reason: "time_limit" },
     ] as ArenaEvent[];
     expect(outcomeOf("k", "f.jsonl", events)).toEqual({ key: "k", file: "f.jsonl", stoppedEarly: false, unfinished: [], costUsd: 0 });
