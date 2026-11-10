@@ -253,7 +253,7 @@ function footer(summary: BenchSummary, rows: ModelSummary[]): string[] {
   clauses.push(`total cost $${summary.totalCostUsd.toFixed(2)}`);
   const left = summary.skipped.length;
   if (left > 0) clauses.push(`${left} unfinished ${left === 1 ? "game" : "games"} left out`);
-  clauses.push(summary.date, "no confidence intervals yet");
+  clauses.push("no confidence intervals yet");
   return clauses;
 }
 

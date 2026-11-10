@@ -22,12 +22,12 @@ The first environment is **Deadline Tetris**. Every model plays the same pieces 
 
 **Language models choose best but answer too slowly for falling pieces. The small open decision models answer fast but choose poorly. Jev is the only model that does both, so it places the most pieces.**
 
-Six models, four Live games each, measured on 2026-10-17. Each game was stopped once four of the six boards had filled up.
+Six models, four Live games each. Each game was stopped once four of the six boards had filled up.
 
 <details>
 <summary>Full numbers</summary>
 
-| Model | Type | Good-move rate ↑ | Typical answer time ↓ | Pieces placed in time ↑ | Answers too late ↓ | Cost for 4 games ↓ |
+| Model | Type | Good-move rate (higher is better) | Typical answer time (lower is better) | Pieces placed in time (higher is better) | Answers too late (lower is better) | Cost for 4 games |
 |---|---|---|---|---|---|---|
 | Jev | decision model | 59% | 289 ms | **118.8** | 0% | $0.03 |
 | Cloudflare Clef | decision model | 48% | 438 ms | 69.3 | <1% | $0.11 |
@@ -36,16 +36,16 @@ Six models, four Live games each, measured on 2026-10-17. Each game was stopped 
 | Laya | decision model | 7% | 452 ms | 20.5 | 0% | self-hosted |
 | Claude Opus 5.5 | language model | **79%** | 5.14 s | 9.5 | 46% | $1.02 |
 
-↑ higher is better, ↓ lower is better. Every number is an average over the four games.
+Every number is an average over the four games.
 
 </details>
 
-| Measure | What it means |
-|---|---|
-| **Good-move rate** ↑ | How often the model picked the best spot for the piece, as scored by a standard hand-written Tetris evaluator.[^grading] |
-| **Typical answer time** ↓ | The median time from showing the model a piece to getting its answer. |
-| **Pieces placed in time** ↑ | Pieces that landed where the model chose, because its answer arrived before the piece hit the floor. This is the headline number. |
-| **Answers too late** ↓ | The share of pieces that landed before the model had answered. |
+| Measure | Better when | What it means |
+|---|---|---|
+| **Good-move rate** | higher | How often the model picked the best spot for the piece, as scored by a standard hand-written Tetris evaluator.[^grading] |
+| **Typical answer time** | lower | The median time from showing the model a piece to getting its answer. |
+| **Pieces placed in time** | higher | Pieces that landed where the model chose, because its answer arrived before the piece hit the floor. This is the headline number. |
+| **Answers too late** | lower | The share of pieces that landed before the model had answered. |
 
 To recompute everything from the raw logs in [benchmarks/2026-10-17](benchmarks/README.md):
 

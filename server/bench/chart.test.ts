@@ -207,7 +207,7 @@ describe("renderChart", () => {
 
   test("the footer says what was played, in plain words", () => {
     expect(footerText(renderChart(fixture(), "light"))).toBe(
-      "Deadline Tetris · every model gets the same pieces · Live: 2 games, up to 2 minutes each · Paused: 2 games, 30 pieces each · good-move rate from Paused games · total cost $2.42 · 2026-10-28 · no confidence intervals yet",
+      "Deadline Tetris · every model gets the same pieces · Live: 2 games, up to 2 minutes each · Paused: 2 games, 30 pieces each · good-move rate from Paused games · total cost $2.42 · no confidence intervals yet",
     );
   });
 
@@ -246,6 +246,10 @@ describe("renderChart", () => {
     expect(svg).toContain("<title>Fast LLM (mock): 50% good moves, 500 ms</title>");
     const long = renderChart(fixture({ models: [model({ id: "m", label: "x".repeat(40), kind: "llm", mock: true })] }), "light");
     expect(long).toContain(`>${"x".repeat(12)}… (mock)</text>`);
+  });
+
+  test("the chart carries no date", () => {
+    expect(renderChart(fixture(), "light")).not.toContain("2026-10-28");
   });
 
   test("is deterministic for the same input", () => {

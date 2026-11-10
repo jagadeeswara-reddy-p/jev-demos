@@ -23,7 +23,7 @@ The first round run with `bun bench`. Each model played 3 games in each mode: 40
   <img alt="2026-10-28 results: good-move rate against answer time, and pieces placed in time per live game" src="media/results-2026-10-28-light.svg">
 </picture>
 
-| Model | Type | Good-move rate (Paused) ↑ | Lines in 40 pieces (Paused) ↑ | Typical answer time ↓ | Pieces placed in time (Live) ↑ | Answers too late (Live) ↓ | Cost ↓ |
+| Model | Type | Good-move rate, Paused (higher is better) | Lines in 40 pieces, Paused (higher is better) | Typical answer time (lower is better) | Pieces placed in time, Live (higher is better) | Answers too late, Live (lower is better) | Cost |
 |---|---|---|---|---|---|---|---|
 | Jev | decision model | 50% | 8.0 | 281 ms | 86.7 | 0% | $0.03 |
 | Claude Haiku 5.5 | language model | 54% | 12.3 | 1.9 s | 46.0 | 3% | $0.07 |

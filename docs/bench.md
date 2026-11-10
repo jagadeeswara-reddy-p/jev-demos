@@ -237,7 +237,7 @@ old logs shows today's names.
 **Footer.** The footer names the environment, says every model got the same
 pieces, then gives the number of Live games and their time limit, the number of
 Paused games and their pieces, which mode the good-move rate comes from, the
-total cost, the date and "no confidence intervals yet". If no model has a graded
+total cost and "no confidence intervals yet". If no model has a graded
 answer, part 1 says so instead of drawing marks.
 
 **Unfinished logs.** A match log whose run never finished (its last line is not
