@@ -221,36 +221,37 @@ the `<picture>` snippet for the README.
 | `--out prefix` | Where the two files go. Default `docs/media/results`, which writes `docs/media/results-light.svg` and `docs/media/results-dark.svg`. A value that ends in `/`, or names an existing folder, is a folder: the files go in it as `results-light.svg` and `results-dark.svg`. Paths are relative to the repository root, where `bun bench` always runs. |
 | `--allow-mock` | Draw a bench that has a mock model (see below). Without it, `chart` refuses. |
 
-**Panels.** Rows are the models, ordered by real-time pieces landed, most first.
-The reference (heuristic) row is last. The order is the same in every panel.
+**What it draws.** Two parts, with the direction marked on every axis. Baseline
+models (`heuristic`, `random`) are yardsticks, not entrants, so they are left out.
 
-| Panel | Shows | How it is averaged |
+| Part | Shows | How it is averaged |
 |---|---|---|
-| Judgement | Agreement with the heuristic on frozen matches: the share of graded answers ranked 1 by the heuristic. | Per-seed mean: one value per seed, then the mean of those. |
-| Speed | Median answer time. Shorter is faster. | Pooled median of every answer latency, all matches. |
-| Real time | Pieces landed per real-time game, with `· N% late` when at least 1% of the real-time pieces were not placed by decision. | Per-seed mean of pieces landed by decision. The late share is pooled over every real-time piece. |
+| 1 · Chooses well vs. answers fast | A scatter: good-move rate (0–100%, up is better) against typical answer time (log scale, left is faster). The best corner is top left. | Good-move rate: the share of graded answers the heuristic ranks 1, one value per game, then the mean. Taken from Paused (`frozen`) games when there are any, else from every Live answer, late or not. Answer time: the median of every answer, all games. |
+| 2 · Pieces placed in time | Bars of pieces placed by decision per Live (`realtime`) game, sorted most first, with `· N% too late` when at least 1% of the pieces landed before the answer. | Mean per game. The late share is pooled over every Live piece. |
 
-Colour shows the model kind: decision model, language model, or reference.
-Every row is also named, and every bar has its value.
+Colour and shape show the model kind: a blue circle for a decision model, an
+orange square for a language model. Every mark and bar is named, and every bar
+has its value. Display names come from `models.json` by model id, so a chart of
+old logs shows today's names.
 
-**Footer.** The footer states the environment and version, the number of seeds,
-the frozen pieces each model played, the real-time limit per game (in minutes
-when it is whole minutes, otherwise in seconds), the total cost, the date, and
-"no confidence intervals yet". A panel with no data (for example, a bench with
-no frozen matches) shows `—` for each row instead of bars.
+**Footer.** The footer names the environment, says every model got the same
+pieces, then gives the number of Live games and their time limit, the number of
+Paused games and their pieces, which mode the good-move rate comes from, the
+total cost, the date and "no confidence intervals yet". If no model has a graded
+answer, part 1 says so instead of drawing marks.
 
 **Unfinished logs.** A match log whose run never finished (its last line is not
 `run_finished`, for example because the run was stopped) is left out, not
 charted as a full game. `chart` prints `Left out N unfinished match logs:` with
-their file names, and the footer says how many matches were left out. A log
+their file names, and the footer says how many games were left out. A log
 whose last line is half written counts as unfinished. If every log is
 unfinished, `chart` says so and writes nothing.
 
 **Mock refusal.** A mock model's numbers are simulated, so `chart` refuses a
 bench that includes one and writes nothing. It prints "This bench includes mock
 models (ids); their numbers are simulated. Use --allow-mock to draw it anyway."
-and exits with 1. Baseline models (`heuristic`, `random`) are reference rows and
-are always drawn. With `--allow-mock`, each mock row is labelled "(mock)", and
+and exits with 1. Baseline models (`heuristic`, `random`) never trigger it, since
+the chart leaves them out. With `--allow-mock`, each mock model is labelled "(mock)", and
 the total cost leaves out the mock models' costs. To draw the demo, pass the
 flag:
 
@@ -266,7 +267,7 @@ image is the fallback:
 ```html
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/media/results-dark.svg">
-  <img alt="Benchmark results: judgement, speed and pieces landed in real time" src="docs/media/results-light.svg">
+  <img alt="Benchmark results: good-move rate against answer time, and pieces placed in time per live game" src="docs/media/results-light.svg">
 </picture>
 ```
 

@@ -1,20 +1,52 @@
 # Results history
 
-Every published round, newest first, kept for reference. The latest results are in the [README](../README.md#latest-results).
-The `bun run stats` commands below were run on our own run logs, which aren't published; the
-2026-10-17 benchmark logs are, in [benchmarks/](../benchmarks/README.md).
+Every published round, newest first. The [README](../README.md#results) shows the round its chart is drawn from (2026-10-17 for now). The raw logs of both `bun bench` rounds are in [benchmarks/](../benchmarks/README.md).
 
-## 2026-10-28: four models, Tetris v3
+**Names used in older rounds.** Some measures were renamed so they read the same everywhere. The numbers didn't change.
 
-The first `bun bench` round, with equal pieces on the frozen clock. The chart and table are in the [README](../README.md#latest-results); the logs are in [benchmarks/2026-10-28](../benchmarks/README.md).
+| Older name | Name now | What it means |
+|---|---|---|
+| Best moves, Agreement with heuristic | Good-move rate | How often the model picked the evaluator's top spot |
+| Real-time clock | Live | The piece keeps falling while the model thinks |
+| Frozen clock | Paused | The game waits for the answer |
+| Pieces landed | Pieces placed in time | Pieces that went where the model chose, before they landed |
+| Median answer | Typical answer time | The median answer time |
+| Seed *n* | Game *n* | One sequence of pieces; every model plays the same one |
+| Tetris v1, v3 | Deadline Tetris, rules version 1, 3 | v3 gave every model the same number of pieces in Paused games |
 
-## 2026-10-17: six models, Tetris v1 and JevBench
+## 2026-10-28: Paused and Live, four models
+
+The first round run with `bun bench`. Each model played 3 games in each mode: 40 pieces per game when Paused, and 2-minute Live games. The heuristic evaluator also played, as a reference. Rules version 3.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/results-2026-10-28-dark.svg">
+  <img alt="2026-10-28 results: good-move rate against answer time, and pieces placed in time per live game" src="media/results-2026-10-28-light.svg">
+</picture>
+
+| Model | Type | Good-move rate (Paused) ↑ | Lines in 40 pieces (Paused) ↑ | Typical answer time ↓ | Pieces placed in time (Live) ↑ | Answers too late (Live) ↓ | Cost ↓ |
+|---|---|---|---|---|---|---|---|
+| Jev | decision model | 50% | 8.0 | 281 ms | 86.7 | 0% | $0.03 |
+| Claude Haiku 5.5 | language model | 54% | 12.3 | 1.9 s | 46.0 | 3% | $0.07 |
+| GPT-6.1 Sol | language model | 69% | 12.3 | 2.4 s | 21.0 | 32% | $0.95 |
+| Claude Opus 5.5 | language model | 78% | 12.7 | 5.8 s | 12.7 | 46% | $3.44 |
+| Heuristic (reference) | baseline | 100% | 14.7 | 3 ms | 168.7 | 0% | — |
+
+Averages over the 3 games; typical answer time over every answer; cost for all six games ($4.48 in total). The heuristic scores 100% by definition, since it is the evaluator.
+
+With time to think, the slower models choose better. Live, more of their answers arrive after the piece has landed, so they place fewer pieces.
+
+```sh
+bun bench chart benchmarks/2026-10-28/bench --out docs/media/results-2026-10-28
+bun run stats benchmarks/2026-10-28/bench/*.jsonl
+```
+
+## 2026-10-17: six models, Live games and JevBench
 
 Measured on 2026-10-17. Laya and Strands Decider ran on one NVIDIA A10G in AWS us-east-1; every other model through its provider's API. All round trips are from the same machine in India, so latency includes about 0.2–0.3 s of network.
 
-The recording of the six-model run (seed 1, real-time clock, 6× speed) is [docs/media/demo-six-models.mp4](media/demo-six-models.mp4). Jev lands 148 pieces; Clef 106; GPT-6.1 Sol 32; Laya and Strands Decider top out within 25 seconds; Claude Opus 5.5 lands 9, too slow for the falling pieces. The results screen follows the game.
+The recording in the README (game 1, Live, sped up 6×) is [docs/media/demo-six-models.mp4](media/demo-six-models.mp4). Jev lands 148 pieces; Clef 106; GPT-6.1 Sol 32; Laya and Strands Decider top out within 25 seconds; Claude Opus 5.5 lands 9, too slow for the falling pieces. The results screen follows the game.
 
-### Tetris v1: under time pressure
+### Deadline Tetris, Live (rules version 1)
 
 Six models on the same pieces, four live games (seeds 1–4, real-time clock),
 each stopped once four of the six boards had topped out. The winner of a game is
@@ -30,10 +62,10 @@ Tetris v1, 4 seeds, no intervals yet.
 | Laya | decision model | 20.5 | 0 | 7% | 15% | 452 ms | 0% | self-hosted |
 | Claude Opus 5.5 | language model | 9.5 | 0 | **79%** | **96%** | 5.14 s | 46% | $1.02 |
 
-**Best moves** is the share of answers that picked the reference heuristic's
-top option, counted on every answer, late or not, so it measures judgement
-apart from speed. The column is called **Agreement with heuristic** in the
-README from v0.1 on; the numbers are the same. The large language models choose
+**Best moves** (now called good-move rate) is the share of answers that picked the
+reference heuristic's top option, counted on every answer, late or not, so it
+measures choice apart from speed. This table pools every answer; the README chart
+averages per game, so Jev and Clef read one point lower there (59% and 48%). The large language models choose
 best but answer too slowly for the falling pieces; Laya and Strands answer fast
 but choose poorly; Jev is the only model that is both fast and good. The game logs are in
 [benchmarks/2026-10-17](../benchmarks/README.md); `bun run stats benchmarks/2026-10-17/tetris/*.jsonl` recomputes this table.
@@ -77,7 +109,7 @@ prompts and rules. Runs stopped within the first few decisions are left out.
 Regenerate any of these numbers with `bun run stats`.
 
 Every run reports two things: **speed** (pieces landed, too late) and
-**move quality** ([best moves](how-it-works.md#move-quality-best-moves): how often a model picked
+**move quality** ([best moves](how-it-works.md#move-quality-good-move-rate): how often a model picked
 the reference heuristic's top option, graded on every answer, late or not).
 
 ### Round 2 (2026-10-10): Jev vs GPT-6.1 Sol vs Claude Haiku 5.5

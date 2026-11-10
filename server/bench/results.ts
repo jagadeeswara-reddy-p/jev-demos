@@ -18,8 +18,13 @@ export interface ModelSummary {
   mock: boolean;
   /** Distinct seeds this model played. */
   seeds: number;
-  /** Mean over frozen matches of (answers ranked 1 / graded answers), as a percentage; null without frozen matches. */
-  agreement: number | null;
+  /**
+   * Good-move rate: mean over matches of (answers ranked 1 / graded answers), as a percentage. Taken from the
+   * frozen (paused) matches when there are any, else from the realtime (live) ones, counting every answer, late or not.
+   */
+  goodMoveRate: number | null;
+  /** Which clock goodMoveRate comes from; null when there is no graded answer. */
+  goodMovesFrom: ClockMode | null;
   /** Mean over frozen matches of lines cleared; null without frozen matches. */
   frozenLines: number | null;
   /** Median latencyMs over every decision event of the model, all matches; null if none. */
@@ -43,6 +48,8 @@ export interface BenchSummary {
   frozenPieces: number | null;
   /** maxDurationMs / 1000 of a realtime match, null if none. */
   realtimeSeconds: number | null;
+  /** Distinct seeds played on each clock: the games per model. */
+  games: Record<ClockMode, number>;
   /** Sum of the costs of the non-mock models, all matches. */
   totalCostUsd: number;
   /** File names of the logs left out because their run never finished. */
@@ -65,7 +72,12 @@ interface Match {
 
 const USED = new Set<ArenaEvent["t"]>(["run_started", "decision", "lock", "run_finished"]);
 
-export async function summarizeBench(dir: string): Promise<BenchSummary> {
+export interface SummarizeOptions {
+  /** Display names by sourceId; a model without one keeps the name its log gave it. */
+  labels?: ReadonlyMap<string, string>;
+}
+
+export async function summarizeBench(dir: string, options: SummarizeOptions = {}): Promise<BenchSummary> {
   const names = (await readdir(dir)).filter((f) => f.endsWith(".jsonl")).sort();
   const matches: Match[] = [];
   const skipped: string[] = [];
@@ -91,7 +103,7 @@ export async function summarizeBench(dir: string): Promise<BenchSummary> {
   const agents = new Map<string, AgentSpec>();
   for (const m of matches) for (const a of m.config.agents) if (!agents.has(a.id)) agents.set(a.id, a);
 
-  const models = [...agents.values()].map((spec) => summarizeModel(spec, matches));
+  const models = [...agents.values()].map((spec) => summarizeModel(spec, matches, options.labels?.get(spec.sourceId) ?? spec.name));
   // Stable sort: ties keep the order the agents first appear in.
   models.sort((a, b) => Number(a.kind === "baseline") - Number(b.kind === "baseline") || (b.realtimeLanded ?? 0) - (a.realtimeLanded ?? 0));
 
@@ -104,6 +116,7 @@ export async function summarizeBench(dir: string): Promise<BenchSummary> {
     seeds: new Set(matches.map((m) => m.config.seed)).size,
     frozenPieces: frozen ? frozen.config.maxPieces : null,
     realtimeSeconds: realtime ? realtime.config.maxDurationMs / 1000 : null,
+    games: { frozen: seedsOn(matches, "frozen"), realtime: seedsOn(matches, "realtime") },
     totalCostUsd: matches.reduce((sum, m) => sum + costOf(m.events, (agentId) => !MOCK_IDS.has(agentId ?? "")), 0),
     skipped,
     date: stamp.slice(0, 10),
@@ -116,16 +129,24 @@ interface Environment {
   version?: string;
 }
 
-function summarizeModel(spec: AgentSpec, all: Match[]): ModelSummary {
+function seedsOn(matches: Match[], mode: ClockMode): number {
+  return new Set(matches.filter((m) => m.mode === mode).map((m) => m.config.seed)).size;
+}
+
+function summarizeModel(spec: AgentSpec, all: Match[], label: string): ModelSummary {
   const id = spec.id;
   const mine = all.filter((m) => m.config.agents.some((a) => a.id === id));
   const frozen = mine.filter((m) => m.mode === "frozen");
   const realtime = mine.filter((m) => m.mode === "realtime");
 
-  const agreements = frozen.flatMap((m) => {
-    const graded = decisionsOf(m, id).filter((d) => d.bestRank !== undefined);
-    return graded.length ? [(100 * graded.filter((d) => d.bestRank === 1).length) / graded.length] : [];
-  });
+  const goodMoves = (matches: Match[]) =>
+    matches.flatMap((m) => {
+      const graded = decisionsOf(m, id).filter((d) => d.bestRank !== undefined);
+      return graded.length ? [(100 * graded.filter((d) => d.bestRank === 1).length) / graded.length] : [];
+    });
+  const pausedRates = goodMoves(frozen);
+  const rates = pausedRates.length ? pausedRates : goodMoves(realtime);
+  const goodMovesFrom: ClockMode | null = pausedRates.length ? "frozen" : rates.length ? "realtime" : null;
   const frozenLines = frozen.map((m) => locksOf(m, id).reduce((n, l) => n + l.rows.length, 0));
   const landed = realtime.map((m) => locksOf(m, id).filter((l) => l.byDecision).length);
   const rtLocks = realtime.flatMap((m) => locksOf(m, id));
@@ -133,11 +154,12 @@ function summarizeModel(spec: AgentSpec, all: Match[]): ModelSummary {
 
   return {
     id,
-    label: spec.name,
+    label,
     kind: spec.kind,
     mock: MOCK_IDS.has(id),
     seeds: new Set(mine.map((m) => m.config.seed)).size,
-    agreement: mean(agreements),
+    goodMoveRate: mean(rates),
+    goodMovesFrom,
     frozenLines: mean(frozenLines),
     medianMs: median(latencies),
     realtimeLanded: mean(landed),

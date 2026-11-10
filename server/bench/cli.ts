@@ -173,7 +173,7 @@ async function chart(args: Args, io: Io): Promise<number> {
   }
   let summary: BenchSummary;
   try {
-    summary = await summarizeBench(folder);
+    summary = await summarizeBench(folder, { labels: await modelLabels() });
   } catch (err) {
     io.out(err instanceof Error ? err.message : String(err));
     return 1;
@@ -209,18 +209,29 @@ function outPrefix(out: string | undefined): string {
   return folder ? resolve(out, "results") : resolve(out);
 }
 
-/** One line per model: label, agreement, median and real-time landed; "—" where there is no data. */
+/**
+ * Display names by model id from models.json, so a chart of old logs shows today's names. A label still
+ * holding a ${...} placeholder is left out, since it depends on .env.
+ */
+async function modelLabels(): Promise<Map<string, string>> {
+  const file = Bun.file("models.json");
+  if (!(await file.exists())) return new Map();
+  const { models = [] } = (await file.json()) as { models?: { id: string; label?: string }[] };
+  return new Map(models.flatMap((m) => (m.label && !m.label.includes("${") ? [[m.id, m.label] as [string, string]] : [])));
+}
+
+/** One line per model: label, good-move rate, median and real-time landed; "—" where there is no data. */
 function modelLine(m: ModelSummary): string {
-  const agreement = m.agreement === null ? "—" : `${Math.round(m.agreement)}%`;
+  const goodMoves = m.goodMoveRate === null ? "—" : `${Math.round(m.goodMoveRate)}%`;
   const median = m.medianMs === null ? "—" : m.medianMs < 1000 ? `${Math.round(m.medianMs)} ms` : `${(m.medianMs / 1000).toFixed(1)} s`;
   const landed = m.realtimeLanded === null ? "—" : Number.isInteger(m.realtimeLanded) ? String(m.realtimeLanded) : m.realtimeLanded.toFixed(1);
-  return `${m.label}: agreement ${agreement}, median ${median}, real-time landed ${landed}`;
+  return `${m.label}: good moves ${goodMoves}, median ${median}, live pieces placed ${landed}`;
 }
 
 function pictureSnippet(dark: string, light: string): string {
   return `<picture>
   <source media="(prefers-color-scheme: dark)" srcset="${dark}">
-  <img alt="Benchmark results: judgement, speed and pieces landed in real time" src="${light}">
+  <img alt="Benchmark results: good-move rate against answer time, and pieces placed in time per live game" src="${light}">
 </picture>`;
 }
 

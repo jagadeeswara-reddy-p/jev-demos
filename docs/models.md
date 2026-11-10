@@ -177,7 +177,7 @@ separately: they count as input tokens, each priced at its own rate.
 ```json
 {
   "id": "bedrock-opus",
-  "label": "claude-opus-5-5",
+  "label": "Claude Opus 5.5",
   "adapter": "bedrock",
   "model": "us.anthropic.claude-opus-5-5",
   "toolChoice": "auto",

@@ -1,12 +1,17 @@
 # Findings: six models, two benchmarks, and why the open decision models fall behind
 
 What we measured between 2026-10-12 and 2026-10-17, what we tried, and what we
-concluded. The short version: **nothing in our setup holds Laya or Strands
-Decider back.** Both get the same request as every other model, and every knob
-their own documentation offers was tried. Laya cannot tell options apart by the
-numbers in them, and so falls back on where an option is listed. Strands Decider
-is a capable small model on text decisions but too unsure to play Tetris. Jev
-is the only model that is both fast and good at the game.
+concluded. The headline results are in the [README](../README.md#results); this
+page explains them.
+
+## In short
+
+- **Jev is the only model that is both fast and good at the game.** It answers in about 0.3 s, is never late, and places the most pieces.
+- **Cloudflare Clef chooses well but is about 150 ms slower than Jev**, which costs it pieces in Live games.
+- **The language models (GPT-6.1 Sol, Claude Opus 5.5) choose best but answer in 2–5 s**, so many pieces land before they answer. When the game waits for them (the Paused round of 2026-10-28), they lead on good-move rate.
+- **Laya can't tell options apart by the numbers in them**, so it falls back on picking options near the top of the list. No setting fixed this. ([details](#laya))
+- **Strands Decider is a capable small model on text decisions, but too unsure to play Tetris.** ([details](#strands-decider))
+- **Nothing in our setup holds Laya or Strands Decider back.** Both get the same request as every other model, and we tried every option their own documentation offers.
 
 ## Contents
 
@@ -179,6 +184,8 @@ the real-time clock 13% and 46% of their answers arrive after the piece has
 landed. With the clock frozen, every answer counts, so their 72% and 79% best
 moves would decide the ranking. That is a projection from the best-move rates,
 not a measured frozen-clock result; under time pressure they rank last but one and last.
+The 2026-10-28 round then measured it with the game paused: Opus 78% and GPT 69%
+good moves, against Jev's 50% ([results history](results-history.md#2026-10-28-paused-and-live-four-models)).
 
 ## Could we host Clef ourselves?
 
@@ -229,8 +236,9 @@ The four benchmark games cost $1.64 in model calls and the JevBench pass $2.85.
 - Latency includes the network from India to us-east-1 (about 0.2–0.3 s round trip).
 - JevBench is designed around Jev's API; it is independent and MIT-licensed, but
   Jev-class models are its natural audience.
-- Next: more seeds for the Tetris table; a frozen-clock round, where the
-  language models should lead; and a fine-tuned Laya, measured as a separate model.
+- Next: one fresh round with all seven models in both modes, so the README chart
+  covers every model in one run; more games for error bars; and a fine-tuned
+  Laya, measured as a separate model.
 
 ## Sources
 

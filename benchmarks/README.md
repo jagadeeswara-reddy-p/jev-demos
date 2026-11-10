@@ -1,13 +1,13 @@
 # Benchmark data
 
-The raw results behind the tables in the [README](../README.md#latest-results), so anyone can check or recompute them.
+The raw logs behind the [README](../README.md#results) and the [results history](../docs/results-history.md), so anyone can check or recompute them.
 
 ## 2026-10-28
 
-**`bench/`**: a `bun bench run` of Jev, GPT-6.1 Sol, Claude Opus 5.5, Claude Haiku 5.5 and the reference heuristic on Deadline Tetris v3: 3 seeds on each clock, 40 pieces per model on the frozen clock, 2-minute games in real time. One log per match, plus `bench.json` (the config as run, with every match's outcome and cost) and `settings.json`.
+**`bench/`**: a `bun bench run` of Jev, GPT-6.1 Sol, Claude Opus 5.5, Claude Haiku 5.5 and the reference heuristic on Deadline Tetris (rules version 3): 3 games in each mode, 40 pieces per model when Paused (the *frozen* clock in the logs), 2-minute Live games (*realtime*). One log per game, plus `bench.json` (the config as run, with every game's outcome and cost) and `settings.json`.
 
 ```sh
-bun bench chart benchmarks/2026-10-28/bench           # the README chart (docs/media/results-*.svg)
+bun bench chart benchmarks/2026-10-28/bench --out docs/media/results-2026-10-28   # the results-history chart
 bun run stats benchmarks/2026-10-28/bench/*.jsonl      # every number per match and per model
 ```
 
@@ -15,10 +15,11 @@ All requests came from the same machine in India, through each provider's API (B
 
 ## 2026-10-17
 
-**`tetris/`**: the four live games (seeds 1–4, real-time clock, six models), one event per line, exactly as the server logged them. Each game was stopped once four of the six boards had topped out.
+**`tetris/`**: the four Live games (games 1–4, six models), one event per line, exactly as the server logged them. Each game was stopped once four of the six boards had topped out. `bench.json` only records the date and environment, so `bun bench chart` can name them.
 
 ```sh
-bun run stats benchmarks/2026-10-17/tetris/*.jsonl    # every table in the README's Tetris section
+bun bench chart benchmarks/2026-10-17/tetris          # the README chart (docs/media/results-*.svg)
+bun run stats benchmarks/2026-10-17/tetris/*.jsonl    # every number per game and per model
 ```
 
 Load any file in the page (**Load log** in the top bar) to replay the game.

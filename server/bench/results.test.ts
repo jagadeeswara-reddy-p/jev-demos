@@ -90,8 +90,40 @@ describe("summarizeBench", () => {
   test("averages frozen judgement per seed, not pooled: a gets 75 where pooling gives 83.3", async () => {
     const summary = await summarizeBench(mainFolder());
     const a = summary.models.find((m) => m.id === "a");
-    expect(a?.agreement).toBe(75);
+    expect(a?.goodMoveRate).toBe(75);
+    expect(a?.goodMovesFrom).toBe("frozen");
     expect(a?.seeds).toBe(2);
+  });
+
+  test("counts the games on each clock", async () => {
+    const summary = await summarizeBench(mainFolder());
+    expect(summary.games).toEqual({ frozen: 2, realtime: 2 });
+  });
+
+  test("with only real-time logs, takes the good-move rate from every live answer, late or not", async () => {
+    const dir = tempDir();
+    const agents = [agent("a", "Model A", "system-one"), agent("b", "Model B", "llm")];
+    writeLog(dir, "described-realtime-seed1.jsonl", [
+      startedLine("realtime", 1, agents),
+      decision("a", 100, { bestRank: 1 }),
+      decision("a", 100, { bestRank: 3, status: "late" }),
+      decision("b", 900),
+      lock("a", []),
+    ]);
+    const summary = await summarizeBench(dir);
+    const a = summary.models.find((m) => m.id === "a");
+    const b = summary.models.find((m) => m.id === "b");
+    expect(a?.goodMoveRate).toBe(50);
+    expect(a?.goodMovesFrom).toBe("realtime");
+    expect(b?.goodMoveRate).toBeNull();
+    expect(b?.goodMovesFrom).toBeNull();
+  });
+
+  test("takes display names from the labels by source id, and keeps the logged name otherwise", async () => {
+    const dir = tempDir();
+    writeLog(dir, "described-realtime-seed1.jsonl", [startedLine("realtime", 1, [agent("a", "model-a", "llm"), agent("b", "Model B", "llm")])]);
+    const summary = await summarizeBench(dir, { labels: new Map([["a", "Model A"]]) });
+    expect(summary.models.map((m) => m.label)).toEqual(["Model A", "Model B"]);
   });
 
   test("means the frozen lines cleared, and the real-time pieces landed", async () => {
@@ -139,7 +171,7 @@ describe("summarizeBench", () => {
     expect(summary.models.at(-1)?.kind).toBe("baseline");
   });
 
-  test("with only real-time logs, the frozen fields are null for every model", async () => {
+  test("with only real-time logs and no graded answers, the frozen fields are null for every model", async () => {
     const dir = tempDir();
     const agents = [agent("a", "Model A", "system-one"), agent("b", "Model B", "llm")];
     writeLog(dir, "described-realtime-seed1.jsonl", [startedLine("realtime", 1, agents), lock("a", []), lock("b", [], false)]);
@@ -147,7 +179,7 @@ describe("summarizeBench", () => {
     expect(summary.frozenPieces).toBeNull();
     expect(summary.realtimeSeconds).toBe(120);
     for (const m of summary.models) {
-      expect(m.agreement).toBeNull();
+      expect(m.goodMoveRate).toBeNull();
       expect(m.frozenLines).toBeNull();
       expect(m.realtimeLanded).not.toBeNull();
     }
@@ -207,8 +239,8 @@ describe("summarizeBench", () => {
     expect(summary.models).toHaveLength(2);
     expect(summary.models.at(-1)?.id).toBe("heuristic");
     const jev = summary.models.find((m) => m.id === "jev");
-    expect(jev?.agreement).toBeGreaterThanOrEqual(0);
-    expect(jev?.agreement).toBeLessThanOrEqual(100);
+    expect(jev?.goodMoveRate).toBeGreaterThanOrEqual(0);
+    expect(jev?.goodMoveRate).toBeLessThanOrEqual(100);
     expect(jev?.frozenLines).not.toBeNull();
     expect(jev?.realtimeLanded).not.toBeNull();
   }, 30_000);

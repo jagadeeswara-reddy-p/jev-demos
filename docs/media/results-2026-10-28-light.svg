@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="684" viewBox="0 0 880 684" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" role="img" aria-label="Benchmark results: good-move rate against answer time, and pieces placed in time per live game">
+<rect width="880" height="684" rx="8" fill="#fcfcfb"/>
+<text x="24" y="36" font-size="18" font-weight="600" fill="#0b0b0b">Who chooses well, and in time?</text>
+<circle cx="30.0" cy="56.0" r="5" fill="#2a78d6"/>
+<text x="42" y="60" font-size="12" fill="#52514e">Decision model (circle)</text>
+<rect x="217.3" y="51.5" width="9.0" height="9.0" rx="2" fill="#eb6834"/>
+<text x="233.79999999999998" y="60" font-size="12" fill="#52514e">Language model (square)</text>
+<text x="24" y="88" font-size="14" font-weight="600" fill="#0b0b0b">1 · Chooses well vs. answers fast</text>
+<text x="24" y="104" font-size="11" fill="#898781">Each mark is a model. The best place to be is the top-left corner ↖</text>
+<text x="72" y="124" font-size="11" fill="#52514e">↑ Good-move rate (higher is better)</text>
+<line x1="72" y1="392" x2="690" y2="392" stroke="#c3c2b7" stroke-width="1"/>
+<text x="64" y="396" font-size="11" text-anchor="end" fill="#898781">0%</text>
+<line x1="72" y1="327" x2="690" y2="327" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="331" font-size="11" text-anchor="end" fill="#898781">25%</text>
+<line x1="72" y1="262" x2="690" y2="262" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="266" font-size="11" text-anchor="end" fill="#898781">50%</text>
+<line x1="72" y1="197" x2="690" y2="197" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="201" font-size="11" text-anchor="end" fill="#898781">75%</text>
+<line x1="72" y1="132" x2="690" y2="132" stroke="#e1e0d9" stroke-width="1"/>
+<text x="64" y="136" font-size="11" text-anchor="end" fill="#898781">100%</text>
+<line x1="72.0" y1="132" x2="72.0" y2="392" stroke="#e1e0d9" stroke-width="1"/>
+<text x="72.0" y="410" font-size="11" text-anchor="middle" fill="#898781">200 ms</text>
+<line x1="216.8" y1="132" x2="216.8" y2="392" stroke="#e1e0d9" stroke-width="1"/>
+<text x="216.8" y="410" font-size="11" text-anchor="middle" fill="#898781">500 ms</text>
+<line x1="326.3" y1="132" x2="326.3" y2="392" stroke="#e1e0d9" stroke-width="1"/>
+<text x="326.3" y="410" font-size="11" text-anchor="middle" fill="#898781">1 s</text>
+<line x1="435.7" y1="132" x2="435.7" y2="392" stroke="#e1e0d9" stroke-width="1"/>
+<text x="435.7" y="410" font-size="11" text-anchor="middle" fill="#898781">2 s</text>
+<line x1="580.5" y1="132" x2="580.5" y2="392" stroke="#e1e0d9" stroke-width="1"/>
+<text x="580.5" y="410" font-size="11" text-anchor="middle" fill="#898781">5 s</text>
+<line x1="690.0" y1="132" x2="690.0" y2="392" stroke="#e1e0d9" stroke-width="1"/>
+<text x="690.0" y="410" font-size="11" text-anchor="middle" fill="#898781">10 s</text>
+<text x="72" y="430" font-size="11" fill="#52514e">← Typical answer time, log scale (faster is better)</text>
+<rect x="596.8" y="184.2" width="12.6" height="12.6" rx="2" fill="#eb6834"><title>Claude Opus 5.5: 78% good moves, 5.8 s</title></rect>
+<text x="616.1" y="194.5" font-size="12" fill="#0b0b0b">Claude Opus 5.5</text>
+<rect x="456.5" y="205.9" width="12.6" height="12.6" rx="2" fill="#eb6834"><title>GPT-6.1 Sol: 69% good moves, 2.4 s</title></rect>
+<text x="475.8" y="216.16666666666663" font-size="12" fill="#0b0b0b">GPT-6.1 Sol</text>
+<rect x="419.3" y="244.9" width="12.6" height="12.6" rx="2" fill="#eb6834"><title>Claude Haiku 5.5: 54% good moves, 1.9 s</title></rect>
+<text x="438.6" y="255.16666666666669" font-size="12" fill="#0b0b0b">Claude Haiku 5.5</text>
+<circle cx="125.5" cy="262.0" r="7" fill="#2a78d6"><title>Jev: 50% good moves, 281 ms</title></circle>
+<text x="138.5" y="266" font-size="12" fill="#0b0b0b">Jev</text>
+<text x="24" y="468" font-size="14" font-weight="600" fill="#0b0b0b">2 · Pieces placed in time</text>
+<text x="24" y="484" font-size="11" fill="#898781">Average per Live game: the piece went where the model chose, before it landed. Higher is better ↑</text>
+<line x1="166" y1="506" x2="166" y2="622" stroke="#c3c2b7" stroke-width="1"/>
+<text x="150" y="524" font-size="13" text-anchor="end" fill="#0b0b0b">Jev</text>
+<rect x="166" y="512" width="554.0" height="16" rx="4" fill="#2a78d6"><title>Jev: 86.7</title></rect>
+<text x="726.0" y="524" font-size="12" fill="#52514e">86.7</text>
+<text x="150" y="554" font-size="13" text-anchor="end" fill="#0b0b0b">Claude Haiku 5.5</text>
+<rect x="166" y="542" width="294.0" height="16" rx="4" fill="#eb6834"><title>Claude Haiku 5.5: 46 · 3% too late</title></rect>
+<text x="466.0" y="554" font-size="12" fill="#52514e">46 · 3% too late</text>
+<text x="150" y="584" font-size="13" text-anchor="end" fill="#0b0b0b">GPT-6.1 Sol</text>
+<rect x="166" y="572" width="134.2" height="16" rx="4" fill="#eb6834"><title>GPT-6.1 Sol: 21 · 32% too late</title></rect>
+<text x="306.2" y="584" font-size="12" fill="#52514e">21 · 32% too late</text>
+<text x="150" y="614" font-size="13" text-anchor="end" fill="#0b0b0b">Claude Opus 5.5</text>
+<rect x="166" y="602" width="81.0" height="16" rx="4" fill="#eb6834"><title>Claude Opus 5.5: 12.7 · 46% too late</title></rect>
+<text x="253.0" y="614" font-size="12" fill="#52514e">12.7 · 46% too late</text>
+<text x="24" y="654" font-size="11" fill="#898781">Deadline Tetris · every model gets the same pieces · Live: 3 games, up to 2 minutes each · Paused: 3 games, 40 pieces each</text>
+<text x="24" y="670" font-size="11" fill="#898781">good-move rate from Paused games · total cost $4.48 · 2026-10-28 · no confidence intervals yet</text>
+</svg>

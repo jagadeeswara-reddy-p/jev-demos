@@ -1,6 +1,12 @@
 # How it works
 
 The game, what every model is shown, how answers are judged, and what the screens mean.
+The [README](../README.md#the-environment-deadline-tetris) has the short version.
+
+**Names.** The README calls the two clocks **Live** (real time here, `realtime` in
+`bench.yaml` and the logs) and **Paused** (frozen, `frozen`). A **seed** is one
+game's piece sequence, so "seed 1" and "game 1" are the same game. **Good-move
+rate** was called best moves, and agreement with heuristic.
 
 ## How a run works
 
@@ -12,9 +18,9 @@ The game, what every model is shown, how answers are judged, and what the screen
   is reproducible. With live models the pieces repeat, but the models' answers can vary.
 - One game proves little. For real conclusions, run several seeds (e.g. 1–10) and compare averages.
 
-### The two clocks
+### The two clocks (Live and Paused)
 
-| | **Real time** | **Frozen** |
+| | **Real time** (Live) | **Frozen** (Paused) |
 |---|---|---|
 | While a model thinks | gravity keeps pulling the piece down | the game waits |
 | Answer counts if… | it arrives before the piece locks | it arrives within 30 s |
@@ -183,9 +189,9 @@ guessed from free text.
 
 **Cost** = tokens × the per-million prices from `.env`. The providers report the token counts.
 
-### Move quality (best moves)
+### Move quality (good-move rate)
 
-The README calls this measure **Agreement with heuristic**. It is the same number.
+The README and the chart call this the **good-move rate**. Older rounds call it best moves, or agreement with heuristic; it is the same number. The page and `bun run stats` still label it **Best moves**.
 
 Speed alone can't tell a slow model with good judgement from a bad one, so every
 answer is also graded. When a piece appears, the game scores every offered
@@ -222,7 +228,7 @@ The page has three screens, and each fits one window without scrolling.
   - **Stats**:
     - **Landed X of Y**: pieces placed where the model chose, in time, out of all that locked.
     - **Lines.**
-    - **Best moves**: see [move quality](#move-quality-best-moves).
+    - **Best moves**: see [move quality](#move-quality-good-move-rate).
     - **Decision p50 / p95**: median and 95th-percentile answer time.
     - **Too late**, **Bad answers** and **Cost**.
 

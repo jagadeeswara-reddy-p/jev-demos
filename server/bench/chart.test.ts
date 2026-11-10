@@ -5,7 +5,8 @@ import type { BenchSummary, ModelSummary } from "./results";
 function model(overrides: Partial<ModelSummary> & Pick<ModelSummary, "id" | "label" | "kind">): ModelSummary {
   return {
     seeds: 2,
-    agreement: 50,
+    goodMoveRate: 50,
+    goodMovesFrom: "frozen",
     frozenLines: 10,
     medianMs: 500,
     realtimeLanded: 10,
@@ -16,15 +17,16 @@ function model(overrides: Partial<ModelSummary> & Pick<ModelSummary, "id" | "lab
   };
 }
 
-/** Four models in row order: one decision model, two language models, one reference. */
 /** The footer's lines, joined back into one " · " list. */
 function footerText(svg: string): string {
+  const height = Number(svg.match(/height="(\d+)"/)?.[1]);
   return [...svg.matchAll(/<text x="24" y="(\d+)" font-size="11" fill="[^"]+">([^<]*)<\/text>/g)]
-    .filter((m) => Number(m[1]) > 112)
+    .filter((m) => Number(m[1]) > height - 60)
     .map((m) => m[2])
     .join(" · ");
 }
 
+/** Four models: one decision model, two language models, one reference. */
 function fixture(overrides: Partial<BenchSummary> = {}): BenchSummary {
   return {
     name: "demo",
@@ -32,14 +34,15 @@ function fixture(overrides: Partial<BenchSummary> = {}): BenchSummary {
     seeds: 2,
     frozenPieces: 30,
     realtimeSeconds: 120,
+    games: { frozen: 2, realtime: 2 },
     totalCostUsd: 2.4216,
     skipped: [],
     date: "2026-10-28",
     models: [
-      model({ id: "jev", label: "Jev", kind: "system-one", agreement: 100, medianMs: 310, realtimeLanded: 88, costUsd: 0.12 }),
-      model({ id: "a", label: "Language Model A", kind: "llm", agreement: 82, medianMs: 2300, realtimeLanded: 21.5, tooLate: 40, costUsd: 1.5 }),
-      model({ id: "b", label: "Model B", kind: "llm", agreement: 64, medianMs: 1200, realtimeLanded: 9, tooLate: 70, costUsd: 0.8 }),
-      model({ id: "h", label: "Heuristic", kind: "baseline", agreement: 100, medianMs: 1, realtimeLanded: 4, costUsd: 0 }),
+      model({ id: "jev", label: "Jev", kind: "system-one", goodMoveRate: 60, medianMs: 310, realtimeLanded: 88, costUsd: 0.12 }),
+      model({ id: "a", label: "Language Model A", kind: "llm", goodMoveRate: 82, medianMs: 2300, realtimeLanded: 21.5, tooLate: 40, costUsd: 1.5 }),
+      model({ id: "b", label: "Model B", kind: "llm", goodMoveRate: 64, medianMs: 1200, realtimeLanded: 9, tooLate: 70, costUsd: 0.8 }),
+      model({ id: "h", label: "Heuristic", kind: "baseline", goodMoveRate: 100, medianMs: 1, realtimeLanded: 4, costUsd: 0 }),
     ],
     ...overrides,
   };
@@ -47,26 +50,57 @@ function fixture(overrides: Partial<BenchSummary> = {}): BenchSummary {
 
 /** Titled bars as [width, title], in document order. */
 function bars(svg: string): [number, string][] {
-  return [...svg.matchAll(/width="([\d.]+)"[^>]*><title>([^<]*)<\/title>/g)].map((m) => [Number(m[1]), m[2] ?? ""]);
+  return [...svg.matchAll(/<rect x="[\d.]+" y="[\d.]+" width="([\d.]+)" height="16" rx="4"[^>]*><title>([^<]*)<\/title>/g)].map((m) => [
+    Number(m[1]),
+    m[2] ?? "",
+  ]);
 }
 
-function widthOf(svg: string, title: string): number {
-  const found = bars(svg).find(([, t]) => t === title);
-  if (!found) throw new Error(`no bar titled ${title}`);
-  return found[0];
+/** Scatter marks as {x, y, title}: circles and squares that carry a tooltip. */
+function marks(svg: string): { x: number; y: number; title: string }[] {
+  const circles = [...svg.matchAll(/<circle cx="([\d.]+)" cy="([\d.]+)" r="7"[^>]*><title>([^<]*)<\/title>/g)].map((m) => ({
+    x: Number(m[1]),
+    y: Number(m[2]),
+    title: m[3],
+  }));
+  const squares = [...svg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="12.6" height="12.6"[^>]*><title>([^<]*)<\/title>/g)].map((m) => ({
+    x: Number(m[1]) + 6.3,
+    y: Number(m[2]) + 6.3,
+    title: m[3],
+  }));
+  return [...circles, ...squares];
+}
+
+function markOf(svg: string, name: string) {
+  const found = marks(svg).find((m) => m.title.startsWith(`${name}:`));
+  if (!found) throw new Error(`no mark for ${name}`);
+  return found;
 }
 
 describe("renderChart", () => {
-  test("starts with an svg element that has role img and every label", () => {
+  test("starts with an svg element that has role img, the title and both parts", () => {
     const svg = renderChart(fixture(), "light");
     expect(svg.startsWith("<svg")).toBe(true);
     expect(svg).toContain('role="img"');
     expect(svg).toContain('aria-label="');
-    for (const label of ["Jev", "Language Model A", "Model B", "Heuristic"]) expect(svg).toContain(label);
-    expect(svg).toContain("Judgement, speed and the live game");
-    expect(svg).toContain("Judgement");
-    expect(svg).toContain("Speed");
-    expect(svg).toContain("Real time");
+    expect(svg).toContain("Who chooses well, and in time?");
+    expect(svg).toContain("1 · Chooses well vs. answers fast");
+    expect(svg).toContain("2 · Pieces placed in time");
+  });
+
+  test("leaves the heuristic baseline out of both parts", () => {
+    const svg = renderChart(fixture(), "light");
+    expect(svg).not.toContain("Heuristic");
+    expect(marks(svg)).toHaveLength(3);
+    expect(bars(svg)).toHaveLength(3);
+  });
+
+  test("every axis says which way is better", () => {
+    const svg = renderChart(fixture(), "light");
+    expect(svg).toContain("↑ Good-move rate (higher is better)");
+    expect(svg).toContain("← Typical answer time, log scale (faster is better)");
+    expect(svg).toContain("Higher is better ↑");
+    expect(svg).toContain("top-left corner ↖");
   });
 
   test("light uses the light background and not the dark one, and dark the reverse", () => {
@@ -83,38 +117,77 @@ describe("renderChart", () => {
     expect(strip(renderChart(fixture(), "light"))).toBe(strip(renderChart(fixture(), "dark")));
   });
 
-  test("height is 112 + rows x 34 + 36, plus 16 per extra footer line", () => {
-    // This fixture's footer wraps onto two lines.
-    expect(renderChart(fixture(), "light")).toContain('height="300"');
-    expect(renderChart(fixture({ frozenPieces: null, realtimeSeconds: null }), "light")).toContain('height="284"');
-  });
-
-  test("judgement bar widths are proportional to agreement on a 0-100 scale", () => {
+  test("a decision model is a circle and a language model a square", () => {
     const svg = renderChart(fixture(), "light");
-    const ratio = widthOf(svg, "Language Model A: 82%") / widthOf(svg, "Jev: 100%");
-    expect(Math.abs(ratio - 0.82)).toBeLessThan(0.01);
+    expect(svg).toMatch(/<circle [^>]*><title>Jev: 60% good moves, 310 ms<\/title>/);
+    expect(svg).toMatch(/<rect [^>]*width="12.6"[^>]*><title>Model B: 64% good moves, 1.2 s<\/title>/);
   });
 
-  test("missing judgement data renders a dash and no judgement bars", () => {
-    const summary = fixture({ models: fixture().models.map((m) => ({ ...m, agreement: null })) });
+  test("a higher good-move rate sits higher, and a faster answer further left", () => {
+    const svg = renderChart(fixture(), "light");
+    const jev = markOf(svg, "Jev");
+    const a = markOf(svg, "Language Model A");
+    const b = markOf(svg, "Model B");
+    expect(a.y).toBeLessThan(b.y);
+    expect(b.y).toBeLessThan(jev.y);
+    expect(jev.x).toBeLessThan(b.x);
+    expect(b.x).toBeLessThan(a.x);
+  });
+
+  test("answer time is on a log scale: equal ratios take equal widths", () => {
+    const summary = fixture({
+      models: [
+        model({ id: "x", label: "X", kind: "llm", medianMs: 300 }),
+        model({ id: "y", label: "Y", kind: "llm", medianMs: 600 }),
+        model({ id: "z", label: "Z", kind: "llm", medianMs: 1200 }),
+      ],
+    });
     const svg = renderChart(summary, "light");
-    expect(svg).toContain("—");
-    expect(svg.match(/—/g)?.length).toBeGreaterThanOrEqual(summary.models.length);
-    expect(bars(svg).some(([, t]) => /: \d+%$/.test(t))).toBe(false);
+    const [x, y, z] = ["X", "Y", "Z"].map((n) => markOf(svg, n).x);
+    expect(Math.abs(y - x - (z - y))).toBeLessThan(0.2);
   });
 
-  test("a long label is truncated to 19 characters and an ellipsis, with the full name in the title", () => {
+  test("labels of nearby marks do not overlap", () => {
+    const summary = fixture({
+      models: [
+        model({ id: "s", label: "Strands Decider", kind: "system-one", goodMoveRate: 15, medianMs: 435 }),
+        model({ id: "l", label: "Laya", kind: "system-one", goodMoveRate: 13, medianMs: 452 }),
+      ],
+    });
+    const svg = renderChart(summary, "light");
+    const ys = ["Strands Decider", "Laya"].map((n) => Number(svg.match(new RegExp(`y="([\\d.]+)" font-size="12" fill="[^"]+">${n}</text>`))?.[1]));
+    expect(Math.abs(ys[0] - ys[1])).toBeGreaterThanOrEqual(14);
+  });
+
+  test("a model without a good-move rate gets a bar but no mark", () => {
+    const summary = fixture({ models: fixture().models.map((m) => ({ ...m, goodMoveRate: null, goodMovesFrom: null })) });
+    const svg = renderChart(summary, "light");
+    expect(marks(svg)).toHaveLength(0);
+    expect(svg).toContain("No graded answers in these logs");
+    expect(bars(svg)).toHaveLength(3);
+  });
+
+  test("bars are sorted by pieces placed, and their widths are proportional", () => {
+    const found = bars(renderChart(fixture(), "light"));
+    expect(found.map(([, t]) => t.split(":")[0])).toEqual(["Jev", "Language Model A", "Model B"]);
+    expect(Math.abs(found[1][0] / found[0][0] - 21.5 / 88)).toBeLessThan(0.01);
+  });
+
+  test("a bar's value shows the late share when at least 1% came too late", () => {
+    const svg = renderChart(fixture(), "light");
+    expect(svg).toContain("21.5 · 40% too late");
+    expect(svg).toContain(">88</text>");
+  });
+
+  test("a long label is truncated to 19 characters and an ellipsis", () => {
     const long = `${"x".repeat(20)}${"y".repeat(20)}`;
-    const summary = fixture({ models: [model({ id: "long", label: long, kind: "llm", agreement: 50 })] });
-    const svg = renderChart(summary, "light");
+    const svg = renderChart(fixture({ models: [model({ id: "long", label: long, kind: "llm" })] }), "light");
     expect(svg).toContain(`${"x".repeat(19)}…`);
     expect(svg).not.toContain(`>${long}</text>`);
-    expect(svg).toContain(`<title>${long}: 50%</title>`);
   });
 
   test("labels are XML-escaped", () => {
-    const summary = fixture({ models: [model({ id: "x", label: "<script>x</script>", kind: "llm" })] });
-    const svg = renderChart(summary, "light");
+    const svg = renderChart(fixture({ models: [model({ id: "x", label: "<script>x</script>", kind: "llm" })] }), "light");
     expect(svg).not.toContain("<script>x");
     expect(svg).toContain("&lt;script&gt;x");
   });
@@ -123,123 +196,59 @@ describe("renderChart", () => {
     const wide = fixture({ seeds: 12, realtimeSeconds: 100, totalCostUsd: 123.45, skipped: ["a.jsonl", "b.jsonl"] });
     for (const theme of ["light", "dark"] as const) {
       const svg = renderChart(wide, theme);
-      const texts = [...svg.matchAll(/<text x="([\d.]+)" y="([\d.]+)" font-size="(\d+)"([^>]*)>([^<]*)<\/text>/g)].map((m) => ({
+      const texts = [...svg.matchAll(/<text x="([\d.]+)" y="[\d.]+" font-size="(\d+)"([^>]*)>([^<]*)<\/text>/g)].map((m) => ({
         x: Number(m[1]),
-        y: Number(m[2]),
-        size: Number(m[3]),
-        end: m[4].includes('text-anchor="end"'),
-        width: Array.from(m[5].replace(/&[a-z#0-9]+;/g, "_")).length * 0.6 * Number(m[3]),
+        anchored: m[3].includes("text-anchor"),
+        width: Array.from(m[4].replace(/&[a-z#0-9]+;/g, "_")).length * 0.6 * Number(m[2]),
       }));
-      for (const t of texts) if (!t.end) expect(t.x + t.width).toBeLessThanOrEqual(876);
-      // Panel subtitles share a row: each must end before the next one starts.
-      const subs = texts.filter((t) => t.size === 11 && t.y < 112).sort((a, b) => a.x - b.x);
-      expect(subs.length).toBe(3);
-      for (let i = 0; i + 1 < subs.length; i++) expect(subs[i].x + subs[i].width).toBeLessThanOrEqual(subs[i + 1].x - 8);
+      for (const t of texts) if (!t.anchored) expect(t.x + t.width).toBeLessThanOrEqual(876);
     }
   });
 
-  test("the footer says 2 seeds for two seeds", () => {
-    expect(renderChart(fixture({ seeds: 2 }), "light")).toContain("· 2 seeds ·");
-  });
-
-  test("the footer says 1 seed for one seed", () => {
-    const svg = renderChart(fixture({ seeds: 1 }), "light");
-    expect(svg).toContain("· 1 seed ·");
-    expect(svg).not.toContain("1 seeds");
-  });
-
-  test("the footer states environment, frozen pieces, real time, cost, date and the CI caveat", () => {
+  test("the footer says what was played, in plain words", () => {
     expect(footerText(renderChart(fixture(), "light"))).toBe(
-      "tetris v3 · 2 seeds · frozen: 30 pieces each · real time: 2 minutes · total cost $2.42 · 2026-10-28 · no confidence intervals yet",
+      "Deadline Tetris · every model gets the same pieces · Live: 2 games, up to 2 minutes each · Paused: 2 games, 30 pieces each · good-move rate from Paused games · total cost $2.42 · 2026-10-28 · no confidence intervals yet",
     );
   });
 
-  test("the footer leaves out a clause whose value is null", () => {
-    const svg = renderChart(fixture({ frozenPieces: null, realtimeSeconds: null }), "light");
-    expect(svg).not.toContain("frozen:");
-    expect(svg).not.toContain("real time:");
-    expect(svg).toContain("total cost $2.42");
+  test("with only live games, the footer says the good-move rate counts every live answer", () => {
+    const summary = fixture({
+      frozenPieces: null,
+      games: { frozen: 0, realtime: 4 },
+      realtimeSeconds: 600,
+      models: [model({ id: "jev", label: "Jev", kind: "system-one", goodMovesFrom: "realtime" })],
+    });
+    const text = footerText(renderChart(summary, "light"));
+    expect(text).toContain("Live: 4 games, up to 10 minutes each");
+    expect(text).toContain("good-move rate from every Live answer, late or not");
+    expect(text).not.toContain("Paused");
+  });
+
+  test("a live limit that is not whole minutes reads in seconds", () => {
+    expect(footerText(renderChart(fixture({ realtimeSeconds: 100 }), "light"))).toContain("up to 100 seconds each");
+  });
+
+  test("the footer names the unfinished games left out, and says nothing when there are none", () => {
+    expect(footerText(renderChart(fixture({ skipped: ["a.jsonl", "b.jsonl"] }), "light"))).toContain("· 2 unfinished games left out ·");
+    expect(footerText(renderChart(fixture({ skipped: ["a.jsonl"] }), "light"))).toContain("· 1 unfinished game left out ·");
+    expect(renderChart(fixture(), "light")).not.toContain("left out");
   });
 
   test("the legend shows only the kinds present", () => {
-    const summary = fixture({ models: [model({ id: "a", label: "Model A", kind: "llm" })] });
-    const svg = renderChart(summary, "light");
+    const svg = renderChart(fixture({ models: [model({ id: "a", label: "Model A", kind: "llm" })] }), "light");
     expect(svg).toContain("Language model");
     expect(svg).not.toContain("Decision model");
-    expect(svg).not.toContain("Reference (heuristic)");
   });
 
-  test("the real-time value is shown with late share when at least 1% is late", () => {
-    const svg = renderChart(fixture(), "light");
-    expect(svg).toContain("21.5 · 40% late");
-    expect(svg).toContain("88");
-  });
-
-  test("a bar's tooltip names the model and its value", () => {
-    const svg = renderChart(fixture(), "light");
-    expect(svg).toContain("<title>Jev: 310 ms</title>");
-    expect(svg).toContain("<title>Model B: 1.2 s</title>");
+  test("a mock model's label and tooltip say (mock), cutting a long name before the tag", () => {
+    const svg = renderChart(fixture({ models: [model({ id: "m", label: "Fast LLM", kind: "llm", mock: true })] }), "light");
+    expect(svg).toContain(">Fast LLM (mock)</text>");
+    expect(svg).toContain("<title>Fast LLM (mock): 50% good moves, 500 ms</title>");
+    const long = renderChart(fixture({ models: [model({ id: "m", label: "x".repeat(40), kind: "llm", mock: true })] }), "light");
+    expect(long).toContain(`>${"x".repeat(12)}… (mock)</text>`);
   });
 
   test("is deterministic for the same input", () => {
     expect(renderChart(fixture(), "dark")).toBe(renderChart(fixture(), "dark"));
   });
-
-  test("every value label fits inside the 880 px width, even after the longest bar", () => {
-    // The longest real-time bar carries a late clause, the widest value label.
-    const summary = fixture({
-      models: [
-        model({ id: "jev", label: "Jev", kind: "system-one", realtimeLanded: 21.5, tooLate: 40 }),
-        model({ id: "b", label: "Model B", kind: "llm", realtimeLanded: 9, tooLate: 70 }),
-      ],
-    });
-    for (const svg of [renderChart(summary, "light"), renderChart(fixture(), "light")]) {
-      for (const [x, content] of valueLabels(svg)) {
-        expect(x + Array.from(content).length * 6.6).toBeLessThanOrEqual(880);
-      }
-    }
-  });
-
-  test("a mock model's label and tooltip say (mock), and a baseline's do not", () => {
-    const summary = fixture({
-      models: [model({ id: "m", label: "Fast LLM", kind: "llm", mock: true }), model({ id: "h", label: "Heuristic", kind: "baseline", mock: true })],
-    });
-    const svg = renderChart(summary, "light");
-    expect(svg).toContain(">Fast LLM (mock)</text>");
-    expect(svg).toContain("<title>Fast LLM (mock): 50%</title>");
-    expect(svg).toContain(">Heuristic</text>");
-    expect(svg).not.toContain("Heuristic (mock)");
-  });
-
-  test("a long mock label is cut before the (mock) tag, so the tag stays visible", () => {
-    const summary = fixture({ models: [model({ id: "m", label: "x".repeat(40), kind: "llm", mock: true })] });
-    expect(renderChart(summary, "light")).toContain(`>${"x".repeat(12)}… (mock)</text>`);
-  });
-
-  test("a real-time limit in whole minutes reads as minutes, and any other as seconds", () => {
-    const minutes = renderChart(fixture({ realtimeSeconds: 120 }), "light");
-    expect(minutes).toContain("Pieces landed, 2-minute game");
-    expect(minutes).toContain("real time: 2 minutes");
-    const seconds = renderChart(fixture({ realtimeSeconds: 100 }), "light");
-    expect(seconds).toContain("Pieces landed, 100-second game");
-    expect(seconds).toContain("real time: 100 seconds");
-    expect(seconds).not.toContain("1.66");
-  });
-
-  test("the footer names the unfinished matches left out, and says nothing when there are none", () => {
-    expect(footerText(renderChart(fixture({ skipped: ["a.jsonl", "b.jsonl"] }), "light"))).toContain("· 2 unfinished matches left out ·");
-    expect(footerText(renderChart(fixture({ skipped: ["a.jsonl"] }), "light"))).toContain("· 1 unfinished match left out ·");
-    expect(renderChart(fixture(), "light")).not.toContain("left out");
-  });
-
-  test("short labels keep the original 70 px value room in the judgement panel", () => {
-    // Panel width 216.67 - 70 = 146.67 for a full bar.
-    const svg = renderChart(fixture(), "light");
-    expect(widthOf(svg, "Jev: 100%")).toBe(146.7);
-  });
 });
-
-/** Value labels (font-size 12) as [x, text], in document order. */
-function valueLabels(svg: string): [number, string][] {
-  return [...svg.matchAll(/<text x="([\d.]+)" y="[\d.]+" font-size="12"[^>]*>([^<]*)<\/text>/g)].map((m) => [Number(m[1]), m[2] ?? ""]);
-}
