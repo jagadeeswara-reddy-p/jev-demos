@@ -2,8 +2,6 @@
 
 Every model setting and `.env` variable. For the adapters and their wire formats, see [models.md](models.md).
 
-## Models and configuration
-
 Every model on a board goes through one of three **adapters**, chosen by the API it speaks:
 
 | Adapter | API | For | Offered in the page |

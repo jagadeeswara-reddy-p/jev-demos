@@ -5,27 +5,30 @@
 
 **Can a model make a good decision fast enough to act on it?**
 
-Most benchmarks give a model as long as it likes to answer. Agents, games and other live systems don't, because a late answer counts for nothing. decision-bench puts models in a game where the clock keeps running while they think, then measures two things: how well each model chooses, and whether its choice arrives in time.
+In a live system, a late answer is as bad as a wrong one. decision-bench measures both: how well a model chooses, and whether its answer arrives in time.
 
-The first environment is **Deadline Tetris**. Every model plays the same pieces in the same order, and each piece keeps falling while the model decides where it should go.
+The first test is **Deadline Tetris**, where each piece keeps falling while the model thinks.
 
 [![Six models playing Deadline Tetris](docs/media/demo-six-models.gif)](docs/media/demo-six-models.mp4)
 
-*The six models below, playing the same Live game side by side, sped up 6×. Click for the full video.*
+*Six models play the same pieces side by side, sped up 6×. Click for the video.*
 
 ## Results
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/media/results-dark.svg">
-  <img alt="Benchmark results: good-move rate against answer time, and pieces placed in time per live game" src="docs/media/results-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/results-choices-dark.svg">
+  <img alt="Good-move rate against typical answer time, one mark per model" src="docs/media/results-choices-light.svg">
 </picture>
 
-**Language models choose best but answer too slowly for falling pieces. The small open decision models answer fast but choose poorly. Jev is the only model that does both, so it places the most pieces.**
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/results-pieces-dark.svg">
+  <img alt="Pieces placed in time per live game, one bar per model" src="docs/media/results-pieces-light.svg">
+</picture>
 
-Six models, four Live games each. Each game was stopped once four of the six boards had filled up.
+**Jev is the only model that is both fast and accurate, so it places the most pieces.** The language models choose well but answer too slowly. The small open decision models answer fast but choose poorly.
 
 <details>
-<summary>Full numbers</summary>
+<summary>Full numbers and what they mean</summary>
 
 | Model | Type | Good-move rate (higher is better) | Typical answer time (lower is better) | Pieces placed in time (higher is better) | Answers too late (lower is better) | Cost for 4 games |
 |---|---|---|---|---|---|---|
@@ -36,103 +39,89 @@ Six models, four Live games each. Each game was stopped once four of the six boa
 | Laya | decision model | 7% | 452 ms | 20.5 | 0% | self-hosted |
 | Claude Opus 5.5 | language model | **79%** | 5.14 s | 9.5 | 46% | $1.02 |
 
-Every number is an average over the four games.
+- **Good-move rate:** how often the model picked the best spot, as scored by a standard Tetris evaluator. Late answers are graded too, so speed doesn't affect this number.[^grading]
+- **Typical answer time:** the median time from showing the piece to getting the answer.
+- **Pieces placed in time:** pieces that went where the model chose, because its answer arrived before the piece landed.
+- **Answers too late:** the share of pieces that landed before the model answered.
+
+Four Live games per model, averaged. Each game was stopped once four of the six boards had filled up.
 
 </details>
 
-| Measure | Better when | What it means |
-|---|---|---|
-| **Good-move rate** | higher | How often the model picked the best spot for the piece, as scored by a standard hand-written Tetris evaluator.[^grading] |
-| **Typical answer time** | lower | The median time from showing the model a piece to getting its answer. |
-| **Pieces placed in time** | higher | Pieces that landed where the model chose, because its answer arrived before the piece hit the floor. This is the headline number. |
-| **Answers too late** | lower | The share of pieces that landed before the model had answered. |
+[^grading]: The evaluator only looks at the current piece, so a model that plans ahead can lose a point for a better move. Read it as a yardstick, not the truth. [How answers are judged](docs/how-it-works.md#how-each-answer-is-judged).
 
-To recompute everything from the raw logs in [benchmarks/2026-10-17](benchmarks/README.md):
+Recompute everything from the raw logs in [benchmarks/](benchmarks/README.md):
 
 ```sh
-bun bench chart benchmarks/2026-10-17/tetris    # redraws the chart above
+bun bench chart benchmarks/2026-10-17/tetris --out docs/media/results
 bun run stats benchmarks/2026-10-17/tetris/*.jsonl
 ```
 
-Earlier and later rounds, including Claude Haiku 5.5, are in the [results history](docs/results-history.md). Why each model scores the way it does is in [findings](docs/findings.md).
+Other rounds, including Claude Haiku 5.5, are in the [results history](docs/results-history.md). Why each model scores the way it does is in [findings](docs/findings.md).
 
-[^grading]: The evaluator is a yardstick, not the truth: it looks one piece ahead, so a model that plans further can lose a point for a better move. Late answers are graded too, so the rate measures choice apart from speed. In these games it is the average per game over every answer. See [how answers are judged](docs/how-it-works.md#how-each-answer-is-judged).
+## How the test works
 
-## The environment: Deadline Tetris
+1. A piece appears. The model gets the board and a numbered list of every place the piece can land.
+2. The model answers with one option.
+3. If the answer arrives before the piece lands, the piece goes there. If not, the piece lands wherever it falls.
 
-A standard 10 × 20 Tetris board, with one change: **the game doesn't wait for the model.**
+In Live games the pieces fall faster every 15 seconds, so there is less and less time to answer.
 
-1. A piece appears, and the model gets the board and a numbered list of every legal landing spot.
-2. The model answers with one number.
-3. If the answer arrives before the piece lands, the piece goes there. If not, it lands wherever it fell, and that counts as too late.
-
-The game speeds up every 15 seconds, so the time to answer keeps shrinking. A board is out when it fills up, and a game lasts at most 10 minutes.
-
-There are two modes. You can run both on the same pieces:
-
-| | **Live** | **Paused** |
+| Mode | While the model thinks | What it shows |
 |---|---|---|
-| While the model thinks | the piece keeps falling | the game waits (up to 30 s) |
-| It answers | can the model choose well *and* in time? | can the model choose well at all? |
+| **Live** | the piece keeps falling | can the model choose well *and* in time? |
+| **Paused** | the game waits (up to 30 s) | can the model choose well at all? |
 
-The page and `bench.yaml` call these the *real-time* and *frozen* clocks. The full rules and timings are in [how it works](docs/how-it-works.md).
+Every model gets the same pieces, the same prompt and the same options. Rules and timings are in [how it works](docs/how-it-works.md).
 
-## How we keep it fair
+## Try it
 
-- **Same game for everyone.** Every model gets the same pieces, the same prompt and the same list of options. In Live mode all the boards share one clock.
-- **Same answer format.** Every model must name one of the offered options. Any other reply counts as a bad answer, and nothing is guessed from free text.
-- **Several games.** We report the average over every game. We don't yet report error bars.
-- **Real costs.** Cost is the provider's list price for the tokens actually used.
-
-## Quick start (no keys)
-
-Needs [Bun](https://bun.sh) 1.4 or later.
+Needs [Bun](https://bun.sh) 1.4 or later. The demo uses mock models, so it needs no API keys:
 
 ```sh
 git clone https://github.com/jagadeeswara-reddy-p/jev-demos && cd jev-demos
 bun install
-bun bench demo      # six mock models, no API calls; finishes in about a second
+bun bench demo
 ```
 
-## Benchmark your own models
+To test your own models:
 
 ```sh
-bun bench init      # writes bench.yaml and .env from the examples
+bun bench init      # creates bench.yaml and .env
 bun bench doctor    # checks each model and its key
-bun bench run       # plays the games and writes the logs
-bun bench chart runs/bench/<name>    # draws the chart above for your run
+bun bench run       # plays the games
+bun bench chart runs/bench/<name>    # draws the two charts next to the logs
 ```
 
-Choose the models, games and modes in `bench.yaml`, and put API keys in `.env` ([which keys](docs/configuration.md#built-in-models)). Both files are git-ignored. Reference: [docs/bench.md](docs/bench.md).
+Put your models in `bench.yaml` and their [keys](docs/configuration.md#built-in-models) in `.env`. To watch a game in the browser, run `bun dev` and open http://localhost:5317. Full reference: [docs/bench.md](docs/bench.md).
 
-### Watch it in the browser
+## Limitations
 
-```sh
-bun dev             # http://localhost:5317
-```
+- **No error bars yet.** Four games is enough to rank these six models, but not to separate models that score close together.
+- **Network time is included.** Every request came from one machine in India, which adds about 0.2–0.3 s.
+- **One test so far.** More are on the [roadmap](#roadmap).
 
-Press **Models**, tick up to six, then **Start live run**. The **Line-up** menu has mock line-ups that need no keys, and **Load log** replays any saved game, including the ones in `benchmarks/`.
+## Roadmap
 
-## Known limitations
+- **2D reasoning:** a board-only Tetris variant, where the model gets only rotations and columns and has to picture the result.
+- **Browser automation:** a second test, on the same engine.
+- **More models and more games,** with error bars on every number.
+- **Published results:** signed result bundles, and a results site with replays.
 
-- **No error bars yet.** Four games per model is enough to rank these six, but not to separate models that score close together.
-- **The evaluator is a yardstick.** A model that plans ahead can disagree with it and still be right (see the footnote above).
-- **Network latency is included.** Every request went from one machine in India, which adds about 0.2–0.3 s per answer. Laya and Strands Decider ran on our own GPU in AWS us-east-1.
-- **One environment so far.** A board-only variant that tests 2D reasoning on its own is next ([design](docs/design/eval-engine.md)).
+The design is in [docs/design/eval-engine.md](docs/design/eval-engine.md).
 
 ## Documentation
 
 | Page | What's in it |
 |---|---|
-| [How it works](docs/how-it-works.md) | Rules, timings, the prompt every model gets, how answers are judged |
-| [Findings](docs/findings.md) | Why each model scores the way it does, and what we tried |
-| [Results history](docs/results-history.md) | Every published round, including the JevBench text-decision results |
-| [bun bench](docs/bench.md) | Every `bench.yaml` setting and command |
-| [Models](docs/models.md) | Adding a model, or writing an adapter for a new kind |
+| [How it works](docs/how-it-works.md) | Rules, timings, the prompt, how answers are judged |
+| [Findings](docs/findings.md) | Why each model scores the way it does |
+| [Results history](docs/results-history.md) | Every round, including JevBench |
+| [bun bench](docs/bench.md) | Every command and `bench.yaml` setting |
+| [Models](docs/models.md) | Adding a model or writing an adapter |
 | [Configuration](docs/configuration.md) | Keys, prices and server settings |
 | [Self-hosting](docs/self-hosting.md) | Running Laya and Strands Decider on a GPU |
 | [Development](docs/development.md) · [API](docs/api.md) | Code layout, tests and the server API |
-| [Eval engine design](docs/design/eval-engine.md) | Where this is going: writing a new environment |
 
 ## Contributing, security, citation, license
 

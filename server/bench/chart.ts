@@ -1,11 +1,13 @@
 import type { BenchSummary, ModelSummary } from "./results";
 
-// Renders the bench results as one self-contained SVG (light or dark), in two parts:
-// 1. a scatter of good-move rate against typical answer time (best corner: top left);
-// 2. bars of pieces placed in time per live game.
+// Renders the bench results as two self-contained SVGs (light or dark):
+// "choices", a scatter of good-move rate against typical answer time (best corner: top left), and
+// "pieces", bars of pieces placed in time per live game.
 // Baselines (the heuristic) are yardsticks, not entrants, so they are left out.
 
 export type ChartTheme = "light" | "dark";
+export type ChartPart = "choices" | "pieces";
+export const CHART_PARTS: readonly ChartPart[] = ["choices", "pieces"];
 
 interface Palette {
   bg: string;
@@ -42,14 +44,16 @@ const PALETTES: Record<ChartTheme, Palette> = {
 };
 
 const W = 880;
+/** Top of each chart's body, below the title, subtitle and legend. */
+const BODY_TOP = 112;
 /** Scatter plot area. Labels sit to the right of their points, so the right edge keeps room for them. */
 const PX0 = 72;
 const PX1 = W - 190;
-const P1_TOP = 132;
-const P1_H = 260;
+const P1_TOP = BODY_TOP + 12;
+const P1_H = 240;
 const P1_BOT = P1_TOP + P1_H;
 const POINT_R = 7;
-/** Bar part. */
+/** Bars. */
 const LABEL_W = 150;
 const BAR_X0 = LABEL_W + 16;
 const ROW_H = 30;
@@ -65,12 +69,23 @@ const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Ar
 /** Widest likely glyph, as a share of the font size: text is laid out so a wide fallback font still fits. */
 const WIDE = 0.6;
 const FOOTER_LINE = 16;
-const ARIA = "Benchmark results: good-move rate against answer time, and pieces placed in time per live game";
-const TITLE = "Who chooses well, and in time?";
 /** Candidate ticks of the answer-time axis, in ms. */
 const TIME_TICKS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
 /** Display names of environment ids. */
 const ENVIRONMENTS: Record<string, string> = { tetris: "Deadline Tetris" };
+
+const HEADINGS: Record<ChartPart, { title: string; sub: string; aria: string }> = {
+  choices: {
+    title: "Good choices vs. fast answers",
+    sub: "Each mark is a model. Best is the top-left corner ↖",
+    aria: "Good-move rate against typical answer time, one mark per model",
+  },
+  pieces: {
+    title: "Pieces placed in time",
+    sub: "Average per Live game. Higher is better.",
+    aria: "Pieces placed in time per live game, one bar per model",
+  },
+};
 
 type Kind = "decision" | "language";
 
@@ -79,43 +94,42 @@ const LEGEND: [Kind, string][] = [
   ["language", "Language model"],
 ];
 
-/** One self-contained SVG: title, legend, scatter, bars, footer. Pure: same input, same string. */
-export function renderChart(summary: BenchSummary, theme: ChartTheme): string {
+/** One part of the results as a self-contained SVG: title, legend, body, footer. Pure: same input, same string. */
+export function renderChart(summary: BenchSummary, theme: ChartTheme, part: ChartPart): string {
   const c = PALETTES[theme];
   const rows = summary.models.filter((m) => m.kind !== "baseline");
-  const notes = wrap(footer(summary, rows), Math.floor((W - 48) / (11 * WIDE)));
-  const p2Top = P1_BOT + 120;
-  const H = p2Top + rows.length * ROW_H + 36 + (notes.length - 1) * FOOTER_LINE;
+  const notes = wrap(footer(summary), Math.floor((W - 48) / (11 * WIDE)));
+  const bodyBottom = part === "choices" ? P1_BOT + 40 : BODY_TOP + rows.length * ROW_H - 10;
+  const H = bodyBottom + 40 + (notes.length - 1) * FOOTER_LINE;
+  const heading = HEADINGS[part];
   const present = new Set(rows.map(kindOf));
 
   const parts: string[] = [];
   parts.push(`<rect width="${W}" height="${H}" rx="8" fill="${c.bg}"/>`);
-  parts.push(text(24, 36, 18, 600, c.ink, TITLE));
+  parts.push(text(24, 36, 18, 600, c.ink, heading.title));
+  parts.push(text(24, 58, 12, 400, c.muted, heading.sub));
 
   let lx = 24;
   for (const [kind, name] of LEGEND) {
     if (!present.has(kind)) continue;
-    parts.push(marker(kind, lx + 6, 56, 5, c[kind]));
-    parts.push(text(lx + 18, 60, 12, 400, c.ink2, `${name} (${kind === "decision" ? "circle" : "square"})`));
-    lx += 18 + (name.length + 9) * CHAR_W + 22;
+    parts.push(marker(kind, lx + 6, 80, 5, c[kind]));
+    parts.push(text(lx + 18, 84, 12, 400, c.ink2, name));
+    lx += 18 + name.length * CHAR_W + 22;
   }
 
-  parts.push(...scatter(rows, c));
-  parts.push(...bars(rows, p2Top, c));
+  parts.push(...(part === "choices" ? scatter(rows, c) : bars(rows, c)));
 
   notes.forEach((line, i) => {
     parts.push(text(24, H - 14 - (notes.length - 1 - i) * FOOTER_LINE, 11, 400, c.muted, line));
   });
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}" role="img" aria-label="${esc(ARIA)}">\n${parts.join("\n")}\n</svg>\n`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}" role="img" aria-label="${esc(heading.aria)}">\n${parts.join("\n")}\n</svg>\n`;
 }
 
-/** Part 1: good-move rate (0-100%, up is better) against median answer time (log scale, left is faster). */
+/** Good-move rate (0-100%, up is better) against median answer time (log scale, left is faster). */
 function scatter(rows: ModelSummary[], c: Palette): string[] {
   const parts: string[] = [];
-  parts.push(text(24, P1_TOP - 44, 14, 600, c.ink, "1 · Chooses well vs. answers fast"));
-  parts.push(text(24, P1_TOP - 28, 11, 400, c.muted, "Each mark is a model. The best place to be is the top-left corner ↖"));
-  parts.push(text(PX0, P1_TOP - 8, 11, 400, c.ink2, "↑ Good-move rate (higher is better)"));
+  parts.push(text(PX0, P1_TOP - 10, 11, 400, c.ink2, "↑ Good-move rate (higher is better)"));
 
   for (const pct of [0, 25, 50, 75, 100]) {
     const y = yOf(pct);
@@ -157,13 +171,10 @@ function scatter(rows: ModelSummary[], c: Palette): string[] {
   return parts;
 }
 
-/** Part 2: pieces placed in time per live game, with the share of answers that came too late. */
-function bars(rows: ModelSummary[], top: number, c: Palette): string[] {
+/** Pieces placed in time per live game, most first, with the share of answers that came too late. */
+function bars(rows: ModelSummary[], c: Palette): string[] {
   const parts: string[] = [];
-  parts.push(text(24, top - 44, 14, 600, c.ink, "2 · Pieces placed in time"));
-  parts.push(
-    text(24, top - 28, 11, 400, c.muted, "Average per Live game: the piece went where the model chose, before it landed. Higher is better ↑"),
-  );
+  const top = BODY_TOP;
   const sorted = [...rows].sort((a, b) => (b.realtimeLanded ?? -1) - (a.realtimeLanded ?? -1));
   const widest = Math.max(0, ...sorted.map((m) => (m.realtimeLanded === null ? 0 : Array.from(landedLabel(m)).length)));
   const span = W - 24 - BAR_X0 - Math.max(MIN_VALUE_ROOM, Math.ceil(widest * CHAR_W) + 10);
@@ -238,27 +249,23 @@ function wrap(clauses: string[], max: number): string[] {
   return lines;
 }
 
-function footer(summary: BenchSummary, rows: ModelSummary[]): string[] {
+/** One short line of what was played. The README carries the rest. */
+function footer(summary: BenchSummary): string[] {
   const id = summary.environment.split(" ")[0];
-  const clauses = [ENVIRONMENTS[id] ?? summary.environment, "every model gets the same pieces"];
+  const clauses = [ENVIRONMENTS[id] ?? summary.environment];
   const live = summary.games.realtime;
   const paused = summary.games.frozen;
-  if (live > 0) {
-    const limit = summary.realtimeSeconds === null ? "" : `, up to ${gameLength(summary.realtimeSeconds)} each`;
-    clauses.push(`Live: ${games(live)}${limit}`);
-  }
-  if (paused > 0) clauses.push(`Paused: ${games(paused)}${summary.frozenPieces === null ? "" : `, ${summary.frozenPieces} pieces each`}`);
-  if (rows.some((m) => m.goodMovesFrom === "frozen")) clauses.push("good-move rate from Paused games");
-  else if (rows.some((m) => m.goodMovesFrom === "realtime")) clauses.push("good-move rate from every Live answer, late or not");
-  clauses.push(`total cost $${summary.totalCostUsd.toFixed(2)}`);
+  if (live > 0)
+    clauses.push(`${games(live, "Live")}${summary.realtimeSeconds === null ? "" : `, up to ${gameLength(summary.realtimeSeconds)} each`}`);
+  if (paused > 0) clauses.push(`${games(paused, "Paused")}${summary.frozenPieces === null ? "" : `, ${summary.frozenPieces} pieces each`}`);
   const left = summary.skipped.length;
   if (left > 0) clauses.push(`${left} unfinished ${left === 1 ? "game" : "games"} left out`);
-  clauses.push("no confidence intervals yet");
+  clauses.push("no error bars yet");
   return clauses;
 }
 
-function games(n: number): string {
-  return `${n} ${n === 1 ? "game" : "games"}`;
+function games(n: number, mode: string): string {
+  return `${n} ${mode} ${n === 1 ? "game" : "games"}`;
 }
 
 /** A live game's time limit in words; whole minutes read as minutes. */

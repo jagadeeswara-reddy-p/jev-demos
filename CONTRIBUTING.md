@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping. This project compares decision models fairly, so the one
+Thanks for helping. This project compares models fairly, so the one
 rule that matters most: **every model must get the same game, the same
 information and the same rules.** A change that helps one model see more, or
 gives it more time, needs a very good reason and a note in the README.
@@ -13,7 +13,7 @@ cp .env.example .env    # keys only for the models you want to try
 bun dev                 # http://localhost:5317
 ```
 
-No keys? The mock line-ups run in the browser, and `bun run fake-providers`
+No keys? `bun bench demo` plays six mock models from the command line, the mock line-ups run in the browser, and `bun run fake-providers`
 stands in for a Decisions API and a Chat Completions API (see [docs/development.md](docs/development.md#testing-and-tools)).
 
 ## Before sending a change

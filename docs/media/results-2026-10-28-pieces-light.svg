@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="262" viewBox="0 0 880 262" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" role="img" aria-label="Pieces placed in time per live game, one bar per model">
+<rect width="880" height="262" rx="8" fill="#fcfcfb"/>
+<text x="24" y="36" font-size="18" font-weight="600" fill="#0b0b0b">Pieces placed in time</text>
+<text x="24" y="58" font-size="12" fill="#898781">Average per Live game. Higher is better.</text>
+<circle cx="30.0" cy="80.0" r="5" fill="#2a78d6"/>
+<text x="42" y="84" font-size="12" fill="#52514e">Decision model</text>
+<rect x="157.9" y="75.5" width="9.0" height="9.0" rx="2" fill="#eb6834"/>
+<text x="174.39999999999998" y="84" font-size="12" fill="#52514e">Language model</text>
+<line x1="166" y1="106" x2="166" y2="222" stroke="#c3c2b7" stroke-width="1"/>
+<text x="150" y="124" font-size="13" text-anchor="end" fill="#0b0b0b">Jev</text>
+<rect x="166" y="112" width="554.0" height="16" rx="4" fill="#2a78d6"><title>Jev: 86.7</title></rect>
+<text x="726.0" y="124" font-size="12" fill="#52514e">86.7</text>
+<text x="150" y="154" font-size="13" text-anchor="end" fill="#0b0b0b">Claude Haiku 5.5</text>
+<rect x="166" y="142" width="294.0" height="16" rx="4" fill="#eb6834"><title>Claude Haiku 5.5: 46 · 3% too late</title></rect>
+<text x="466.0" y="154" font-size="12" fill="#52514e">46 · 3% too late</text>
+<text x="150" y="184" font-size="13" text-anchor="end" fill="#0b0b0b">GPT-6.1 Sol</text>
+<rect x="166" y="172" width="134.2" height="16" rx="4" fill="#eb6834"><title>GPT-6.1 Sol: 21 · 32% too late</title></rect>
+<text x="306.2" y="184" font-size="12" fill="#52514e">21 · 32% too late</text>
+<text x="150" y="214" font-size="13" text-anchor="end" fill="#0b0b0b">Claude Opus 5.5</text>
+<rect x="166" y="202" width="81.0" height="16" rx="4" fill="#eb6834"><title>Claude Opus 5.5: 12.7 · 46% too late</title></rect>
+<text x="253.0" y="214" font-size="12" fill="#52514e">12.7 · 46% too late</text>
+<text x="24" y="248" font-size="11" fill="#898781">Deadline Tetris · 3 Live games, up to 2 minutes each · 3 Paused games, 40 pieces each · no error bars yet</text>
+</svg>

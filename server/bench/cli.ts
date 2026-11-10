@@ -3,7 +3,7 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import type { Env } from "../models/env";
 import { testModel } from "../sample";
 import { createSource, listSources, models, refreshHealth } from "../sources";
-import { type ChartTheme, renderChart } from "./chart";
+import { CHART_PARTS, type ChartPart, renderChart } from "./chart";
 import { type BenchConfig, BenchConfigError, loadBench, parseBench } from "./config";
 import { agentFor, type BenchEntrant, resolveEntrants } from "./entrants";
 import { planMatches } from "./plan";
@@ -32,7 +32,7 @@ const USAGE = `Usage:
   bun bench doctor [file]                      check every model, its key and the estimate
   bun bench run [file] [--yes] [--out dir]     play the bench (asks first when it uses live models)
   bun bench demo [--out dir]                   play the demo bench with mock models, no keys needed
-  bun bench chart <folder> [--out prefix] [--allow-mock]   write the results chart (light and dark SVG)
+  bun bench chart <folder> [--out prefix] [--allow-mock]   write the two results charts (light and dark SVG) next to the logs
 The file defaults to bench.yaml. The output folder defaults to runs/bench/<name>.`;
 
 /** The built-in bench: every mock profile, both clocks, one seed. */
@@ -162,9 +162,6 @@ async function runDemo(args: Args, io: Io, demo: BenchConfig): Promise<number> {
   return 0;
 }
 
-/** The default --out prefix of chart: docs/media/results-light.svg and results-dark.svg. */
-const CHART_OUT = join("docs", "media", "results");
-
 async function chart(args: Args, io: Io): Promise<number> {
   const folder = args.positional[0];
   if (folder === undefined) {
@@ -185,28 +182,31 @@ async function chart(args: Args, io: Io): Promise<number> {
     return 1;
   }
 
-  const prefix = outPrefix(args.out);
+  const prefix = outPrefix(args.out, folder);
   mkdirSync(dirname(prefix), { recursive: true });
-  const files: Record<ChartTheme, string> = { light: `${prefix}-light.svg`, dark: `${prefix}-dark.svg` };
-  for (const theme of ["light", "dark"] as const) {
-    await Bun.write(files[theme], renderChart(summary, theme));
-    io.out(`Wrote ${relative(process.cwd(), files[theme])}`);
+  for (const part of CHART_PARTS) {
+    for (const theme of ["light", "dark"] as const) {
+      const file = `${prefix}-${part}-${theme}.svg`;
+      await Bun.write(file, renderChart(summary, theme, part));
+      io.out(`Wrote ${relative(process.cwd(), file)}`);
+    }
   }
   const left = summary.skipped.length;
   if (left > 0) io.out(`Left out ${left} unfinished match log${left === 1 ? "" : "s"}: ${summary.skipped.join(", ")}`);
   for (const m of summary.models) io.out(modelLine(m));
-  io.out(pictureSnippet(relative(process.cwd(), files.dark), relative(process.cwd(), files.light)));
+  for (const part of CHART_PARTS) io.out(pictureSnippet(relative(process.cwd(), prefix), part));
   return 0;
 }
 
 /**
- * The prefix of the two chart files. An --out that ends in a slash, or names an existing folder, is a folder:
- * the files go in it as results-light.svg and results-dark.svg.
+ * The prefix of the chart files. An --out that ends in a slash, or names an existing folder, is a folder:
+ * the files go in it as results-choices-light.svg, results-pieces-dark.svg and so on.
  */
-function outPrefix(out: string | undefined): string {
-  if (out === undefined) return resolve(CHART_OUT);
-  const folder = /[\\/]$/.test(out) || (existsSync(out) && statSync(out).isDirectory());
-  return folder ? resolve(out, "results") : resolve(out);
+function outPrefix(out: string | undefined, folder: string): string {
+  // By default the charts go next to the logs they come from, so charting a run never overwrites the README's charts.
+  if (out === undefined) return resolve(folder, "results");
+  const isFolder = /[\\/]$/.test(out) || (existsSync(out) && statSync(out).isDirectory());
+  return isFolder ? resolve(out, "results") : resolve(out);
 }
 
 /**
@@ -228,10 +228,15 @@ function modelLine(m: ModelSummary): string {
   return `${m.label}: good moves ${goodMoves}, median ${median}, live pieces placed ${landed}`;
 }
 
-function pictureSnippet(dark: string, light: string): string {
+const ALT: Record<ChartPart, string> = {
+  choices: "Good-move rate against typical answer time, one mark per model",
+  pieces: "Pieces placed in time per live game, one bar per model",
+};
+
+function pictureSnippet(prefix: string, part: ChartPart): string {
   return `<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="${dark}">
-  <img alt="Benchmark results: good-move rate against answer time, and pieces placed in time per live game" src="${light}">
+  <source media="(prefers-color-scheme: dark)" srcset="${prefix}-${part}-dark.svg">
+  <img alt="${ALT[part]}" src="${prefix}-${part}-light.svg">
 </picture>`;
 }
 

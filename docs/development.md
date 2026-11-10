@@ -18,11 +18,13 @@ server/                 Bun server: page + API, live runs
   models/               the model list: types.ts, validate.ts, env.ts (${ENV} placeholders), store.ts, health.ts (pings self-hosted models)
   routes/models.ts      /api/models and /api/lineup
   bench/                `bun bench`: the headless benchmark runner (see bench.md)
-    cli.ts              init, doctor, run, demo; the command-line entry point
+    cli.ts              init, doctor, run, demo, chart; the command-line entry point
     config.ts           reads and checks bench.yaml, fills in its defaults
     entrants.ts         resolves the listed models; fills ${ENV} placeholders from .env
     plan.ts             the matches in order: variants, clocks, seeds
     preflight.ts        the checks before a run, and the time and cost estimate
+    results.ts          summarizes a bench folder per model, for chart
+    chart.ts            draws the two results charts as SVG
     runner.ts           plays the matches one at a time; stop rule, resume, cost limit, bench.json
 src/core/               the engine contract, independent of any game
   types.ts              Turn, Answer, Agent, Match, Environment
@@ -42,7 +44,8 @@ src/ui/                 React + canvas UI, theme, store; ModelsPanel.tsx and Mod
 deploy/ec2/             a short-lived GPU box serving Laya and Strands Decider (common.sh is shared by the scripts)
 benchmarks/             the published benchmark data (game logs and JevBench results), by date
 scripts/                stats.ts, smoke.ts, position-bias.ts (shuffle test), fake-providers.ts
-docs/                   findings, how it works, models, configuration, self-hosting, API, development; media/ (demo videos)
+docs/                   how it works, findings, results history, bench, models, configuration, self-hosting, API,
+                        development; design/ (the eval-engine design); media/ (demo videos and result charts)
 runs/                   saved live runs (git-ignored)
 ```
 
@@ -53,7 +56,7 @@ bun run lint                # Biome: formatting and lint (bun run format fixes w
 bun run typecheck
 bun test                    # engine, simulation, adapters, model store and API tests
 CALIBRATE=1 bun test        # also print how each mock profile fares
-bun run stats               # statistics from saved runs (see the README's Benchmarks)
+bun run stats               # statistics from saved runs (see benchmarks/README.md)
 bun run smoke               # one real decision from every model that can run
 bun run smoke live-laya -n 5   # chosen models, five times each, with the median round trip
 bun run fake-providers      # stand-in Decisions and Chat Completions APIs on :5400
@@ -74,8 +77,8 @@ consistency and best moves per model (see [findings.md](findings.md)).
 - **Dashed outlines after a line clear** are drawn at their pre-clear height, so they can appear to float.
 - **Laya runs on hardware you choose.** Its latency reflects that machine, not just the model.
 - **Live latency includes your network.** Running from a different region changes the numbers.
-- **One seed is one game.** Compare across several seeds before drawing conclusions.
-- **Speed and survival are linked.** A faster model places more pieces per minute, so with the same placement quality its stack also rises faster. That's why the winner is decided by pieces landed (or, in a sprint, by reaching 40 lines), not by time survived.
+- **One game proves little.** Compare averages over several games (seeds) before drawing conclusions.
+- **Speed and survival are linked.** A faster model places more pieces per minute, so with the same placement quality its stack also rises faster. That's why the winner is decided by pieces placed in time (or, in a sprint, by reaching 40 lines), not by time survived.
 - **Costs are recorded when each answer arrives.** Runs made before a model's prices were set keep $0 for that model.
 - **GPT-6.1 Sol's price isn't in AWS's price list.** It comes from third-party Bedrock listings; Claude Haiku 5.5's comes from the AWS Price List API.
 - **Claude Opus 5.5 can't be forced to use the answer tool on Bedrock**, so its entry has `"toolChoice": "auto"`: the same tool is offered, and it may answer in text instead. The answer must still name an offered option.

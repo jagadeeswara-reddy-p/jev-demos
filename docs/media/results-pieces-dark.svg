@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="322" viewBox="0 0 880 322" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Liberation Sans', sans-serif" role="img" aria-label="Pieces placed in time per live game, one bar per model">
+<rect width="880" height="322" rx="8" fill="#1a1a19"/>
+<text x="24" y="36" font-size="18" font-weight="600" fill="#f0efec">Pieces placed in time</text>
+<text x="24" y="58" font-size="12" fill="#898781">Average per Live game. Higher is better.</text>
+<circle cx="30.0" cy="80.0" r="5" fill="#3987e5"/>
+<text x="42" y="84" font-size="12" fill="#c3c2b7">Decision model</text>
+<rect x="157.9" y="75.5" width="9.0" height="9.0" rx="2" fill="#d95926"/>
+<text x="174.39999999999998" y="84" font-size="12" fill="#c3c2b7">Language model</text>
+<line x1="166" y1="106" x2="166" y2="282" stroke="#383835" stroke-width="1"/>
+<text x="150" y="124" font-size="13" text-anchor="end" fill="#f0efec">Jev</text>
+<rect x="166" y="112" width="554.0" height="16" rx="4" fill="#3987e5"><title>Jev: 118.8</title></rect>
+<text x="726.0" y="124" font-size="12" fill="#c3c2b7">118.8</text>
+<text x="150" y="154" font-size="13" text-anchor="end" fill="#f0efec">Cloudflare Clef</text>
+<rect x="166" y="142" width="323.1" height="16" rx="4" fill="#3987e5"><title>Cloudflare Clef: 69.3</title></rect>
+<text x="495.1" y="154" font-size="12" fill="#c3c2b7">69.3</text>
+<text x="150" y="184" font-size="13" text-anchor="end" fill="#f0efec">GPT-6.1 Sol</text>
+<rect x="166" y="172" width="108.5" height="16" rx="4" fill="#d95926"><title>GPT-6.1 Sol: 23.3 · 13% too late</title></rect>
+<text x="280.5" y="184" font-size="12" fill="#c3c2b7">23.3 · 13% too late</text>
+<text x="150" y="214" font-size="13" text-anchor="end" fill="#f0efec">Strands Decider</text>
+<rect x="166" y="202" width="98.0" height="16" rx="4" fill="#3987e5"><title>Strands Decider: 21 · 1% too late</title></rect>
+<text x="270.0" y="214" font-size="12" fill="#c3c2b7">21 · 1% too late</text>
+<text x="150" y="244" font-size="13" text-anchor="end" fill="#f0efec">Laya</text>
+<rect x="166" y="232" width="95.6" height="16" rx="4" fill="#3987e5"><title>Laya: 20.5</title></rect>
+<text x="267.6" y="244" font-size="12" fill="#c3c2b7">20.5</text>
+<text x="150" y="274" font-size="13" text-anchor="end" fill="#f0efec">Claude Opus 5.5</text>
+<rect x="166" y="262" width="44.3" height="16" rx="4" fill="#d95926"><title>Claude Opus 5.5: 9.5 · 46% too late</title></rect>
+<text x="216.3" y="274" font-size="12" fill="#c3c2b7">9.5 · 46% too late</text>
+<text x="24" y="308" font-size="11" fill="#898781">Deadline Tetris · 4 Live games, up to 10 minutes each · no error bars yet</text>
+</svg>

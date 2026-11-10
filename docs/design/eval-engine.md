@@ -1,6 +1,9 @@
 # Design: a benchmark engine for real-time decisions
 
-Status: draft for review, 2026-10-27. Nothing here is built yet.
+Status: design notes, last updated 2026-11-10. Steps 1–3 of the
+[migration](#migration-from-today) are built, along with `bun bench chart` and the
+new README; [bench.md](../bench.md) documents what exists today. Everything else
+here is planned, and the details may change.
 
 ## Goal
 
@@ -140,23 +143,23 @@ name: oct-2026-open
 environment: tetris
 seeds: [1, 2, 3, 4, 5]          # or a count: `seeds: 5` means 1–5; default 5
 clocks: [frozen, realtime]
-variants: [described, board-only]
-repeats: 1                       # >1 repeats each episode, for pass^k-style consistency
+variants: [described]           # board-only is planned
 tetris:                          # environment block, validated by the plugin
   goal: survive                  # or sprint40
   maxDurationMs: 600000
 limits:
   stopWhenFinished: 0.75         # end a match once this share of its models are done; the rest are "unfinished"
   maxCostUsd: 50                 # stop scheduling new episodes past this
-  concurrency: 12                # episodes in flight at once
 models:                          # 1 to 12
   - id: jev
+    label: Jev
     adapter: decision
     baseUrl: https://api.typesafe.ai
     model: jev-latest
     apiKey: ${TYPESAFE_API_KEY}  # keys only ever come from env
     prices: { inputPerM: 0.042, outputPerM: 0 }
   - id: my-llm
+    label: My model
     adapter: completion
     baseUrl: https://openrouter.ai/api/v1
     model: vendor/model
@@ -184,12 +187,12 @@ models:                          # 1 to 12
    piece or time limit. The others stop where they are and are marked
    **unfinished** (see "Unfinished episodes" below). One slow model can't hold up
    a whole run, and the time and cost estimate stays honest.
-5. Writes each match's events to `runs/<run>/<variant>-<clock>-seed<seed>.jsonl`
+5. Writes each match's events to `runs/bench/<name>/<variant>-<clock>-seed<seed>.jsonl`
    as it goes, and a `bench.json` manifest at the end. A crashed run resumes
    from the matches not yet finished.
 6. Scores and writes the results bundle.
 
-Decisions made in step 3 (`bun bench`, branch `bench-runner`):
+Decisions made in step 3 (`bun bench`):
 
 - **One log per match, not per model**, in today's run-log format. `bun run
   stats` and the page's replay read it unchanged.
@@ -294,20 +297,13 @@ Reporting rules:
 
 ### Name and repository
 
-The project is **decision-bench**. The GitHub org will be named later. Until
-then, docs and workflows assume **`github.com/decision-bench/decision-bench`**,
-and switching to the real org is one find-and-replace. As of 2026-10-28, the
-`decision-bench` and `decisionbench` GitHub orgs, the npm package and the PyPI
-package are all free.
+The project is **decision-bench**.
 
 Name clash to know about: an academic benchmark called **DecisionBench**
 already exists. It measures how LLM orchestrators delegate sub-tasks
 (arXiv 2605.19099, May 2026, data at `huggingface.co/decisionbench`). It's a
 different topic, but searches for the name will find both. The Hugging Face
-org name is taken, so any datasets we host there need another name. Decided
-2026-10-28: keep decision-bench, since the clash is acceptable.
-
-`jev-demos` stays as the reference repo and the source of the 2026-10 results.
+org name is taken, so any datasets we host there need another name.
 
 ### Website
 
@@ -341,12 +337,11 @@ Actions workflow on every push to `main`.
 | `/methodology/` | Rules, metrics, statistics; changelog per methodology version |
 | `/submit/` | How to publish a run: a PR with a signed bundle |
 | `/docs/` | The documentation (below) |
-| `/blog/` | Write-ups such as today's `findings.md` and posts in `docs/posts/` |
+| `/blog/` | Write-ups such as today's `findings.md` |
 
 Published runs are copied into the site at build time from `results/<run>/`
 in the repo. A bundle is about 1–5 MB of JSONL, like today's
-`benchmarks/` (5.4 MB for two benchmarks). Big media such as videos go in
-GitHub Releases, not in git. Today's `docs/media` is 18 MB.
+`benchmarks/`. Big media such as videos go in GitHub Releases, not in git.
 
 ### Docs structure
 
@@ -396,7 +391,9 @@ Two traps to avoid:
 GitHub builds a table of contents from the headings, so the README doesn't
 need one.
 
-The README, top to bottom (about 600 words):
+The plan for the README, top to bottom (about 600 words). The README as built
+follows a similar order, but opens with the question it answers and shows the
+results as two charts; it has no confidence intervals yet.
 
 1. **Name, 4–5 badges and a one-line pitch.**
    - Badges: CI, license, methodology version, latest release, Open in Codespaces.
@@ -437,9 +434,9 @@ benchmark repo studied has a citation section.
 
 | Piece | What it does | When |
 |---|---|---|
-| `bun bench demo` | Runs the mock line-up on every variant and opens the results page. No keys, no cost. Uses the mocks that exist today, like promptfoo's no-API `echo` provider. | First version |
-| `bun bench init` | Writes a commented `bench.yaml` (two example models) and `.env.example` | First version |
-| `bun bench doctor` | Checks the Bun version, that every model's keys are set, and one real answer per model; then prints a time and cost estimate | First version (it's the runner's preflight on its own) |
+| `bun bench demo` | Runs the mock line-up and prints the stats, in about a second. No keys, no cost. Uses the mocks that exist today, like promptfoo's no-API `echo` provider. | Built |
+| `bun bench init` | Writes a commented `bench.yaml` and a `.env` from the examples | Built |
+| `bun bench doctor` | Checks the Bun version, that every model's keys are set, and one real answer per model; then prints a time and cost estimate | Built (it's the runner's preflight on its own) |
 | Codespaces devcontainer | Opens the repo with Bun and dependencies ready, so the demo runs in the browser | Soon |
 | `llms.txt` on the site | Docs in a form coding agents read, as Inspect does | Soon |
 | `bunx decision-bench …` from npm | Use it without cloning | Once the CLI settles; the git clone is enough until then |
@@ -447,9 +444,7 @@ benchmark repo studied has a citation section.
 ### Results pages
 
 Researched against the leaderboards of Aider, SWE-bench, Terminal-Bench, Arena
-(formerly LMArena), HAL and Artificial Analysis. Kaggle Game Arena is the
-closest match to this project, but its page renders in the browser and
-couldn't be read, so its details are unconfirmed.
+(formerly LMArena), HAL and Artificial Analysis.
 
 Patterns worth copying:
 - **Aider:**
@@ -538,10 +533,10 @@ runs a small Node worker that talks to the engine over stdio.
 
 ## Migration from today
 
-1. **Done (branch `engine-core`).** Make the Tetris engine and arena an `Environment` plugin. The current UI
+1. **Done.** Make the Tetris engine and arena an `Environment` plugin. The current UI
    keeps working through it.
-2. **Done (branch `engine-core`).** Generic `Turn`/`Answer`; adapters lose `DecisionRequest`.
-3. **Done (branch `bench-runner`).** `bench.yaml` loader and the headless runner, with preflight and resume,
+2. **Done.** Generic `Turn`/`Answer`; adapters lose `DecisionRequest`.
+3. **Done.** `bench.yaml` loader and the headless runner, with preflight and resume,
    plus `bun bench init`, `doctor` (the preflight on its own) and `demo`.
 4. Board-only variant.
 5. Results bundle, `stats`, `publish`, `verify`, with hashes and SSH
@@ -553,9 +548,8 @@ runs a small Node worker that talks to the engine over stdio.
    submit) built from `results/`, and the Pages deploy workflow. This can start
    alongside step 3. Its first version needs only the existing docs and the
    2026-10 results.
-8. The new README (the layout under [README](#readme)), `CITATION.cff`,
-   `SECURITY.md` and a methodology version badge. This lands with step 3, so the
-   quick start's commands exist when the README shows them.
+8. **Mostly done.** The new README, `CITATION.cff` and `SECURITY.md`. The
+   methodology version badge is still to come.
 
 Each step is its own PR with tests. Old JSONL logs stay readable through a
 converter, so the 2026-10-17 results keep replaying.

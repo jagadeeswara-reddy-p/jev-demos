@@ -1,7 +1,5 @@
 # Server API and run logs
 
-## Server API and run logs
-
 **Who can call it.** The server listens on `127.0.0.1` unless `HOST` says otherwise, and
 every `/api/` route checks the request first (`server/guard.ts`): the `Host` must be this
 machine or a name in `ALLOWED_HOSTS`, and a request that changes something must declare a

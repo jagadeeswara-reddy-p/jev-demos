@@ -1,12 +1,12 @@
 # How it works
 
 The game, what every model is shown, how answers are judged, and what the screens mean.
-The [README](../README.md#the-environment-deadline-tetris) has the short version.
+The [README](../README.md#how-the-test-works) has the short version.
 
-**Names.** The README calls the two clocks **Live** (real time here, `realtime` in
-`bench.yaml` and the logs) and **Paused** (frozen, `frozen`). A **seed** is one
-game's piece sequence, so "seed 1" and "game 1" are the same game. **Good-move
-rate** was called best moves, and agreement with heuristic.
+**Names.** This page says **Live** and **Paused**. In `bench.yaml` and the logs
+they are `realtime` and `frozen`, and the page's Clock menu says Real time and
+Frozen. A **seed** fixes one game's pieces, so seed 1 is game 1. The page and
+`bun run stats` label the **good-move rate** "Best moves".
 
 ## How a run works
 
@@ -20,16 +20,16 @@ rate** was called best moves, and agreement with heuristic.
 
 ### The two clocks (Live and Paused)
 
-| | **Real time** (Live) | **Frozen** (Paused) |
+| | **Live** (`realtime`) | **Paused** (`frozen`) |
 |---|---|---|
 | While a model thinks | gravity keeps pulling the piece down | the game waits |
 | Answer counts if… | it arrives before the piece locks | it arrives within 30 s |
 | What it measures | **is the model fast enough for a live loop?** | **does the model place pieces well?** |
 | Speed control | live: 1× only; mock and replay: 1–8× | same |
 
-Run both on the same seed. Real time shows speed, and frozen shows skill without speed.
-On the page, a frozen run still stops at the time limit. In `bun bench`, a frozen
-match gives every board the same number of pieces (`tetris.frozenPieces`, 100 by
+Run both on the same seed. Live shows speed, and Paused shows skill without speed.
+On the page, a Paused run still stops at the time limit. In `bun bench`, a Paused
+game gives every board the same number of pieces (`tetris.frozenPieces`, 100 by
 default; a frozen sprint uses `tetris.maxPieces`), and runs until each board has
 placed them or topped out.
 
@@ -41,8 +41,8 @@ config, so replays and `bun run stats` use the same rules.
 | | **Survive** (default) | **40 lines** (sprint) |
 |---|---|---|
 | A board stops when | it tops out (or places 1,000 pieces) | it tops out, or **clears 40 lines** (shown as FINISHED) |
-| Winner, real time | most pieces landed, then lines, then time survived | **first to 40 lines**; boards that fell short rank by lines, then pieces landed |
-| Winner, frozen clock | most pieces landed, then lines, then pieces placed (time never breaks a tie) | **fewest pieces to 40 lines**, since time there mostly measures waiting |
+| Winner, Live | most pieces placed in time, then lines, then time survived | **first to 40 lines**; boards that fell short rank by lines, then pieces placed in time |
+| Winner, Paused | most pieces placed in time, then lines, then pieces placed (time never breaks a tie) | **fewest pieces to 40 lines**, since time there mostly measures waiting |
 
 The rules live in one place, `src/arena/ranking.ts`, shared by the results
 chart and the stats script.
@@ -53,11 +53,11 @@ chart and the stats script.
 |---|---|---|
 | Board | 10 × 20, plus 2 hidden rows above | pieces appear in the top visible row |
 | Gravity | `(0.8 − (level−1)·0.007)^(level−1)` seconds per row | the standard Tetris speed curve: 1 s/row at level 1, under 1 ms/row by level 20 |
-| Levels | +1 every **15 s** of game time, up to 20 (real-time clock only) | time-based, not line-based, so the deadline shrinks for everyone at the same pace. On the frozen clock the level stays at the start level: time there is only waiting, and every model should see the same state |
+| Levels | +1 every **15 s** of game time, up to 20 (Live only) | time-based, not line-based, so the deadline shrinks for everyone at the same pace. In Paused games the level stays at the start level: time there is only waiting, and every model should see the same state |
 | Lock delay | **500 ms** | a resting piece locks after this long |
 | Entry delay | **200 ms** | pause between a lock and the next piece |
 | Drop after a decision | **30 ms per row**, never slower than gravity | see below |
-| Frozen-clock timeout | **30 s** per piece | |
+| Paused timeout | **30 s** per piece | |
 | End of run | every board out, **1,000 pieces** placed (counts as *survived*), or **10 minutes** | |
 
 ### What happens to a piece
@@ -67,10 +67,10 @@ chart and the stats script.
    spot at its current height, then **falls into place at the drop speed** and
    locks when it lands. The fall is part of the game, not a screen effect, so
    live runs, replays and logs all show it, and it's identical for every board.
-3. **If the piece locks first** (real time), it lands wherever gravity took it,
+3. **If the piece locks first** (Live), it lands wherever gravity took it,
    in its spawn rotation and column. That counts as **too late**.
-4. **If the answer is invalid or the request fails**: in real time the piece
-   keeps falling and lands wherever gravity takes it. On the frozen clock it
+4. **If the answer is invalid or the request fails**: in Live games the piece
+   keeps falling and lands wherever gravity takes it. In Paused games it
    falls straight down from where it is, as it also does when no answer arrives within 30 s.
 
 Once a piece has locked, the next one appears after the entry delay. The model
@@ -97,7 +97,7 @@ benchmarks, and it gives every model the same fixed menu to choose from.
 
 ### 2. Describing each option (`src/arena/prompt.ts`)
 For every option the engine places the piece on a copy of the board and
-measures the result. Both models receive **the same text, word for word**:
+measures the result. Every model receives **the same text, word for word**:
 
 ```
 Instructions: You are playing Tetris. Choose where the current piece should land.
@@ -126,14 +126,13 @@ option_2: Rotation 0, columns 1-3, lands 5 rows above the floor; clears no lines
 - **Stack height after**: height of the tallest column.
 - **Bumpiness after**: total height difference between neighbouring columns (lower is flatter).
 
-**Why the options come with these numbers (on purpose).** Jev is a System One
-model. It doesn't plan or work through board geometry step by step: it reads a
-state and a set of predefined options, and returns a probability for each one.
-So this arena asks the question that kind of model is built for: *given clear
-descriptions of every legal move, how quickly and how well can you pick one?*
-The engine does the geometry, and the model does the choosing. The language
-model gets exactly the same descriptions, so neither side has more information.
-That is the `described` variant, the one that runs today. A `board-only`
+**Why the options come with these numbers (on purpose).** Decision models such
+as Jev, Clef, Laya and Strands Decider don't reason step by step: they score a
+fixed list of options and return a probability for each. The `described` variant,
+the one that runs today, gives every model the engine's measurements of each
+option, so it tests choosing, not geometry: *given clear descriptions of every
+legal move, how quickly and how well can you pick one?* Language models get
+exactly the same descriptions, so no model has more information. A `board-only`
 variant is planned: there each option gives only a rotation and columns, so the
 model has to picture the result itself. That tests 2D reasoning, not just
 judgement. See the 2×2 in [the design doc](design/eval-engine.md#tetris-variants-the-22).
@@ -185,13 +184,13 @@ guessed from free text.
 | **invalid** | not valid JSON, or not one of the offered ids | *Bad answers*, Log |
 | **error** | HTTP error, timeout or network failure | *Bad answers*, Log |
 | **blocked** | only in the optional `movement: "path"` mode: the chosen spot couldn't be reached from where the piece had fallen | *Bad answers*, Log |
-| **timeout** | frozen clock only: no answer within 30 s | Log |
+| **timeout** | Paused only: no answer within 30 s | Log |
 
-**Cost** = tokens × the per-million prices from `.env`. The providers report the token counts.
+**Cost** = tokens × the model's per-million prices in `models.json` (or `models.local.json`). The providers report the token counts.
 
 ### Move quality (good-move rate)
 
-The README and the chart call this the **good-move rate**. Older rounds call it best moves, or agreement with heuristic; it is the same number. The page and `bun run stats` still label it **Best moves**.
+Older rounds call this best moves, or agreement with heuristic; it is the same number.
 
 Speed alone can't tell a slow model with good judgement from a bad one, so every
 answer is also graded. When a piece appears, the game scores every offered
@@ -200,8 +199,8 @@ Dellacherie evaluator, the same one the mock players use, in
 `src/engine/heuristic.ts`. Options that tie share a rank. The answer's rank is
 stored on its `decision` event as `bestRank` (1 = the heuristic's top pick).
 
-- **Best moves** = share of graded answers with rank 1. **In top 3** (stats only) = rank 3 or better.
-- **Late answers are graded too**, against the piece they were asked about. This measures judgement apart from speed.
+- **Good-move rate** = share of graded answers with rank 1. **In top 3** (stats only) = rank 3 or better.
+- **Late answers are graded too**, against the piece they were asked about. So speed doesn't affect this number.
 - Invalid answers, errors and timeouts aren't graded.
 - The heuristic is a yardstick, not the truth. It looks at one piece and ignores the next ones, so a model planning ahead can lose a point here for a move that's actually better. Treat a gap of a few points as noise.
 - `bun run stats` grades older logs (from before `bestRank` existed) the same way, from the logged board and options.
@@ -235,7 +234,7 @@ The page has three screens, and each fits one window without scrolling.
 **Results** appears when a run ends. Its header names the winner by the run's
 win rule. Below it:
 - the game replayed as a race;
-- pieces landed (or lines) over game time;
+- pieces placed in time (or lines) over game time;
 - **smart versus fast**: best moves against time per decision;
 - time per decision (median and p95);
 - a table with every number.
@@ -244,7 +243,7 @@ win rule. Below it:
 - **Live Jev**: yes. The chosen spot is Jev's `choice`, and the dashed outlines and percentages are Jev's own probabilities from the API (top 2 alternatives at 1% or more).
 - **Live language model**: the chosen spot is real. There are **no dashed alternatives**, because a chat model returns only a choice, without probabilities.
 - **Mock models**: simulated. A pretend model picks randomly, weighted toward the hand-written bot's favourite spots.
-- **The option list itself is always real**: OPT numbers are the `option_N` ids both models were sent.
+- **The option list itself is always real**: OPT numbers are the `option_N` ids every model was sent.
 
 ## Live, mock and replay
 
@@ -274,5 +273,5 @@ redraw the recorded events; nothing is re-decided.
 | `random` | any legal spot | ~1 ms |
 | `no-input` | never answers | — |
 
-With the default rules the mocks reproduce the video. The `llm-fast` mock tops
+With the default rules, the `llm-fast` mock tops
 out around level 13 with about 9 late pieces, and the `llm-frontier` mock around level 5–7.

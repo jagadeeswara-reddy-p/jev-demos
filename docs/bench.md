@@ -5,6 +5,9 @@ which models, how many seeds, which clocks, and when a match stops. It checks
 every model, plays the matches one at a time, and writes the same game logs the
 page writes. The page is only needed to watch a replay.
 
+In `bench.yaml` the two modes are `realtime` (called **Live** in the README) and
+`frozen` (**Paused**); a match is one game.
+
 - [Quick start](#quick-start)
 - [Commands](#commands)
 - [bench.yaml](#benchyaml)
@@ -17,7 +20,7 @@ page writes. The page is only needed to watch a replay.
 ## Quick start
 
 ```sh
-bun bench demo      # six mock models, no keys, well under a second
+bun bench demo      # six mock models, no keys, about a second
 bun bench init      # writes bench.yaml and .env from the examples
 bun bench doctor    # checks each model; one real call per live model
 bun bench run       # plays the bench; asks first when it uses live models
@@ -205,40 +208,38 @@ as an estimate, not a forecast.
 
 ## Charting results
 
-`bun bench chart` draws a finished bench as an SVG chart. Pass it the bench's
+`bun bench chart` draws a finished bench as two SVG charts. Pass it the bench's
 output folder:
 
 ```sh
 bun bench chart runs/bench/<name>
 ```
 
-It writes two files, one light and one dark, and prints one line per model and
-the `<picture>` snippet for the README.
+It writes four files (each chart in light and dark), then prints one line per
+model and a `<picture>` snippet for each chart, ready for the README.
 
 | Flag | Meaning |
 |---|---|
 | `<folder>` | Required. The output folder, with its `.jsonl` logs. |
-| `--out prefix` | Where the two files go. Default `docs/media/results`, which writes `docs/media/results-light.svg` and `docs/media/results-dark.svg`. A value that ends in `/`, or names an existing folder, is a folder: the files go in it as `results-light.svg` and `results-dark.svg`. Paths are relative to the repository root, where `bun bench` always runs. |
+| `--out prefix` | Where the files go. By default they go next to the logs: `<folder>/results-choices-light.svg`, `results-choices-dark.svg`, `results-pieces-light.svg` and `results-pieces-dark.svg`. A value that ends in `/`, or names an existing folder, is a folder: the files go in it with those names. To redraw the README's charts, pass `--out docs/media/results`. Paths are relative to the repository root, where `bun bench` always runs. |
 | `--allow-mock` | Draw a bench that has a mock model (see below). Without it, `chart` refuses. |
 
-**What it draws.** Two parts, with the direction marked on every axis. Baseline
-models (`heuristic`, `random`) are yardsticks, not entrants, so they are left out.
+**The two charts.** Baseline models (`heuristic`, `random`) are yardsticks, not
+entrants, so both charts leave them out.
 
-| Part | Shows | How it is averaged |
+| Chart | Shows | How it is averaged |
 |---|---|---|
-| 1 · Chooses well vs. answers fast | A scatter: good-move rate (0–100%, up is better) against typical answer time (log scale, left is faster). The best corner is top left. | Good-move rate: the share of graded answers the heuristic ranks 1, one value per game, then the mean. Taken from Paused (`frozen`) games when there are any, else from every Live answer, late or not. Answer time: the median of every answer, all games. |
-| 2 · Pieces placed in time | Bars of pieces placed by decision per Live (`realtime`) game, sorted most first, with `· N% too late` when at least 1% of the pieces landed before the answer. | Mean per game. The late share is pooled over every Live piece. |
+| `choices`: good choices vs. fast answers | One mark per model: good-move rate (0–100%, higher is better) against typical answer time (log scale, faster is better). The best corner is top left. | Good-move rate: the mean per game, from Paused (`frozen`) games if there are any, otherwise from every Live answer. Answer time: the median over every answer. |
+| `pieces`: pieces placed in time | One bar per model, most first, with `· N% too late` when at least 1% of its pieces landed before the answer. | Mean per Live (`realtime`) game. The late share is pooled over every Live piece. |
 
-Colour and shape show the model kind: a blue circle for a decision model, an
-orange square for a language model. Every mark and bar is named, and every bar
-has its value. Display names come from `models.json` by model id, so a chart of
-old logs shows today's names.
+A blue circle is a decision model and an orange square a language model, so the
+kind never rests on colour alone. Display names come from `models.json` by model
+id, so a chart of old logs shows today's names.
 
-**Footer.** The footer names the environment, says every model got the same
-pieces, then gives the number of Live games and their time limit, the number of
-Paused games and their pieces, which mode the good-move rate comes from, the
-total cost and "no confidence intervals yet". If no model has a graded
-answer, part 1 says so instead of drawing marks.
+**Footer.** One line: the environment, the number of Live and Paused games (with
+the time limit or the pieces per game), any unfinished games left out, and "no
+error bars yet". If no model has a graded answer, the `choices` chart says so
+instead of drawing marks.
 
 **Unfinished logs.** A match log whose run never finished (its last line is not
 `run_finished`, for example because the run was stopped) is left out, not
@@ -260,14 +261,14 @@ bun bench demo
 bun bench chart runs/bench/demo --allow-mock
 ```
 
-**The picture snippet.** After the files are written, `chart` prints a
-`<picture>` element. The dark image is the source for dark mode, and the light
-image is the fallback:
+**The picture snippets.** After the files are written, `chart` prints one
+`<picture>` element per chart. The dark image is the source for dark mode, and
+the light image is the fallback:
 
 ```html
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/media/results-dark.svg">
-  <img alt="Benchmark results: good-move rate against answer time, and pieces placed in time per live game" src="docs/media/results-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/results-choices-dark.svg">
+  <img alt="Good-move rate against typical answer time, one mark per model" src="docs/media/results-choices-light.svg">
 </picture>
 ```
 

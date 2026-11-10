@@ -85,3 +85,19 @@ Restart `bun dev`, tick them in the Models panel and press **Test**.
   good at Tetris: see [findings.md](findings.md#laya).
 - **Strands Decider gets no rotations**: its server ignores `option_order`, and it
   shows no position bias. See [findings.md](findings.md#strands-decider).
+
+## Lessons from deploying
+
+What went wrong the first time, and what `deploy/ec2/` now does about it:
+
+| What happened | Fix |
+|---|---|
+| `pip install strands-decider` installed 0.1.0 from PyPI, older than the repository, and the server never started | Strands is pinned to a known-good commit; Laya to 0.4.8, which matches its repository |
+| Laya's Docker image took 12 minutes to build on every launch | Laya is installed from PyPI into its own virtualenv, next to Strands: both are ready in about 4 minutes |
+| Strands' first moves took 30–60 s while Triton compiled its kernels, longer than the arena's timeout | `wait-ready.sh` sends real warm-up moves before calling a model ready |
+| A passing health check didn't mean a model could answer; one failure went unnoticed for 20 minutes | `wait-ready.sh` waits for real answers, and prints errors from the boot log as they appear |
+| There was no way to log in to a failing box | A throwaway SSH key, with port 22 open to your current IP only; teardown removes both |
+| Strands needs bf16 and Triton kernels, which the T4 lacks | g5.xlarge (A10G, $1.006/hour) by default; the T4 only for Laya alone |
+| The firewall kept a previous IP's access after the address changed | Every launch clears old rules |
+| Laya could silently fall back to the CPU | `LAYA_DEVICE=cuda`, so it fails loudly instead |
+| Temporary AWS credentials expired between sessions | `launch.sh` checks them first |
